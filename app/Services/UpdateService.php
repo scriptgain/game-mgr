@@ -1,0 +1,317 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Setting;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * Self-update for a self-hosted install.
+ *
+ * GameMGR is free, so there is no licence call to piggyback on: the version
+ * feed is a plain public manifest on scriptgain.com carrying the latest
+ * version, a download URL and the tarball sha256. This service compares that
+ * against the local VERSION file and, when newer, downloads the release
+ * tarball, verifies its checksum, backs up the current tree, extracts the new
+ * code over the install (the tarball carries code and vendor but never .env or
+ * storage), runs migrations, clears caches and bumps VERSION.
+ *
+ * apply() is meant to run from the CLI (php artisan app:update), the admin
+ * button and the scheduler both drive it there, never inside a web request.
+ */
+class UpdateService
+{
+    /** Where the free product learns about new releases. */
+    private const MANIFEST_URL = 'https://scriptgain.com/releases/gamemgr/latest.json';
+
+    /** How many pre-update safety backups to keep; older ones are pruned. */
+    private const KEEP_BACKUPS = 3;
+
+    /** Local semver, from the VERSION file at the app root. */
+    public static function currentVersion(): string
+    {
+        $v = @file_get_contents(base_path('VERSION'));
+
+        return $v ? trim($v) : '0.0.0';
+    }
+
+    public static function latestVersion(): ?string
+    {
+        return Setting::get('update_latest_version') ?: null;
+    }
+
+    /** True when the release manifest advertises a newer version than ours. */
+    public static function available(): bool
+    {
+        $latest = self::latestVersion();
+
+        return $latest && version_compare($latest, self::currentVersion(), '>');
+    }
+
+    /**
+     * Auto-apply is opt-IN here, unlike the paid products. Unpacking a release
+     * over a bind-mounted development checkout destroys the working tree, and
+     * defaulting this to on has done exactly that before.
+     */
+    public static function autoEnabled(): bool
+    {
+        return Setting::get('update_auto') === '1';
+    }
+
+    public static function status(): array
+    {
+        return [
+            'current' => self::currentVersion(),
+            'latest' => self::latestVersion(),
+            'available' => self::available(),
+            'auto' => self::autoEnabled(),
+            'checked_at' => Setting::get('update_checked_at'),
+            'last_result' => Setting::get('update_last_result'),
+        ];
+    }
+
+    /**
+     * Ask scriptgain.com what the newest release is and remember the answer.
+     *
+     * The paid -MGR products piggyback this on their licence call. GameMGR is
+     * free and has no licence call, so it reads a plain public manifest. Failure
+     * is silent on purpose: an install with no outbound network must keep
+     * working, it just never learns about updates.
+     */
+    public static function refresh(): void
+    {
+        try {
+            $res = Http::timeout(8)->acceptJson()->get(self::MANIFEST_URL);
+            if (! $res->successful()) {
+                Setting::put('update_checked_at', now()->toIso8601String());
+
+                return;
+            }
+            self::record((array) $res->json());
+        } catch (\Throwable $e) {
+            Setting::put('update_checked_at', now()->toIso8601String());
+        }
+    }
+
+    /** Persist the fields the updater acts on. */
+    public static function record(array $payload): void
+    {
+        if (! empty($payload['latest_version'])) {
+            Setting::put('update_latest_version', (string) $payload['latest_version']);
+        }
+        if (array_key_exists('download_url', $payload)) {
+            Setting::put('update_download_url', (string) ($payload['download_url'] ?? ''));
+        }
+        if (array_key_exists('download_sha256', $payload)) {
+            Setting::put('update_download_sha256', (string) ($payload['download_sha256'] ?? ''));
+        }
+        Setting::put('update_checked_at', now()->toIso8601String());
+    }
+
+    /**
+     * Download, verify, and apply the latest release. Returns a result array.
+     * $log is an optional line sink for progress (the CLI passes the command).
+     */
+    public function apply(?callable $log = null): array
+    {
+        $log = $log ?: fn ($m) => null;
+
+        // Single-flight lock. The scheduler fires app:update every few minutes;
+        // a manual run, a slow download, or a big backup could otherwise leave
+        // two applies extracting over the same tree at once (observed: a dozen
+        // stacked runs, none completing). flock is released automatically when
+        // the process exits, so a killed update never leaves a stuck lock.
+        [$lock, $lockPath] = $this->acquireLock();
+        if (! $lock) {
+            $log('Another update is already running; skipping this run.');
+
+            return $this->done(true, 'Skipped: another update is already in progress.');
+        }
+
+        try {
+            if (! self::available()) {
+                return $this->done(true, 'Already up to date on ' . self::currentVersion());
+            }
+
+            $latest = self::latestVersion();
+            $url = Setting::get('update_download_url');
+            $sha = Setting::get('update_download_sha256');
+            if (! $url) {
+                return $this->done(false, 'No download URL in the release manifest. Run a check first.');
+            }
+
+            $disk = Storage::disk('local');
+            $tarRel = 'updates/' . $latest . '.tar.gz';
+
+            try {
+                $log("Downloading {$latest}…");
+                $resp = Http::timeout(600)->get($url);
+                if (! $resp->successful()) {
+                    return $this->done(false, "Download failed: HTTP {$resp->status()}");
+                }
+                $disk->put($tarRel, $resp->body());
+
+                if ($sha) {
+                    $got = hash('sha256', $disk->get($tarRel));
+                    if (! hash_equals($sha, $got)) {
+                        return $this->done(false, 'Checksum mismatch; refusing to apply.');
+                    }
+                    $log('Checksum verified.');
+                } else {
+                    $log('WARNING: release has no published checksum; applying without integrity verification.');
+                }
+
+                $tarAbs = $disk->path($tarRel);
+                $base = base_path();
+
+                // Back up the current tree, excluding heavy/runtime dirs. vendor
+                // is restored by re-extracting the previous release tarball, so
+                // it is excluded here, including it turned a rollback snapshot
+                // into a 50 MB+ archive per update and slowed every run.
+                $backup = $disk->path('updates/backup-' . self::currentVersion() . '-' . now()->timestamp . '.tar.gz');
+                $log('Backing up current install…');
+                // Best-effort: a stray unreadable/changing file must never block
+                // an update. If the safety backup can't complete, warn and keep
+                // going, the previous release stays available from the vendor.
+                try {
+                    $this->run(['tar', 'czf', $backup, '-C', $base,
+                        '--ignore-failed-read', '--warning=no-file-changed',
+                        '--exclude=storage', '--exclude=node_modules', '--exclude=.git', '--exclude=vendor', '--exclude=*.bak*',
+                        '.'], $log);
+                    $this->pruneOldBackups($disk, $log);
+                } catch (\Throwable $e) {
+                    $log('WARNING: backup incomplete, ' . trim($e->getMessage()));
+                }
+
+                // Extract the new build over the install. The tarball is rooted
+                // at the app root and holds no .env or storage/, so those stay.
+                $log('Applying new files…');
+                $this->run(['tar', 'xzf', $tarAbs, '-C', $base], $log);
+
+                $this->pruneStalePaths($log);
+
+                $log('Running migrations…');
+                Artisan::call('migrate', ['--force' => true]);
+                $log(trim(Artisan::output()));
+
+                $log('Clearing caches…');
+                Artisan::call('optimize:clear');
+
+                file_put_contents(base_path('VERSION'), $latest . "\n");
+                $log("Updated to {$latest}.");
+
+                return $this->done(true, "Updated to {$latest}. Backup at {$backup}");
+            } finally {
+                // Always drop the downloaded archive, success or failure, so a
+                // failed run never leaves a stale <version>.tar.gz behind.
+                $disk->delete($tarRel);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+            @unlink($lockPath);
+        }
+    }
+
+    /**
+     * Take an exclusive, non-blocking lock so only one update runs at a time.
+     * Returns [handle, path] on success or [null, path] if another run holds it.
+     */
+    private function acquireLock(): array
+    {
+        $path = Storage::disk('local')->path('updates/.update.lock');
+        @mkdir(dirname($path), 0775, true);
+        $h = @fopen($path, 'c');
+        if ($h === false) {
+            // If we can't even open the lock file, don't wedge updates forever.
+            return [null, $path];
+        }
+        if (! flock($h, LOCK_EX | LOCK_NB)) {
+            fclose($h);
+
+            return [null, $path];
+        }
+
+        return [$h, $path];
+    }
+
+    /** Keep only the newest self::KEEP_BACKUPS pre-update archives. */
+    /**
+     * Paths that must not exist in an installed copy, removed after each update.
+     *
+     * An update extracts over the tree, so a file that a release stops shipping
+     * lives on forever unless it is deleted explicitly. `agent/` is the case that
+     * forced this: releases up to 1.5.3 were built from a dev tree and swept in
+     * the agent's private Go source (25 files, 60 MB with its binaries). 1.6.0
+     * ships none of it, but every instance updated from an earlier build still
+     * had it on disk.
+     *
+     * Nothing in an install reads this path: install-master.sh excludes `agent`
+     * when it stages the app, agents fetch their binaries from the vendor
+     * endpoint into public/downloads, and a running agent lives in /opt/backup.
+     */
+    private const STALE_PATHS = ['agent'];
+
+    /** Delete paths a current release must not contain. Best effort. */
+    private function pruneStalePaths(callable $log): void
+    {
+        foreach (self::STALE_PATHS as $rel) {
+            $abs = base_path($rel);
+            if (! is_dir($abs) && ! is_file($abs)) {
+                continue;
+            }
+            try {
+                is_dir($abs) ? File::deleteDirectory($abs) : File::delete($abs);
+                $log("Removed stale path: {$rel}");
+            } catch (\Throwable $e) {
+                // Never fail an update over cleanup.
+                $log("WARNING: could not remove stale path {$rel}, " . trim($e->getMessage()));
+            }
+        }
+    }
+
+    private function pruneOldBackups($disk, callable $log): void
+    {
+        $files = collect($disk->files('updates'))
+            ->filter(fn ($f) => str_contains($f, 'backup-') && str_ends_with($f, '.tar.gz'))
+            ->sortByDesc(fn ($f) => $disk->lastModified($f))
+            ->values();
+
+        $stale = $files->slice(self::KEEP_BACKUPS);
+        foreach ($stale as $f) {
+            $disk->delete($f);
+        }
+        if ($stale->isNotEmpty()) {
+            $log('Pruned ' . $stale->count() . ' old backup(s); keeping ' . min($files->count(), self::KEEP_BACKUPS) . '.');
+        }
+    }
+
+    private function run(array $cmd, callable $log): void
+    {
+        $p = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        if (! is_resource($p)) {
+            throw new \RuntimeException('Failed to run: ' . implode(' ', $cmd));
+        }
+        $out = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+        foreach ($pipes as $pipe) {
+            fclose($pipe);
+        }
+        $code = proc_close($p);
+        if ($code !== 0) {
+            throw new \RuntimeException('Command failed (' . $code . '): ' . implode(' ', $cmd) . "\n" . $out);
+        }
+        if (trim($out) !== '') {
+            $log(trim($out));
+        }
+    }
+
+    private function done(bool $ok, string $message): array
+    {
+        Setting::put('update_last_result', ($ok ? 'ok' : 'error') . ': ' . $message . ' @ ' . now()->toIso8601String());
+
+        return ['ok' => $ok, 'message' => $message, 'version' => self::currentVersion()];
+    }
+}

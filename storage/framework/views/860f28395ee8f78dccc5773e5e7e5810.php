@@ -1,0 +1,79 @@
+<?php
+    use Illuminate\Support\Facades\Route as RouteFacade;
+    $isAdmin = auth()->check() && auth()->user()->isAdmin();
+    // Logically grouped + ordered. Storage (BackupMGR) and Email (-MGR panels) both
+    // listed; each renders only where its route exists, so one component fits the
+    // whole fleet. [label, icon, route, active-pattern].
+    $groups = [
+        ['Panel', [
+            ['General', 'settings', 'settings.general.edit', 'settings.general.*'],
+            ['Branding', 'edit', 'settings.branding.edit', 'settings.branding.*'],
+            ['Notifications', 'bell', 'settings.notifications.edit', 'settings.notifications.*'],
+            ['Integrations', 'bolt', 'settings.integrations.edit', 'settings.integrations.*'],
+        ]],
+        ['My Security', [
+            ['Password', 'lock', 'settings.password.edit', 'settings.password.*'],
+            ['Two-Factor', 'shield', 'settings.2fa.show', 'settings.2fa.*'],
+        ]],
+        ['System', [
+            ['Updates', 'download', 'settings.updates.show', 'settings.updates.*'],
+        ]],
+    ];
+    $groups = array_values(array_filter(array_map(function ($g) {
+        [$title, $items] = $g;
+        $items = array_values(array_filter($items, fn ($t) => RouteFacade::has($t[2])));
+        return $items ? [$title, $items] : null;
+    }, $groups)));
+?>
+<?php if(count($groups)): ?>
+    
+    <style>
+        .settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:1.5rem;align-items:start;}
+        .settings-aside{position:sticky;top:5rem;}
+        @media (max-width:768px){.settings-shell{grid-template-columns:1fr;}.settings-aside{position:static;}}
+        .st-menu{display:flex;flex-direction:column;gap:.15rem;background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:.5rem;box-shadow:0 1px 2px rgba(0,0,0,.05);}
+        .st-group{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;padding:.65rem .6rem .25rem;}
+        .st-group:first-child{padding-top:.25rem;}
+        .st-item{display:flex;align-items:center;gap:.6rem;padding:.5rem .6rem;border-radius:.55rem;font-size:.875rem;font-weight:500;color:#475569;text-decoration:none;transition:background .15s,color .15s;}
+        .st-item:hover{background:#f1f5f9;color:#0f172a;}
+        .st-item.is-active{background:#1e293b;color:#fff;font-weight:600;}
+        .st-item svg{width:1.05rem;height:1.05rem;flex:0 0 auto;}
+        .st-badge{margin-left:auto;font-size:.625rem;font-weight:700;background:#f59e0b;color:#fff;border-radius:9999px;padding:.05rem .45rem;line-height:1.5;}
+        .st-item.is-active .st-badge{background:#fbbf24;color:#1e293b;}
+    </style>
+    <nav class="st-menu" aria-label="Settings sections">
+        <?php $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$groupTitle, $items]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <p class="st-group"><?php echo e($groupTitle); ?></p>
+            <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$label, $icon, $routeName, $pattern]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php $active = request()->routeIs($pattern); ?>
+                <a href="<?php echo e(route($routeName)); ?>" class="st-item <?php echo e($active ? 'is-active' : ''); ?>" <?php if($active): ?> aria-current="page" <?php endif; ?>>
+                    <?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon','data' => ['name' => $icon]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($icon)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $attributes = $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $component = $__componentOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+                    <span><?php echo e($label); ?></span>
+                    <?php if($routeName === 'settings.updates.show' && class_exists(\App\Services\UpdateService::class) && \App\Services\UpdateService::available()): ?>
+                        <span class="st-badge">New</span>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+    </nav>
+<?php endif; ?>
+<?php /**PATH /var/www/gamemgr/resources/views/components/settings-tabs.blade.php ENDPATH**/ ?>

@@ -1,0 +1,207 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views';
+
+/*
+  GameMGR design system, "Console Violet".
+  Cool slate neutrals, a violet accent, and a near-black chrome bar that reads
+  like a game console rather than a hosting invoice. Tokens are defined once
+  here so the whole product rebrands by editing the --color-brand-* scale.
+  config/brand.php must be changed to match, or the runtime accent and the
+  compiled ramp disagree.
+*/
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+    /* Brand accent (violet). Change these to rebrand. */
+    --color-brand-50: #f5f3ff;
+    --color-brand-100: #ede9fe;
+    --color-brand-200: #ddd6fe;
+    --color-brand-300: #c4b5fd;
+    --color-brand-400: #a78bfa;
+    --color-brand-500: #8b5cf6;
+    --color-brand-600: #6d28d9;
+    --color-brand-700: #5b21b6;
+    --color-brand-800: #4c1d95;
+    --color-brand-900: #3b1578;
+    --color-brand-950: #250d4d;
+
+    /* Dark chrome (top utility bar + main navbar). */
+    --color-chrome: #0b1020;
+    --color-chrome-soft: #131a2e;
+
+    /* Console surface. Deliberately darker than chrome so terminal output
+       reads as its own pane rather than more navigation. */
+    --color-console: #05070f;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+    body {
+        @apply bg-slate-50 text-slate-800 antialiased;
+        /* Nothing on this panel is allowed to scroll the page sideways. */
+        overflow-x: hidden;
+    }
+    /* Kill the black focus flash on click; keep keyboard focus rings. */
+    :focus:not(:focus-visible) {
+        outline: none;
+    }
+    :focus-visible {
+        @apply outline-none ring-2 ring-brand-500/60 ring-offset-2 ring-offset-white;
+    }
+    /* Table numerics line up. */
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+    /* Hide Alpine-controlled elements until Alpine initializes. */
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    /* A thin, reusable divider between page sections (house style). */
+    .section-divider {
+        @apply border-t border-slate-200;
+    }
+    /* Horizontal nav can scroll without showing a scrollbar. Used only by the
+       top navbar, never by tab strips: tabs collapse into a dropdown instead. */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+/* Toggle switch. Used for row selection and anywhere a boolean needs to
+       submit natively: the track and knob are driven purely by :checked, so it
+       works with no JavaScript and inside a name="x[]" group. */
+    .vx-switch { display: inline-flex; align-items: center; gap: .6rem; cursor: pointer; user-select: none;
+                 font-size: .875rem; font-weight: 500; color: #334155; }
+    .vx-switch > input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; pointer-events: none; }
+    .vx-switch-track { position: relative; display: inline-flex; flex: 0 0 auto; width: 2.75rem; height: 1.5rem;
+                       border-radius: 9999px; background: #cbd5e1; transition: background .15s; }
+    .vx-switch-knob { position: absolute; top: .25rem; left: .25rem; width: 1rem; height: 1rem; border-radius: 9999px;
+                      background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+    .vx-switch > input:checked ~ .vx-switch-track { background: var(--color-brand-600); }
+    .vx-switch > input:checked ~ .vx-switch-track .vx-switch-knob { transform: translateX(1.25rem); }
+    .vx-switch > input:focus-visible ~ .vx-switch-track { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-brand-500), transparent 45%); }
+    .vx-switch:hover .vx-switch-track { filter: brightness(.97); }
+    .vx-switch svg { width: 1rem; height: 1rem; flex: 0 0 auto; color: #94a3b8; }
+
+    /* A compact switch for table cells, where the full size crowds the row. */
+    .vx-table .vx-switch-track { width: 2.25rem; height: 1.25rem; }
+    .vx-table .vx-switch-knob { top: .1875rem; left: .1875rem; width: .875rem; height: .875rem; }
+    .vx-table .vx-switch > input:checked ~ .vx-switch-track .vx-switch-knob { transform: translateX(1rem); }
+
+    /* Live console pane. */
+    .console-pane {
+        @apply bg-console text-slate-200 rounded-xl ring-1 ring-white/10;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        line-height: 1.55;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Deliberately NOT inside @layer components.
+
+   Cascade layers beat specificity: an unlayered rule wins over a layered one
+   however specific the layered one is. The x-table component ships its own
+   plain <style> block, which is unlayered, setting `white-space: nowrap` on
+   cells. So `.vx-table tbody td { white-space: normal }` inside
+   @layer components silently lost to it and the stacked mobile layout kept
+   truncating every value to one or two characters. Keeping these rules
+   unlayered puts them on the same footing, where specificity decides and
+   these win.
+   --------------------------------------------------------------------------- */
+/* Tables stack on a phone rather than truncating.
+   ------------------------------------------------------------------
+   Under 768px a six column table ellipsises every cell to one or two
+   characters: it technically does not scroll sideways, which is the rule,
+   but it is useless, which defeats the point of the rule. So each row
+   becomes a labelled list instead, with the label taken from its column
+   header (copied onto the cell as data-label by public/js/gamemgr.js).
+
+   Rows stay flush as one continuous list. Deliberately no per-row border or
+   radius: separate rounded cards read as disconnected, and only the panel's
+   own corners should be round. Hover is an inset ring rather than a border,
+   so it cannot shift the layout. */
+@media (max-width: 767px) {
+    .vx-table, .vx-table tbody, .vx-table tr, .vx-table td { display: block; width: 100%; }
+    .vx-table { table-layout: auto; }
+    .vx-table thead { display: none; }
+
+    .vx-table tbody tr {
+        border-top: 2px solid #e2e8f0;
+        padding: .25rem 0;
+    }
+    .vx-table tbody tr:first-child { border-top: 0; }
+    .vx-table tbody tr:hover { background: #f8fafc; box-shadow: inset 0 0 0 1px #cbd5e1; }
+
+    /* Every width reservation from the desktop layout is meaningless here. */
+    .vx-table th, .vx-table td,
+    .vx-table th.w-10, .vx-table td.w-10,
+    .vx-table th.text-right:last-child, .vx-table td.text-right:last-child,
+    .vx-table td.vx-act-1, .vx-table td.vx-act-2, .vx-table td.vx-act-3, .vx-table td.vx-act-4 {
+        width: auto;
+    }
+
+    .vx-table tbody td {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .4rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        /* Wrap, never truncate: the whole point of stacking is that the
+           value is readable. overflow-wrap is load-bearing, not belt and
+           braces: a player UUID or an API token is one unbroken 36 character
+           run with no space to break at, so `white-space: normal` alone leaves
+           it setting the floor for the whole page. */
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        overflow: visible;
+        text-overflow: clip;
+        text-align: left;
+    }
+    .vx-table tbody td:last-child { border-bottom: 0; }
+
+    /* Tailwind's truncate on an inner span re-imposes nowrap plus ellipsis,
+       which puts the truncation right back. Stacked cells have room to wrap. */
+    .vx-table tbody td .truncate,
+    .vx-table tbody td .font-mono {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        max-width: 100%;
+    }
+
+    .vx-table tbody td::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        font-size: .6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #94a3b8;
+        padding-top: .15rem;
+    }
+    /* The selection switch and the action buttons label themselves. */
+    .vx-table tbody td[data-label=""]::before,
+    .vx-table tbody td:not([data-label])::before { content: none; }
+
+    /* Selection sits at the top of the row, actions at the bottom, both
+       full width so they are easy to hit with a thumb. */
+    .vx-table tbody td.w-10 { justify-content: flex-start; padding-bottom: .1rem; }
+    .vx-table tbody td.text-right { justify-content: flex-end; }
+    .vx-table tbody td.text-right > div { justify-content: flex-end; }
+}
