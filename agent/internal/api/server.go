@@ -18,6 +18,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/config"
@@ -31,10 +32,26 @@ type Server struct {
 	started time.Time
 	version string
 	sup     *supervise.Supervisor
+	// Held apart from cfg because enrolment can finish after the listener is
+	// already up, and a node that just enrolled has to start accepting the
+	// panel without waiting for a restart.
+	token atomic.Value
 }
 
 func New(cfg config.Config, drivers gruntime.Registry, version string, sup *supervise.Supervisor) *Server {
-	return &Server{cfg: cfg, drivers: drivers, started: time.Now(), version: version, sup: sup}
+	s := &Server{cfg: cfg, drivers: drivers, started: time.Now(), version: version, sup: sup}
+	s.token.Store(cfg.Token)
+
+	return s
+}
+
+// SetToken swaps in the credential enrolment obtained.
+func (s *Server) SetToken(token string) { s.token.Store(token) }
+
+func (s *Server) currentToken() string {
+	token, _ := s.token.Load().(string)
+
+	return token
 }
 
 func (s *Server) Handler() http.Handler {
@@ -71,7 +88,8 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.cfg.Token == "" {
+		token := s.currentToken()
+		if token == "" {
 			// An unconfigured node refuses everything rather than running
 			// open. A node with no token has not been enrolled yet.
 			writeErr(w, http.StatusServiceUnavailable, "node not enrolled")
@@ -80,7 +98,7 @@ func (s *Server) auth(next http.Handler) http.Handler {
 		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		// Constant-time-ish: length check first, then a full compare that does
 		// not short circuit on the first differing byte.
-		if len(got) != len(s.cfg.Token) || !equal(got, s.cfg.Token) {
+		if len(got) != len(token) || !equal(got, token) {
 			writeErr(w, http.StatusUnauthorized, "invalid node token")
 			return
 		}

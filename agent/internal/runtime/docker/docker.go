@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -249,6 +250,24 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 		"SERVER_PORT="+strconv.Itoa(s.Port),
 	)
 
+	// The three the daemon supplies itself have to be visible to placeholder
+	// expansion as well as to the container, or {{SERVER_PORT}} - far and away
+	// the most common placeholder in the egg catalogue - is the one thing that
+	// cannot be resolved.
+	vars := make(map[string]string, len(s.Environment)+3)
+	for k, v := range s.Environment {
+		vars[k] = v
+	}
+	vars["SERVER_MEMORY"] = strconv.FormatInt(s.MemoryMiB, 10)
+	vars["SERVER_IP"] = "0.0.0.0"
+	vars["SERVER_PORT"] = strconv.Itoa(s.Port)
+
+	startup, missing := runtime.Expand(s.Startup, vars)
+	if len(missing) > 0 {
+		log.Printf("server %s: startup command references %v, which this server has no value for; leaving those placeholders as they are",
+			s.UUID, missing)
+	}
+
 	dataPath := strings.TrimSpace(s.DataPath)
 	if dataPath == "" {
 		dataPath = "/home/container"
@@ -258,8 +277,12 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 		Image: s.Image,
 		// Through a shell so a startup command with variables, pipes or
 		// redirection behaves the way the template author wrote it.
-		Entrypoint:   []string{"/bin/sh", "-c"},
-		Cmd:          []string{s.Startup},
+		Entrypoint: []string{"/bin/sh", "-c"},
+		// $VAR resolves inside the container because Env below sets it, but
+		// {{VAR}} is not shell syntax and would reach the game as literal text.
+		// Every imported Pterodactyl egg is written in that spelling, so expand
+		// it here rather than requiring the catalogue to be rewritten.
+		Cmd:          []string{startup},
 		Env:          env,
 		WorkingDir:   dataPath,
 		OpenStdin:    true,

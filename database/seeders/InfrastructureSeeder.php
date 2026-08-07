@@ -91,7 +91,10 @@ class InfrastructureSeeder extends Seeder
                 'reported_cpu_cores' => 32,
                 'reported_memory' => 131072,
                 'reported_disk' => 3145728,
-                'ports' => [27015, 28015],
+                // 8211 is Palworld's game port. Without a block starting there
+                // the Palworld template has nothing to allocate and a server
+                // created against it silently lands on a Rust or CS2 port.
+                'ports' => [8211, 27015, 28015],
             ],
             [
                 'name' => 'fra-lgsm-01',

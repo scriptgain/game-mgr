@@ -94,8 +94,11 @@ class ServerController extends Controller
             // Copied off the template, never read through it: editing a
             // template later must not re-point a running server.
             'runtime' => $template->runtime,
-            'image' => $data['image'] ?: $template->defaultImage(),
-            'startup' => $data['startup'] ?: $template->startup,
+            // Both are nullable in the rules, so the key is absent entirely when
+            // the request omits it rather than sending it empty. The browser form
+            // always sends both, which is why this only 500s for an API caller.
+            'image' => ($data['image'] ?? null) ?: $template->defaultImage(),
+            'startup' => ($data['startup'] ?? null) ?: $template->startup,
             'memory' => $data['memory'],
             'swap' => $data['swap'],
             'disk' => $data['disk'],

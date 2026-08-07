@@ -13,6 +13,7 @@ use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\NodeInstallerController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SetupController;
@@ -46,6 +47,12 @@ Route::get('/brand/favicon-png', [FaviconController::class, 'faviconPng'])->name
 Route::get('/brand/favicon-apple', [FaviconController::class, 'appleIcon'])->name('favicon.apple');
 
 Route::view('/docs', 'docs')->name('docs');
+
+// The node installer, served as plain text so `curl … | sudo bash` works.
+// Unauthenticated by necessity: a fresh box has no session, and the script
+// grants nothing on its own. The enrol token in the one-liner is the
+// credential, and that is single use and short lived.
+Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('install.node');
 
 // Public, opt-in status page for a single server. Deliberately outside auth.
 Route::get('/status/{slug}', [Client\StatusPageController::class, 'show'])->name('status.show');

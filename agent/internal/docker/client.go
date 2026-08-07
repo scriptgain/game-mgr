@@ -168,6 +168,27 @@ func (c *Client) Version(ctx context.Context) (string, error) {
 	return payload.Version, nil
 }
 
+// RunningServers counts the containers this node has up right now. Filtered on
+// the label every GameMGR container is created with, so a box that also runs
+// somebody's database does not report it as a game server.
+func (c *Client) RunningServers(ctx context.Context) (int, error) {
+	query := url.Values{"filters": {`{"label":["io.gamemgr.server"],"status":["running"]}`}}
+	res, err := c.do(ctx, http.MethodGet, "/containers/json", query, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer res.Body.Close()
+
+	var list []struct {
+		ID string `json:"Id"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&list); err != nil {
+		return 0, err
+	}
+
+	return len(list), nil
+}
+
 // -------------------------------------------------------------------- images
 
 // PullImage streams progress to w. Docker answers with a JSON line per event,

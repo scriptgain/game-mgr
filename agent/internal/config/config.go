@@ -29,6 +29,11 @@ type Config struct {
 	EnrolToken string
 	// Seconds between heartbeats to the panel.
 	HeartbeatInterval int
+	// The env file this daemon was configured from. Enrolment rewrites it so
+	// the long-lived token survives a restart; without that, a restart would
+	// try to enrol again with a token the panel has already spent and the node
+	// would come back unenrolled.
+	ConfigFile string
 }
 
 func Load() Config {
@@ -42,6 +47,7 @@ func Load() Config {
 		PanelURL:          strings.TrimRight(env("NODE_PANEL_URL", ""), "/"),
 		EnrolToken:        env("NODE_ENROL_TOKEN", ""),
 		HeartbeatInterval: envInt("NODE_HEARTBEAT", 30),
+		ConfigFile:        env("NODE_CONFIG_FILE", "/etc/gamemgr-node/node.env"),
 	}
 	return c
 }

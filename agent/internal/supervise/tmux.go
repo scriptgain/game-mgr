@@ -112,7 +112,7 @@ func (s *Supervisor) Running(ctx context.Context, session string) bool {
 // before it. That leaves a sub-second window where a server is unconstrained;
 // the alternative is launching through a cgroup-aware wrapper, which would make
 // tmux's own bookkeeping the thing inside the cgroup rather than the game.
-func (s *Supervisor) Start(ctx context.Context, session, dir, command string, memoryMiB int64, cpuPercent int) error {
+func (s *Supervisor) Start(ctx context.Context, session, dir, command string, env map[string]string, memoryMiB int64, cpuPercent int) error {
 	if s.Running(ctx, session) {
 		return nil
 	}
@@ -136,8 +136,17 @@ func (s *Supervisor) Start(ctx context.Context, session, dir, command string, me
 		return err
 	}
 
+	// The server's environment is exported at the top of the launcher rather
+	// than handed to tmux. A native server is not a container: nothing else
+	// gives it SERVER_PORT, ADMIN_PASSWORD or anything else the panel collected,
+	// and without this a startup command reading $SERVER_PORT silently gets an
+	// empty string and the game falls back to its own default port.
 	launcher := filepath.Join(runtimeDir, launcherFile)
-	if err := os.WriteFile(launcher, []byte("#!/bin/sh\n"+command+"\n"), 0o755); err != nil {
+	script := "#!/bin/sh\n" + exportLines(env) + command + "\n"
+	// 0700, not 0755: the exports routinely include an admin or RCON password,
+	// and this file sits inside the server's own directory, which the operator
+	// can browse through the panel's file manager.
+	if err := os.WriteFile(launcher, []byte(script), 0o700); err != nil {
 		return err
 	}
 
@@ -558,6 +567,36 @@ func firstLine(out string, err error) string {
 
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// envKey is what a shell will accept as a variable name. Environment keys reach
+// the daemon from template rows, so they are input, not constants.
+var envKey = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// exportLines renders an environment as POSIX sh exports for the launcher.
+//
+// Two things are deliberate. Values are single quoted with embedded quotes
+// escaped, because a server name is free text an operator typed and a value
+// containing $(...) would otherwise run as a command when the server starts.
+// And keys that are not valid shell identifiers are DROPPED rather than
+// sanitised: a key is either the name the template author meant or it is
+// something with no business being evaluated, and quietly rewriting it would
+// hide the mistake instead of surfacing it.
+func exportLines(env map[string]string) string {
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		if envKey.MatchString(k) {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for _, k := range keys {
+		b.WriteString("export " + k + "=" + shellQuote(env[k]) + "\n")
+	}
+
+	return b.String()
 }
 
 func round2(f float64) float64 {

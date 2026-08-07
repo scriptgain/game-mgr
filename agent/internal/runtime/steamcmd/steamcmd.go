@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -252,7 +253,17 @@ func (d *Driver) Start(ctx context.Context, s runtime.Server) error {
 		return err
 	}
 
-	return d.sup.Start(ctx, supervise.Session(s.UUID), dir, s.Startup, s.MemoryMiB, s.CPUPercent)
+	// A template's startup command is written against the panel's variables, in
+	// either spelling: {{SERVER_PORT}} for anything inherited from a Pterodactyl
+	// egg, $SERVER_PORT for anything written here. Expand the first, export the
+	// second, so both work and neither reaches the game as literal text.
+	startup, missing := runtime.Expand(s.Startup, s.Environment)
+	if len(missing) > 0 {
+		log.Printf("server %s: startup command references %v, which this server has no value for; leaving those placeholders as they are",
+			s.UUID, missing)
+	}
+
+	return d.sup.Start(ctx, supervise.Session(s.UUID), dir, startup, s.Environment, s.MemoryMiB, s.CPUPercent)
 }
 
 func (d *Driver) Stop(ctx context.Context, s runtime.Server) error {
