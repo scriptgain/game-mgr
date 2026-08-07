@@ -11,6 +11,7 @@ use App\Models\Node;
 use App\Models\Server;
 use App\Models\ServerVariable;
 use App\Models\Template;
+use App\Models\TemplateVariable;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -55,31 +56,46 @@ class ServerController extends Controller
 
     public function create(Request $request)
     {
-        return view('admin.servers.form', [
+        $server = new Server([
+            'memory' => config('gamemgr.default_memory', 2048),
+            'disk' => config('gamemgr.default_disk', 10240),
+            'cpu' => config('gamemgr.default_cpu', 200),
+            'swap' => 0,
+            'io' => 500,
+            'database_limit' => 2,
+            'allocation_limit' => 3,
+            'backup_limit' => 5,
+            'auto_restart' => true,
+        ]);
+
+        $users = User::orderBy('name')->get();
+        $nodes = Node::with('location')->orderBy('name')->get();
+        $templates = Template::with(['game', 'variables'])->orderBy('name')->get();
+        $blueprints = Blueprint::with('template')->orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+
+        return view('admin.servers.create', [
             'title' => 'New Server',
-            'server' => new Server([
-                'memory' => config('gamemgr.default_memory', 2048),
-                'disk' => config('gamemgr.default_disk', 10240),
-                'cpu' => config('gamemgr.default_cpu', 200),
-                'swap' => 0,
-                'io' => 500,
-                'database_limit' => 2,
-                'allocation_limit' => 3,
-                'backup_limit' => 5,
-                'auto_restart' => true,
-            ]),
-            'users' => User::orderBy('name')->get(),
-            'nodes' => Node::with('location')->orderBy('name')->get(),
-            'templates' => Template::with('game')->orderBy('name')->get(),
-            'blueprints' => Blueprint::with('template')->orderBy('name')->get(),
-            'locations' => Location::orderBy('name')->get(),
+            'server' => $server,
+            'users' => $users,
+            'nodes' => $nodes,
+            'templates' => $templates,
+            'blueprints' => $blueprints,
+            'locations' => $locations,
+            // Everything the wizard needs client side, as one JSON island. The
+            // view stays markup and the behaviour stays in public/js.
+            'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints),
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        $template = Template::findOrFail($data['template_id']);
+        $template = Template::with('variables')->findOrFail($data['template_id']);
+
+        // Variables are validated against the template's own rules before
+        // anything is written, so a bad value cannot leave a half-built server.
+        $variableValues = $this->validatedVariables($request, $template);
 
         $node = $this->resolveNode($data, $template);
         $allocation = $this->resolveAllocation($data, $node);
@@ -118,7 +134,11 @@ class ServerController extends Controller
             ServerVariable::create([
                 'server_id' => $server->id,
                 'template_variable_id' => $var->id,
-                'value' => $var->default_value,
+                // The wizard posts a value for every variable it showed. An API
+                // caller that posts none still gets the template defaults.
+                'value' => array_key_exists($var->id, $variableValues)
+                    ? $variableValues[$var->id]
+                    : $var->default_value,
             ]);
         }
 
@@ -216,6 +236,161 @@ class ServerController extends Controller
         return back()->with('status', 'Reinstall queued. Server files are replaced, the data directory is kept.');
     }
 
+    // --------------------------------------------------------------- wizard
+
+    /**
+     * Which wizard step owns each posted field. The create screen is stepped,
+     * so a validation failure has to be able to say "step 2", not just "there
+     * is an error somewhere on this page".
+     */
+    private const STEP_FIELDS = [
+        'template_id' => 1,
+        'image' => 1,
+        'startup' => 1,
+        'location_id' => 2,
+        'node_id' => 2,
+        'allocation_id' => 2,
+        'name' => 3,
+        'description' => 3,
+        'owner_id' => 3,
+        'memory' => 4,
+        'swap' => 4,
+        'disk' => 4,
+        'io' => 4,
+        'cpu' => 4,
+        'database_limit' => 4,
+        'allocation_limit' => 4,
+        'backup_limit' => 4,
+        'auto_restart' => 4,
+        'auto_update' => 4,
+    ];
+
+    /** The earliest step carrying an error from the last POST, or step 1. */
+    private function stepForErrors(): int
+    {
+        $bag = session('errors');
+
+        if (! $bag) {
+            return 1;
+        }
+
+        $steps = [];
+
+        foreach (array_keys($bag->getBag('default')->messages()) as $key) {
+            if (str_starts_with($key, 'variables.')) {
+                $steps[] = 5;
+
+                continue;
+            }
+            if (isset(self::STEP_FIELDS[$key])) {
+                $steps[] = self::STEP_FIELDS[$key];
+            }
+        }
+
+        return $steps ? min($steps) : 1;
+    }
+
+    /** Validation messages for template variables, keyed by variable id. */
+    private function variableErrors(): array
+    {
+        $bag = session('errors');
+
+        if (! $bag) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($bag->getBag('default')->messages() as $key => $messages) {
+            if (str_starts_with($key, 'variables.')) {
+                $out[substr($key, strlen('variables.'))] = $messages[0] ?? '';
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Everything the stepped create form needs in the browser: the allocations
+     * that belong to each node, the variables each template exposes, and the
+     * limits each blueprint presets. Rendered once as a JSON island rather than
+     * as thousands of hidden inputs.
+     */
+    private function wizardPayload($users, $nodes, $templates, $blueprints): array
+    {
+        $free = Allocation::whereNull('server_id')
+            ->orderBy('ip')->orderBy('port')->get()
+            ->groupBy('node_id');
+
+        return [
+            // A rejected POST must reopen on the step that actually failed, not
+            // on step one with the message scrolled out of sight.
+            'step' => $this->stepForErrors(),
+
+            'selected' => [
+                'template_id' => old('template_id', $templates->first()?->id),
+                'node_id' => old('node_id'),
+                'allocation_id' => old('allocation_id'),
+                'variables' => (array) old('variables', []),
+            ],
+
+            // Variable inputs are rendered by the browser, so their messages
+            // have to travel with the data rather than come out of Blade.
+            'variable_errors' => $this->variableErrors(),
+
+            'users' => $users->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+            ])->values()->all(),
+
+            'templates' => $templates->map(fn (Template $t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'game' => $t->game?->name,
+                'description' => $t->description,
+                'runtime' => $t->runtime,
+                'runtime_label' => $t->runtimeLabel(),
+                'default_image' => $t->defaultImage(),
+                'startup' => $t->startup,
+                'variables' => $t->variables->map(fn (TemplateVariable $v) => [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'description' => $v->description,
+                    'env' => $v->env_variable,
+                    'default' => (string) $v->default_value,
+                    'required' => str_contains((string) $v->rules, 'required'),
+                ])->values()->all(),
+            ])->values()->all(),
+
+            'blueprints' => $blueprints->map(fn (Blueprint $b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'description' => $b->description,
+                'template_id' => $b->template_id,
+                'summary' => $b->summary(),
+                'limits' => $b->limits ?? [],
+                'features' => $b->feature_limits ?? [],
+                'environment' => $b->environment ?? [],
+            ])->values()->all(),
+
+            'nodes' => $nodes->map(fn (Node $n) => [
+                'id' => $n->id,
+                'name' => $n->name,
+                'location' => $n->location?->name,
+                'runtimes' => array_values($n->runtimes ?? []),
+                'pressure' => $n->memoryPressure(),
+                'maintenance' => (bool) $n->maintenance_mode,
+                'allocations' => collect($free->get($n->id, []))
+                    ->map(fn (Allocation $a) => [
+                        'id' => $a->id,
+                        'label' => $a->address(),
+                        'notes' => $a->notes,
+                    ])->values()->all(),
+            ])->values()->all(),
+        ];
+    }
+
     // ------------------------------------------------------------- internals
 
     /**
@@ -268,13 +443,49 @@ class ServerController extends Controller
         return $node->allocations()->whereNull('server_id')->orderBy('port')->first();
     }
 
+    /**
+     * Template variables posted alongside the server, keyed by variable id.
+     * Only variables this template actually owns are kept, and each is checked
+     * against the rules the template declares for it.
+     */
+    private function validatedVariables(Request $request, Template $template): array
+    {
+        $submitted = (array) $request->input('variables', []);
+        $rules = [];
+        $labels = [];
+        $values = [];
+
+        foreach ($template->variables as $var) {
+            $labels['variables.'.$var->id] = $var->name;
+
+            if (! array_key_exists($var->id, $submitted)) {
+                continue;
+            }
+
+            $rules['variables.'.$var->id] = $var->ruleArray();
+            $values[$var->id] = (string) $submitted[$var->id];
+        }
+
+        if ($rules) {
+            $request->validate($rules, [], $labels);
+        }
+
+        return $values;
+    }
+
     private function validated(Request $request, ?Server $server = null): array
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:500'],
             'owner_id' => ['required', 'exists:users,id'],
-            'template_id' => ['required', 'exists:templates,id'],
+            // The edit form disables the template select, because a running
+            // server cannot be re-pointed, and a disabled control posts nothing.
+            // Requiring it there failed every single save with "the template id
+            // field is required" on a field the operator could not even reach.
+            'template_id' => $server
+                ? ['nullable', 'exists:templates,id']
+                : ['required', 'exists:templates,id'],
             'location_id' => ['nullable', 'exists:locations,id'],
             'node_id' => ['nullable', 'exists:nodes,id'],
             'allocation_id' => ['nullable', 'exists:allocations,id'],
