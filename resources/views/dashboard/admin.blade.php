@@ -94,10 +94,10 @@
                                     <a href="{{ route('admin.nodes.show', $node) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $node->name }}</a>
                                 </td>
                                 <td class="text-slate-500">{{ $node->location?->flag }} {{ $node->location?->name }}</td>
-                                <td>
-                                    <span class="flex items-center gap-1">
+                                <td class="vx-cell-wrap">
+                                    <span class="flex flex-wrap items-center gap-1">
                                         @foreach ($node->runtimes ?? [] as $runtime)
-                                            <x-runtime-badge :runtime="$runtime" />
+                                            <x-runtime-badge :runtime="$runtime" compact />
                                         @endforeach
                                     </span>
                                 </td>
