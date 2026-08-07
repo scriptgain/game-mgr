@@ -508,13 +508,29 @@ log "Seeding reference data"
 
 log "Creating the first admin"
 ADMIN_PASS_GENERATED=0
-if [ -z "$ADMIN_PASS" ]; then
-  ADMIN_PASS="$(gen_pass 20)"
-  ADMIN_PASS_GENERATED=1
+ADMIN_PASS_KEPT=0
+if [ -n "$ADMIN_PASS" ]; then
+  # An explicitly supplied password is an instruction, so honour it even on an
+  # account that already exists.
+  "$PHP" artisan gamemgr:create-admin --no-interaction \
+    --email="$ADMIN_EMAIL" --password="$ADMIN_PASS" --force \
+    || die "Admin creation failed. The panel is still at /setup; create the admin there or re-run with --admin-email."
+else
+  # No --force and no --password, so the command generates one for a new account
+  # and leaves an existing account's password alone. A re-run must never rotate
+  # the credential the operator wrote down after the first run: they would be
+  # locked out by an installer they ran to fix something else.
+  ADMIN_OUT="$("$PHP" artisan gamemgr:create-admin --no-interaction --email="$ADMIN_EMAIL" 2>&1)" \
+    || { printf '%s\n' "$ADMIN_OUT"; die "Admin creation failed. The panel is still at /setup; create the admin there or re-run with --admin-email."; }
+  printf '%s\n' "$ADMIN_OUT"
+
+  ADMIN_PASS="$(printf '%s\n' "$ADMIN_OUT" | sed -n 's/^Password: //p' | head -n1)"
+  if [ -n "$ADMIN_PASS" ]; then
+    ADMIN_PASS_GENERATED=1
+  else
+    ADMIN_PASS_KEPT=1
+  fi
 fi
-"$PHP" artisan gamemgr:create-admin --no-interaction \
-  --email="$ADMIN_EMAIL" --password="$ADMIN_PASS" --force \
-  || die "Admin creation failed. The panel is still at /setup; create the admin there or re-run with --admin-email."
 
 # ------------------------------------------------------------------- caching
 log "Caching config, routes and views"
@@ -684,7 +700,7 @@ cat <<SUMMARY
 
   URL             ${APP_URL}
   Admin login     ${ADMIN_EMAIL}
-  Admin password  ${ADMIN_PASS}$([ "$ADMIN_PASS_GENERATED" = 1 ] && echo "   (generated, shown once)")
+  Admin password  $([ "$ADMIN_PASS_KEPT" = 1 ] && echo "unchanged (the existing account keeps the password it already had)" || echo "${ADMIN_PASS}$([ "$ADMIN_PASS_GENERATED" = 1 ] && echo "   (generated, shown once)")")
 
   Install dir     ${APP_DIR}
   PHP             ${PHP_VER}  (${PHP})
