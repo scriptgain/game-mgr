@@ -79,7 +79,17 @@ done
 # treats an unquoted '#' as the start of a comment and silently truncates the
 # value, which produces an install that fails to authenticate with no error
 # pointing at the password. Restricting the alphabet removes the whole class.
-gen_pass() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-24}"; }
+# head reads a bounded chunk FIRST and tr filters what it produced. The obvious
+# spelling, `tr < /dev/urandom | head -c N`, is a silent installer killer: head
+# exits as soon as it has enough, tr takes SIGPIPE on an infinite input and dies
+# 141, and `set -o pipefail` turns that into an exit with no message whatsoever.
+gen_pass() {
+  local want="${1:-24}" out=""
+  while [ "${#out}" -lt "$want" ]; do
+    out="${out}$(head -c 256 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9')"
+  done
+  printf '%s' "${out:0:want}"
+}
 
 # ------------------------------------------------------------------ preflight
 if [ "$DRY_RUN" = "0" ]; then

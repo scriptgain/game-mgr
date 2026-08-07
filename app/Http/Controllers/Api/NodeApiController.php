@@ -47,7 +47,18 @@ class NodeApiController extends Controller
 
         $plain = Str::random(64);
 
+        // Enrolment is the one moment the panel learns what a node can actually
+        // run. Until it happens the row carries the model's ['docker'] guess,
+        // and Node::supports() gates server creation on that array: a node with
+        // steamcmd and LinuxGSM installed and working would refuse every
+        // template but the Docker ones. Filtered against RUNTIMES so a daemon
+        // cannot invent a runtime the panel has no driver for, and only applied
+        // when the daemon actually reported some, so a node enrolled by an older
+        // agent keeps whatever the operator set by hand.
+        $reported = array_values(array_intersect(Node::RUNTIMES, $data['runtimes'] ?? []));
+
         $node->forceFill([
+            'runtimes' => $reported !== [] ? $reported : $node->runtimes,
             'daemon_token_id' => Str::random(16),
             'daemon_token' => hash('sha256', $plain),
             'enrol_token' => null,
