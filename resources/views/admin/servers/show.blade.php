@@ -194,15 +194,23 @@
                             <x-icon name="power" class="w-4 h-4 text-slate-400" /> Power
                         </p>
                         <div class="flex flex-wrap items-center gap-1.5 rounded-xl bg-white p-1.5 ring-1 ring-slate-200">
-                            <form method="POST" action="{{ $powerAction }}">
-                                @csrf<input type="hidden" name="action" value="start">
-                                <x-button type="submit" size="sm" icon="play"
+                            <x-confirm-action
+                                name="start-server-admin"
+                                :action="$powerAction"
+                                method="POST"
+                                title="Start {{ $server->name }}?"
+                                message="The server will boot and begin accepting players. A large world can take a minute or two to load."
+                                confirm="Start It"
+                                :fields="['action' => 'start']">
+                                <x-button size="sm" icon="play"
                                           :disabled="! $server->canStart()"
                                           ::disabled="{{ $liveStart }}">Start</x-button>
-                            </form>
+                            </x-confirm-action>
 
-                            {{-- Restart and Kill both interrupt a live game, so
-                                 both go through a modal confirm. A disabled
+                            {{-- Every power action goes through a modal confirm,
+                                 Start included: a control that sometimes asks and
+                                 sometimes does not is one people stop reading. A
+                                 disabled
                                  trigger swallows the click, so the modal cannot
                                  open for a state that would refuse the action. --}}
                             <x-confirm-action
@@ -219,12 +227,19 @@
                                           ::disabled="{{ $liveRestart }}">Restart</x-button>
                             </x-confirm-action>
 
-                            <form method="POST" action="{{ $powerAction }}">
-                                @csrf<input type="hidden" name="action" value="stop">
-                                <x-button type="submit" variant="secondary" size="sm" icon="stop"
+                            <x-confirm-action
+                                name="stop-server-admin"
+                                :action="$powerAction"
+                                method="POST"
+                                tone="warn"
+                                title="Stop {{ $server->name }}?"
+                                message="Everyone online is disconnected and the server stays down until somebody starts it again. The world is saved first, so nothing is lost."
+                                confirm="Stop It"
+                                :fields="['action' => 'stop']">
+                                <x-button variant="secondary" size="sm" icon="stop"
                                           :disabled="! $server->canStop()"
                                           ::disabled="{{ $liveStop }}">Stop</x-button>
-                            </form>
+                            </x-confirm-action>
 
                             <x-confirm-action
                                 name="kill-server-admin"

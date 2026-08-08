@@ -19,6 +19,7 @@ import (
 	dockerapi "github.com/scriptgain/gamemgr-node/internal/docker"
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/store"
+	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
 
 type Driver struct {
@@ -27,10 +28,25 @@ type Driver struct {
 	store.Store
 
 	api *dockerapi.Client
+
+	// Who the container should run as. A bind mounted directory is owned by a
+	// uid on the HOST, and the process inside the container is a uid too: if
+	// they differ the game cannot write its own world, which is exactly what
+	// happened. The host account here is uid 1001 while itzg's image defaults
+	// to 1000, so the two never met.
+	runAs *supervise.Credential
 }
 
 func New(socket, root string) *Driver {
-	return &Driver{Store: store.New(root), api: dockerapi.New(socket)}
+	d := &Driver{Store: store.New(root), api: dockerapi.New(socket)}
+	// The same account the native runtimes use, so one node has one answer to
+	// "who owns a server's files" regardless of how that server runs.
+	if cred := supervise.Unprivileged(); cred != nil {
+		d.runAs = cred
+		d.Store.RunAs = cred
+	}
+
+	return d
 }
 
 func (d *Driver) Name() string { return "docker" }
@@ -244,6 +260,19 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 	for _, k := range keys {
 		env = append(env, k+"="+s.Environment[k])
 	}
+	// Tell the image which uid to be, rather than hoping it guessed the same
+	// one we chowned to. itzg's images read UID and GID for exactly this, and
+	// an image that ignores them is no worse off than before. This is done
+	// instead of forcing HostConfig.User, because these images legitimately
+	// start as root to prepare /data and drop privileges themselves; forcing
+	// the user would break that setup before it ran.
+	if d.runAs != nil {
+		env = append(env,
+			"UID="+strconv.FormatUint(uint64(d.runAs.Uid), 10),
+			"GID="+strconv.FormatUint(uint64(d.runAs.Gid), 10),
+		)
+	}
+
 	env = append(env,
 		"SERVER_MEMORY="+strconv.FormatInt(s.MemoryMiB, 10),
 		"SERVER_IP=0.0.0.0",

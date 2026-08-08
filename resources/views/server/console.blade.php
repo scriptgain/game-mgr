@@ -25,10 +25,23 @@
             <x-card title="Power" icon="power">
                 <div class="grid grid-cols-2 gap-2">
                     @can('check', [$server, 'control.start'])
-                        <form method="POST" action="{{ route('server.power', $server) }}">
-                            @csrf<input type="hidden" name="action" value="start">
-                            <x-button type="submit" icon="play" class="w-full" :disabled="! $server->canStart()">Start</x-button>
-                        </form>
+                        {{-- Every power action confirms, Start included. It is the
+                             harmless one, but a control that sometimes asks and
+                             sometimes does not is a control people stop reading. --}}
+                        <x-confirm-action
+                            name="start-server"
+                            :action="route('server.power', $server)"
+                            method="POST"
+                            title="Start The Server?"
+                            message="The server will boot and begin accepting players. A large world can take a minute or two to load."
+                            confirm="Start It"
+                            :fields="['action' => 'start']"
+                            class="w-full">
+                            <button type="button" @disabled(! $server->canStart())
+                                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50 disabled:pointer-events-none">
+                                <x-icon name="play" class="w-4 h-4" /> Start
+                            </button>
+                        </x-confirm-action>
                     @endcan
                     @can('check', [$server, 'control.restart'])
                         {{-- A restart disconnects everyone currently playing, so it
@@ -50,10 +63,24 @@
                         </x-confirm-action>
                     @endcan
                     @can('check', [$server, 'control.stop'])
-                        <form method="POST" action="{{ route('server.power', $server) }}">
-                            @csrf<input type="hidden" name="action" value="stop">
-                            <x-button type="submit" variant="secondary" icon="stop" class="w-full" :disabled="! $server->canStop()">Stop</x-button>
-                        </form>
+                        {{-- Stop disconnects everyone playing, same as Restart and
+                             Kill, so it asks the same way. The difference is only
+                             that Stop leaves the server down. --}}
+                        <x-confirm-action
+                            name="stop-server"
+                            :action="route('server.power', $server)"
+                            method="POST"
+                            tone="warn"
+                            title="Stop The Server?"
+                            message="Everyone playing right now will be disconnected and the server stays down until somebody starts it again. The world is saved first, so nothing is lost."
+                            confirm="Stop It"
+                            :fields="['action' => 'stop']"
+                            class="w-full">
+                            <button type="button" @disabled(! $server->canStop())
+                                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 bg-white ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:ring-slate-400 transition disabled:opacity-50 disabled:pointer-events-none">
+                                <x-icon name="stop" class="w-4 h-4" /> Stop
+                            </button>
+                        </x-confirm-action>
                         <x-confirm-action
                             name="kill-server"
                             :action="route('server.power', $server)"

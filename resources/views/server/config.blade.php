@@ -19,15 +19,6 @@
 
     <div x-data="configEditor({{ $server->configNeedsRestart() ? 'true' : 'false' }})">
 
-    {{-- Its own form, outside the settings form: a form cannot be nested, and
-         a restart is not something to post through the same submit button. --}}
-    @if ($running && $canRestart && ! $server->isSuspended())
-        <form method="POST" action="{{ route('server.power', $server) }}" x-ref="restart" class="hidden">
-            @csrf
-            <input type="hidden" name="action" value="restart">
-        </form>
-    @endif
-
     <form method="POST" action="{{ route('server.config.update', $server) }}">
         @csrf @method('PUT')
 
@@ -50,9 +41,21 @@
                         </p>
                     @endif
                     @if ($canRestart && ! $server->isSuspended())
+                        {{-- Confirms like every other power control. This one
+                             dropped everybody playing with a single click and no
+                             question, from a settings page. --}}
                         <div class="mt-3">
-                            <x-button type="button" variant="secondary" size="sm"
-                                      @click="$refs.restart.submit()">Restart Now</x-button>
+                            <x-confirm-action
+                                name="restart-from-config"
+                                :action="route('server.power', $server)"
+                                method="POST"
+                                tone="warn"
+                                title="Restart The Server?"
+                                message="Everyone playing right now will be disconnected. The world is saved first, so nothing is lost, but players will have to rejoin. This is what makes the configuration above take effect."
+                                confirm="Restart It"
+                                :fields="['action' => 'restart']">
+                                <x-button type="button" variant="secondary" size="sm">Restart Now</x-button>
+                            </x-confirm-action>
                         </div>
                     @endif
                     <p class="mt-2" x-show="touched" x-cloak>
