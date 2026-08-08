@@ -181,27 +181,53 @@ document.addEventListener('alpine:init', () => {
      * node daemon. SSE rather than a websocket because the feed is one-way, it
      * survives every proxy that already speaks HTTP, and it keeps the daemon on
      * the Go standard library with no vendored dependency.
+     *
+     * One component, two call sites: the client console and the admin server
+     * page. Everything that differs between them is a config key, so there is
+     * never a second console implementation to keep in step.
+     *
+     *   streamUrl  SSE endpoint on the node (optional)
+     *   pollUrl    panel-side stats+backlog endpoint used when SSE never opens
+     *   backlog    server-rendered starting lines
+     *   memory     memory limit in MiB, for the gauge
+     *   cpuLimit   cpu limit in percent, for the gauge
+     *   state      power state at render time
+     *   status     lifecycle status at render time (installing, suspended, ...)
      */
     Alpine.data('gameConsole', (config) => ({
         lines: config.backlog || [],
         connected: false,
+        polled: false,
         autoScroll: true,
         command: '',
         history: [],
         historyIndex: -1,
         stats: { cpu: 0, memory_mib: 0, memory_cap_mib: config.memory || 0, players: 0, state: config.state || 'offline' },
+        status: config.status || null,
         source: null,
+        poller: null,
+        watchdog: null,
         MAX_LINES: 2000,
 
         init() {
             this.$nextTick(() => this.scroll());
             this.connect();
+            // The stream can fail without ever raising an error the browser
+            // hands back (a proxy that buffers, a node that answers 401). If it
+            // has not opened by now, take the panel-side route instead.
+            this.watchdog = setTimeout(() => { if (!this.connected) this.startPolling(); }, 4000);
             // A tab left open for a day must not accumulate a day of DOM.
             this.$watch('lines', () => {
                 if (this.lines.length > this.MAX_LINES) {
                     this.lines.splice(0, this.lines.length - this.MAX_LINES);
                 }
             });
+        },
+
+        destroy() {
+            clearTimeout(this.watchdog);
+            this.stopPolling();
+            if (this.source) this.source.close();
         },
 
         connect() {
@@ -213,7 +239,10 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            this.source.addEventListener('open', () => { this.connected = true; });
+            this.source.addEventListener('open', () => {
+                this.connected = true;
+                this.stopPolling();
+            });
 
             this.source.addEventListener('console', (e) => {
                 this.lines.push(e.data);
@@ -227,7 +256,112 @@ document.addEventListener('alpine:init', () => {
             this.source.addEventListener('error', () => {
                 this.connected = false;
                 // EventSource reconnects on its own; closing here would stop it.
+                // Polling runs alongside so the gauges keep moving meanwhile.
+                this.startPolling();
             });
+        },
+
+        /* ------------------------------------------------------------ polling
+         * The panel reaches the node server side, so this path works whenever
+         * the browser cannot hold the stream open itself. It is deliberately
+         * slower than SSE: this is the degraded mode, not the normal one.
+         */
+        startPolling() {
+            if (!config.pollUrl || this.poller) return;
+            this.poll();
+            this.poller = setInterval(() => this.poll(), 5000);
+        },
+
+        stopPolling() {
+            if (this.poller) clearInterval(this.poller);
+            this.poller = null;
+            this.polled = false;
+        },
+
+        async poll() {
+            const url = config.pollUrl + (config.pollUrl.indexOf('?') === -1 ? '?' : '&') + 'tail=200';
+
+            try {
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('poll failed');
+                const data = await res.json();
+                if (Array.isArray(data.lines)) this.absorb(data.lines);
+                delete data.lines;
+                this.stats = Object.assign({}, this.stats, data);
+                this.polled = true;
+            } catch (e) {
+                this.polled = false;
+            }
+        },
+
+        /**
+         * The poll returns the last N lines every time. Only the part that is
+         * not already on screen is appended, so a five second poll does not
+         * paste the whole tail again on every tick.
+         */
+        absorb(incoming) {
+            if (!incoming.length) return;
+
+            let overlap = Math.min(this.lines.length, incoming.length);
+            while (overlap > 0) {
+                let same = true;
+                for (let i = 0; i < overlap; i++) {
+                    if (this.lines[this.lines.length - overlap + i] !== incoming[i]) { same = false; break; }
+                }
+                if (same) break;
+                overlap--;
+            }
+
+            const fresh = incoming.slice(overlap);
+            if (!fresh.length) return;
+
+            fresh.forEach((line) => this.lines.push(line));
+            this.$nextTick(() => this.scroll());
+        },
+
+        /** How the feed is arriving, in the words shown next to the dot. */
+        feedLabel() {
+            if (this.connected) return 'Live';
+            if (this.polled) return 'Polling';
+            return 'Reconnecting';
+        },
+
+        /* -------------------------------------------------------- live state
+         * Mirrors Server::statusLabel() and Server::statusTone() so a header
+         * rendered by PHP and updated by JS never disagrees about the words.
+         */
+        stateLabel() {
+            if (this.status) {
+                return {
+                    installing: 'Installing',
+                    install_failed: 'Install Failed',
+                    suspended: 'Suspended',
+                    restoring: 'Restoring',
+                    transferring: 'Transferring',
+                }[this.status] || 'Offline';
+            }
+            return {
+                running: 'Running',
+                starting: 'Starting',
+                stopping: 'Stopping',
+            }[this.stats.state] || 'Offline';
+        },
+
+        stateTone() {
+            const label = this.stateLabel();
+            if (label === 'Running') return 'emerald';
+            if (['Starting', 'Stopping', 'Installing', 'Restoring', 'Transferring'].indexOf(label) !== -1) return 'amber';
+            if (['Install Failed', 'Suspended'].indexOf(label) !== -1) return 'rose';
+            return 'slate';
+        },
+
+        /** Can a power action be sent right now? Lifecycle status wins. */
+        controllable() {
+            return !this.status;
+        },
+
+        clear() {
+            this.lines = [];
         },
 
         scroll() {
@@ -264,6 +398,11 @@ document.addEventListener('alpine:init', () => {
         memoryPercent() {
             const cap = this.stats.memory_cap_mib || config.memory || 1;
             return Math.min(100, Math.round((this.stats.memory_mib / cap) * 100));
+        },
+
+        diskPercent() {
+            const cap = config.disk || 1;
+            return Math.min(100, Math.round(((this.stats.disk_mib || 0) / cap) * 100));
         },
 
         cpuPercent() {
