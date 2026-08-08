@@ -50,6 +50,18 @@ func main() {
 	// run" has a single answer and the CPU sampling state lives in one place.
 	sup := supervise.New()
 
+	// Games do not run as root. Several refuse outright: PalServer.sh exits
+	// with "Refusing to run with the root privileges." and LinuxGSM has always
+	// declined. The supervisor therefore carries the account, and every tmux
+	// call it makes uses the same one, because a session is only visible to the
+	// uid that created it.
+	if cred := supervise.Unprivileged(); cred != nil {
+		sup.RunAs(cred)
+		log.Printf("native servers run as %q", cred.Name)
+	} else if os.Geteuid() == 0 {
+		log.Printf("warning: running as root with no unprivileged account to drop to; games that refuse root will not start")
+	}
+
 	drivers := gruntime.Registry{
 		"docker":   docker.New(cfg.DockerSocket, cfg.Root),
 		"steamcmd": steamcmd.New("", cfg.Root, sup),
@@ -87,7 +99,7 @@ func main() {
 	// unreachable still has to boot, still has to answer its own API, and above
 	// all must keep running the game servers it already has.
 	panelCtx, closePanel := context.WithCancel(context.Background())
-	go link(panelCtx, cfg, drivers, node)
+	go link(panelCtx, cfg, drivers, node, sup)
 
 	go func() {
 		log.Printf("gamemgr-node %s listening on %s as %q", version, cfg.Listen, cfg.Name)
@@ -102,7 +114,7 @@ func main() {
 		// Native servers survive the daemon: their tmux sessions were never
 		// ours to lose. Saying so at boot makes an otherwise invisible property
 		// obvious in the logs.
-		if adopted := supervise.Sessions(context.Background()); len(adopted) > 0 {
+		if adopted := sup.Sessions(context.Background()); len(adopted) > 0 {
 			log.Printf("re-adopted %d running native %s: %s",
 				len(adopted), plural("server", len(adopted)), strings.Join(adopted, ", "))
 		}
@@ -129,7 +141,7 @@ func main() {
 // Nothing in here is fatal and nothing in here touches a server. Every failure
 // is logged and retried, because the alternative - a daemon that exits when the
 // panel is down - would take a node full of running games with it.
-func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, node *api.Server) {
+func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, node *api.Server, sup *supervise.Supervisor) {
 	if cfg.PanelURL == "" {
 		log.Printf("no NODE_PANEL_URL: this node will not enroll or heartbeat, and only answers calls the panel makes to it")
 
@@ -159,7 +171,7 @@ func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, nod
 
 	dockerClient := dockerapi.New(cfg.DockerSocket)
 	sampler := panel.NewSampler(cfg.Root, version, func(ctx context.Context) int {
-		return running(ctx, dockerClient)
+		return running(ctx, dockerClient, sup)
 	})
 
 	panel.Heartbeat(ctx, client, interval, sampler.Sample)
@@ -233,8 +245,8 @@ func availableRuntimes(ctx context.Context, drivers gruntime.Registry) []string 
 
 // running counts what is actually up: containers this node owns plus the
 // adopted tmux sessions the native runtimes use. The two sets never overlap.
-func running(ctx context.Context, client *dockerapi.Client) int {
-	count := len(supervise.Sessions(ctx))
+func running(ctx context.Context, client *dockerapi.Client, sup *supervise.Supervisor) int {
+	count := len(sup.Sessions(ctx))
 	if n, err := client.RunningServers(ctx); err == nil {
 		count += n
 	}

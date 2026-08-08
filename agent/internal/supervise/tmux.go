@@ -17,12 +17,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -47,7 +49,27 @@ func RuntimeDir(dir string) string {
 	return filepath.Join(filepath.Dir(dir), ".runtime", filepath.Base(dir))
 }
 
+// Credential is the account native servers run as. Exported because both
+// native drivers need the same one and a tmux session is only visible to the
+// uid that created it.
+type Credential struct {
+	Name string
+	Uid  uint32
+	Gid  uint32
+}
+
 type Supervisor struct {
+	// The account to run games and every tmux call as, when this daemon is
+	// root. Nil means "use our own identity", which is correct for a daemon
+	// already running unprivileged.
+	//
+	// This is load-bearing, not tidiness: tmux keeps its socket under
+	// /tmp/tmux-<uid>/, so a root process asking whether a session exists looks
+	// in /tmp/tmux-0/ while the game sits in the game user's own tmux. The
+	// panel then reports a healthy server as offline and the watchdog restarts
+	// something that never stopped.
+	runAs *Credential
+
 	mu sync.Mutex
 	// Last CPU sample per session, so a percentage can be derived from two
 	// readings of a counter that only ever goes up.
@@ -93,15 +115,38 @@ func Session(uuid string) string {
 
 // -------------------------------------------------------------------- control
 
-func tmux(ctx context.Context, args ...string) (string, error) {
+// RunAs sets the account this supervisor acts as. Call it before starting
+// anything; changing it with sessions already running would orphan them, since
+// the old ones live on a socket the new uid cannot see.
+func (s *Supervisor) RunAs(c *Credential) { s.runAs = c }
+
+func (s *Supervisor) tmux(ctx context.Context, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "tmux", args...)
+	s.apply(cmd)
 	out, err := cmd.CombinedOutput()
 
 	return strings.TrimSpace(string(out)), err
 }
 
+// apply puts a command under the unprivileged identity, with a HOME that
+// account can actually write to. Several games refuse to run as root outright:
+// PalServer.sh exits with "Refusing to run with the root privileges."
+func (s *Supervisor) apply(cmd *exec.Cmd) {
+	if s.runAs == nil {
+		return
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{Uid: s.runAs.Uid, Gid: s.runAs.Gid},
+	}
+	home := "/home/" + s.runAs.Name
+	if _, err := os.Stat(home); err != nil {
+		home = os.TempDir()
+	}
+	cmd.Env = append(os.Environ(), "HOME="+home)
+}
+
 func (s *Supervisor) Running(ctx context.Context, session string) bool {
-	_, err := tmux(ctx, "has-session", "-t", session)
+	_, err := s.tmux(ctx, "has-session", "-t", session)
 
 	return err == nil
 }
@@ -150,34 +195,43 @@ func (s *Supervisor) Start(ctx context.Context, session, dir, command string, en
 		return err
 	}
 
+	// Both were created by root and the game runs as somebody else, so without
+	// this the launcher is unreadable by the process meant to execute it. Same
+	// class of failure as the SteamCMD runscript.
+	if s.runAs != nil {
+		_ = os.Chown(runtimeDir, int(s.runAs.Uid), int(s.runAs.Gid))
+		_ = os.Chown(launcher, int(s.runAs.Uid), int(s.runAs.Gid))
+		_ = os.Chown(dir, int(s.runAs.Uid), int(s.runAs.Gid))
+	}
+
 	// Started as a bare shell, NOT as the game. pipe-pane only captures output
 	// from the moment it is enabled, so launching the server in the same breath
 	// loses everything it prints before the pipe is up: on a fast boot that is
 	// the entire startup log. Shell first, pipe second, game third.
-	if out, err := tmux(ctx, "new-session", "-d", "-s", session, "-c", dir, "/bin/sh"); err != nil {
+	if out, err := s.tmux(ctx, "new-session", "-d", "-s", session, "-c", dir, "/bin/sh"); err != nil {
 		return fmt.Errorf("start session: %s", firstLine(out, err))
 	}
 
 	// Terminal echo off before capture starts, so the launch line typed into the
 	// pane does not appear in the console as though the server printed it.
-	if _, err := tmux(ctx, "send-keys", "-t", session, "-l", "stty -echo"); err == nil {
-		_, _ = tmux(ctx, "send-keys", "-t", session, "Enter")
+	if _, err := s.tmux(ctx, "send-keys", "-t", session, "-l", "stty -echo"); err == nil {
+		_, _ = s.tmux(ctx, "send-keys", "-t", session, "Enter")
 	}
 
 	logPath := filepath.Join(runtimeDir, ConsoleFile)
 	// -o means "only if not already piping", so a restart does not stack up
 	// duplicate writers on the same file.
-	if out, err := tmux(ctx, "pipe-pane", "-o", "-t", session, "cat >> "+shellQuote(logPath)); err != nil {
+	if out, err := s.tmux(ctx, "pipe-pane", "-o", "-t", session, "cat >> "+shellQuote(logPath)); err != nil {
 		return fmt.Errorf("capture console: %s", firstLine(out, err))
 	}
 
 	// exec replaces the shell, so the process tree stays clean and the pane dies
 	// with the game rather than dropping back to a prompt that looks like a
 	// running server.
-	if out, err := tmux(ctx, "send-keys", "-t", session, "-l", "exec /bin/sh "+shellQuote(launcher)); err != nil {
+	if out, err := s.tmux(ctx, "send-keys", "-t", session, "-l", "exec /bin/sh "+shellQuote(launcher)); err != nil {
 		return fmt.Errorf("launch: %s", firstLine(out, err))
 	}
-	if out, err := tmux(ctx, "send-keys", "-t", session, "Enter"); err != nil {
+	if out, err := s.tmux(ctx, "send-keys", "-t", session, "Enter"); err != nil {
 		return fmt.Errorf("launch: %s", firstLine(out, err))
 	}
 
@@ -199,10 +253,10 @@ func (s *Supervisor) Command(ctx context.Context, session, command string) error
 	}
 	// -l sends the text literally, so a command containing ; or $ is not
 	// interpreted by tmux as a key name.
-	if out, err := tmux(ctx, "send-keys", "-t", session, "-l", strings.TrimRight(command, "\r\n")); err != nil {
+	if out, err := s.tmux(ctx, "send-keys", "-t", session, "-l", strings.TrimRight(command, "\r\n")); err != nil {
 		return fmt.Errorf("send command: %s", firstLine(out, err))
 	}
-	_, err := tmux(ctx, "send-keys", "-t", session, "Enter")
+	_, err := s.tmux(ctx, "send-keys", "-t", session, "Enter")
 
 	return err
 }
@@ -232,7 +286,7 @@ func (s *Supervisor) Kill(ctx context.Context, session string) error {
 	if !s.Running(ctx, session) {
 		return nil
 	}
-	_, err := tmux(ctx, "kill-session", "-t", session)
+	_, err := s.tmux(ctx, "kill-session", "-t", session)
 	s.forget(session)
 
 	return err
@@ -265,7 +319,7 @@ func (s *Supervisor) forget(session string) {
 
 // PID returns the pane's shell process.
 func (s *Supervisor) PID(ctx context.Context, session string) (int, error) {
-	out, err := tmux(ctx, "list-panes", "-t", session, "-F", "#{pane_pid}")
+	out, err := s.tmux(ctx, "list-panes", "-t", session, "-F", "#{pane_pid}")
 	if err != nil {
 		return 0, err
 	}
@@ -537,8 +591,8 @@ func tailFile(path string, n int) ([]string, error) {
 
 // Sessions lists everything this daemon is supervising, which is what makes a
 // daemon restart a non-event: the sessions were never ours to lose.
-func Sessions(ctx context.Context) []string {
-	out, err := tmux(ctx, "list-sessions", "-F", "#{session_name}")
+func (s *Supervisor) Sessions(ctx context.Context) []string {
+	out, err := s.tmux(ctx, "list-sessions", "-F", "#{session_name}")
 	if err != nil {
 		return nil
 	}
@@ -668,4 +722,30 @@ func under(path, dir string) bool {
 	base := filepath.Clean(dir)
 
 	return clean == base || strings.HasPrefix(clean, base+string(filepath.Separator))
+}
+
+// Unprivileged finds the account native servers should run as.
+//
+// Only relevant when the daemon itself is root; a daemon already running as a
+// normal user keeps its own identity, which is the expected setup on a node
+// installed by hand.
+func Unprivileged() *Credential {
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	for _, name := range []string{"gamemgr", "steam", "linuxgsm", "nobody"} {
+		u, err := user.Lookup(name)
+		if err != nil {
+			continue
+		}
+		uid, err1 := strconv.Atoi(u.Uid)
+		gid, err2 := strconv.Atoi(u.Gid)
+		if err1 != nil || err2 != nil || uid == 0 {
+			continue
+		}
+
+		return &Credential{Name: name, Uid: uint32(uid), Gid: uint32(gid)}
+	}
+
+	return nil
 }

@@ -108,7 +108,7 @@ class ServerController extends Controller
         $variableValues = $this->validatedVariables($request, $template);
 
         $node = $this->resolveNode($data, $template);
-        $allocation = $this->resolveAllocation($data, $node);
+        $allocation = $this->resolveAllocation($data, $node, $template);
 
         $server = Server::create([
             'name' => $data['name'],
@@ -592,7 +592,7 @@ class ServerController extends Controller
         return $node;
     }
 
-    private function resolveAllocation(array $data, Node $node): ?Allocation
+    private function resolveAllocation(array $data, Node $node, ?Template $template = null): ?Allocation
     {
         if (! empty($data['allocation_id'])) {
             $allocation = Allocation::find($data['allocation_id']);
@@ -601,7 +601,22 @@ class ServerController extends Controller
             }
         }
 
-        return $node->allocations()->whereNull('server_id')->orderBy('port')->first();
+        $free = $node->allocations()->whereNull('server_id');
+
+        // The game's own port first. Picking the lowest free port on the node
+        // put a Palworld server on 2456, which is Valheim's, purely because the
+        // bootstrap seeds one allocation per catalogue default and 2456 sorts
+        // first. Players then have to be told a port for a game that has a
+        // perfectly good default, and the node installer's firewall rules,
+        // which are written around those defaults, do not cover it.
+        if ($template?->default_port) {
+            $preferred = (clone $free)->where('port', $template->default_port)->first();
+            if ($preferred) {
+                return $preferred;
+            }
+        }
+
+        return $free->orderBy('port')->first();
     }
 
     /**
