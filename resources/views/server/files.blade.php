@@ -60,9 +60,16 @@
                             @endphp
                             <tr data-file-path="{{ $full }}">
                                 <td class="w-10">
-                                    <input type="checkbox" :checked="isSelected(@js($full))"
-                                           @click="toggle(@js($full), {{ $i }}, $event.shiftKey)"
-                                           class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                    {{-- A switch, never a bare checkbox. This one is hand rolled
+                                         rather than x-select-toggle because the file manager owns
+                                         its own selection state, including shift-click ranges,
+                                         so it needs the click handler and the bound :checked. --}}
+                                    <label class="vx-switch">
+                                        <input type="checkbox" :checked="isSelected(@js($full))"
+                                               @click="toggle(@js($full), {{ $i }}, $event.shiftKey)">
+                                        <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                        <span class="sr-only">Select {{ $entry['name'] }}</span>
+                                    </label>
                                 </td>
                                 <td>
                                     @if ($isDir)

@@ -189,6 +189,36 @@ class Server extends Model
         return $this->status === null;
     }
 
+    /**
+     * What can actually be done to this server right now.
+     *
+     * Every power button used to share one condition, "is this server not
+     * installing or suspended", so Start was clickable on a running server and
+     * Stop on a stopped one. Pressing them did nothing useful and told the
+     * operator nothing, which is worse than the button not being there.
+     */
+    public function canStart(): bool
+    {
+        return $this->isControllable() && $this->power_state !== 'running' && $this->power_state !== 'starting';
+    }
+
+    public function canStop(): bool
+    {
+        return $this->isControllable() && in_array($this->power_state, ['running', 'starting'], true);
+    }
+
+    /** Restarting something that is not running is just a start with extra steps. */
+    public function canRestart(): bool
+    {
+        return $this->isControllable() && $this->power_state === 'running';
+    }
+
+    /** Kill is for a server that has stopped answering, so it needs to be up. */
+    public function canKill(): bool
+    {
+        return $this->isControllable() && $this->power_state !== 'offline';
+    }
+
     public function statusLabel(): string
     {
         return match ($this->status) {

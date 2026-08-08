@@ -27,19 +27,32 @@
                     @can('check', [$server, 'control.start'])
                         <form method="POST" action="{{ route('server.power', $server) }}">
                             @csrf<input type="hidden" name="action" value="start">
-                            <x-button type="submit" icon="play" class="w-full" :disabled="! $server->isControllable()">Start</x-button>
+                            <x-button type="submit" icon="play" class="w-full" :disabled="! $server->canStart()">Start</x-button>
                         </form>
                     @endcan
                     @can('check', [$server, 'control.restart'])
-                        <form method="POST" action="{{ route('server.power', $server) }}">
-                            @csrf<input type="hidden" name="action" value="restart">
-                            <x-button type="submit" variant="secondary" icon="refresh" class="w-full" :disabled="! $server->isControllable()">Restart</x-button>
-                        </form>
+                        {{-- A restart disconnects everyone currently playing, so it
+                             asks first, the same way Kill does. --}}
+                        <x-confirm-action
+                            name="restart-server"
+                            :action="route('server.power', $server)"
+                            method="POST"
+                            tone="warn"
+                            title="Restart The Server?"
+                            message="Everyone playing right now will be disconnected. The world is saved first, so nothing is lost, but players will have to rejoin."
+                            confirm="Restart It"
+                            :fields="['action' => 'restart']"
+                            class="w-full">
+                            <button type="button" @disabled(! $server->canRestart())
+                                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 bg-white ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:ring-slate-400 transition disabled:opacity-50 disabled:pointer-events-none">
+                                <x-icon name="refresh" class="w-4 h-4" /> Restart
+                            </button>
+                        </x-confirm-action>
                     @endcan
                     @can('check', [$server, 'control.stop'])
                         <form method="POST" action="{{ route('server.power', $server) }}">
                             @csrf<input type="hidden" name="action" value="stop">
-                            <x-button type="submit" variant="secondary" icon="stop" class="w-full" :disabled="! $server->isControllable()">Stop</x-button>
+                            <x-button type="submit" variant="secondary" icon="stop" class="w-full" :disabled="! $server->canStop()">Stop</x-button>
                         </form>
                         <x-confirm-action
                             name="kill-server"
@@ -52,7 +65,8 @@
                             confirm-variant="danger"
                             :fields="['action' => 'kill']"
                             class="w-full">
-                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-rose-700 bg-white ring-1 ring-inset ring-rose-200 hover:bg-rose-50 hover:ring-rose-400 transition">
+                            <button type="button" @disabled(! $server->canKill())
+                                    class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-rose-700 bg-white ring-1 ring-inset ring-rose-200 hover:bg-rose-50 hover:ring-rose-400 transition disabled:opacity-50 disabled:pointer-events-none">
                                 <x-icon name="bolt-slash" class="w-4 h-4" /> Kill
                             </button>
                         </x-confirm-action>
@@ -83,7 +97,7 @@
                         </div>
                     </div>
                     <x-meter label="Disk" :value="$server->cached_disk" :max="$server->disk">
-                        {{ number_format($server->cached_disk) }} / {{ number_format($server->disk) }} MiB
+                        {{ \App\Support\Format::mibPair($server->cached_disk, $server->disk) }}
                     </x-meter>
                     <div class="flex items-center justify-between pt-1 text-sm">
                         <span class="font-medium text-slate-700">Players</span>

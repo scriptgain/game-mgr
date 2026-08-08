@@ -427,9 +427,15 @@ document.addEventListener('alpine:init', () => {
             return Math.min(100, Math.round((this.stats.cpu / cap) * 100));
         },
 
+        // Always GiB, so a used-of-capacity pair never mixes units. Showing
+        // "4,958 / 10,240 MiB" made a reader do the division themselves, and
+        // showing "4.8 GiB / 10,240 MiB" would be worse. Mirrors
+        // App\Support\Format::mibPair, which drops the decimal past 10 where
+        // it is noise.
         formatMib(mib) {
-            if (mib >= 1024) return (mib / 1024).toFixed(1) + ' GiB';
-            return Math.round(mib) + ' MiB';
+            const gib = (mib || 0) / 1024;
+
+            return (gib >= 10 ? Math.round(gib).toLocaleString() : gib.toFixed(1)) + ' GiB';
         },
     }));
 

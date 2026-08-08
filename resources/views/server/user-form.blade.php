@@ -24,12 +24,8 @@
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">{{ $group }}</p>
                         <div class="space-y-2.5">
                             @foreach ($permissions as $key => $description)
-                                <label class="flex items-start gap-2.5 cursor-pointer">
-                                    <input type="checkbox" name="permissions[]" value="{{ $key }}"
-                                           @checked(in_array($key, (array) $current, true))
-                                           class="mt-0.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 shrink-0">
-                                    <span class="text-sm text-slate-700">{{ $description }}</span>
-                                </label>
+                                <x-check-switch name="permissions[]" :value="$key"
+                                                :checked="in_array($key, (array) $current, true)">{{ $description }}</x-check-switch>
                             @endforeach
                         </div>
                     </div>
