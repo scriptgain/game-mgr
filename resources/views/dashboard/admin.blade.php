@@ -175,7 +175,7 @@
                 </x-slot:actions>
                 <ul class="divide-y divide-slate-100">
                     @forelse ($activity as $entry)
-                        <li class="px-5 py-3 flex items-start gap-3">
+                        <li class="px-5 py-3.5 flex items-start gap-3">
                             <span class="mt-1.5"><x-status-dot :tone="$entry->tone()" label="" /></span>
                             <div class="min-w-0">
                                 <p class="text-sm text-slate-800">{{ $entry->description }}</p>
@@ -186,10 +186,7 @@
                         <li class="px-5 py-6 text-sm text-slate-500">Nothing recorded yet.</li>
                     @endforelse
                 </ul>
-                @if ($activity->hasPages())
-                    <x-slot:footer>{{ $activity->links() }}</x-slot:footer>
-                @endif
-            </x-card>
+</x-card>
         </div>
     </div>
 </x-layouts.app>

@@ -20,6 +20,13 @@ class Server extends Model
 {
     use Concerns\Auditable;
 
+    /**
+     * ServerController writes "Created server X" with the acting user. The
+     * trait's generic "Server X created" is the same event said twice, and the
+     * activity feed showed both, one line apart.
+     */
+    public bool $auditsOwnCreation = true;
+
     protected $fillable = [
         'uuid', 'uuid_short', 'name', 'description', 'owner_id', 'node_id',
         'template_id', 'allocation_id', 'runtime', 'image', 'startup',
@@ -304,6 +311,46 @@ class Server extends Model
     }
 
     // ---------------------------------------------------------- permissions
+
+    /**
+     * What Minecraft software this server is actually set to run, or null when
+     * it is not a Minecraft one.
+     *
+     * Read straight off the environment rather than off the picker, because the
+     * environment is what the container is handed. If somebody edits TYPE by
+     * hand, through the API or through a blueprint, this says what will really
+     * boot rather than what a form last offered.
+     *
+     * @return array{type:string, version:string, build:?string}|null
+     */
+    public function minecraft(): ?array
+    {
+        $picker = $this->template?->mcjarsPicker();
+
+        if (! $picker) {
+            return null;
+        }
+
+        $env = $this->environment();
+        $type = trim((string) ($env[$picker->typeVariable->env_variable] ?? ''));
+        $version = trim((string) ($env[$picker->versionVariable->env_variable] ?? ''));
+
+        if ($type === '') {
+            return null;
+        }
+
+        $buildVariable = $picker->buildVariables[mb_strtoupper($type)] ?? null;
+        $build = $buildVariable ? trim((string) ($env[$buildVariable->env_variable] ?? '')) : '';
+
+        return [
+            'type' => $type,
+            // Blank is meaningful here: the image resolves the newest release
+            // when VERSION is unset, and saying "Latest" is more honest than
+            // showing an empty cell.
+            'version' => $version === '' ? 'Latest' : $version,
+            'build' => $build === '' ? null : $build,
+        ];
+    }
 
     /** The full environment handed to the daemon: template defaults plus overrides. */
     public function environment(): array

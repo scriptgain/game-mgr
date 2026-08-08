@@ -53,6 +53,10 @@ class BlueprintSeeder extends Seeder
             ['Palworld Large', 'Palworld Dedicated', 'A full 32 player world. Needs a host with more than 32 GB, not exactly 32 GB.', 32768, 81920, 600, 0, 2, 8],
         ];
 
+        // Shipped reference data is not something a person did, so it does not
+        // belong in the activity feed. Seeding a fresh install used to put five
+        // "Blueprint created" entries at the top of a panel nobody had used.
+        Blueprint::withoutAuditing(function () use ($specs, $admin) {
         foreach ($specs as [$name, $templateName, $description, $mem, $disk, $cpu, $dbs, $allocs, $backups]) {
             $template = Template::where('name', $templateName)->first();
             if (! $template) {
@@ -71,5 +75,6 @@ class BlueprintSeeder extends Seeder
                 'created_by' => $admin?->id,
             ]);
         }
+        });
     }
 }
