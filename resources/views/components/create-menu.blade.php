@@ -29,6 +29,9 @@
                 ['Location', 'admin.locations.create', 'map', 'A region to group nodes under'],
                 ['Database Host', 'admin.database-hosts.create', 'database', 'Where player databases are created'],
                 ['Mount', 'admin.mounts.create', 'folder', 'Share a directory into servers'],
+                // Guarded by Route::has below, so this stays invisible until the
+                // domains feature exists rather than offering a dead link.
+                ['Domain', 'admin.domains.create', 'globe', 'Give a server a name players can type'],
             ],
         ],
         [

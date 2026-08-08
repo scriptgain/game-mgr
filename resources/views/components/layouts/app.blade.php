@@ -140,7 +140,11 @@
                     'active' => request()->routeIs('admin.games.*', 'admin.templates.*', 'admin.blueprints.*'),
                     'items' => [
                         ['Games', route('admin.games.index'), 'controller', request()->routeIs('admin.games.*')],
-                        ['Templates', route('admin.templates.index'), 'cube', request()->routeIs('admin.templates.*')],
+                        // Excludes import explicitly: 'admin.templates.*' matches
+                        // 'admin.templates.import' too, so both entries lit up at
+                        // once and neither told you where you were.
+                        ['Templates', route('admin.templates.index'), 'cube',
+                            request()->routeIs('admin.templates.*') && ! request()->routeIs('admin.templates.import')],
                         ['Import Template', route('admin.templates.import'), 'download', request()->routeIs('admin.templates.import')],
                         ['Blueprints', route('admin.blueprints.index'), 'copy', request()->routeIs('admin.blueprints.*')],
                     ]],
