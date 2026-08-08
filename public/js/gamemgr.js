@@ -33,6 +33,10 @@ document.addEventListener('alpine:init', () => {
         measure() {
             const strip = this.$refs.strip;
             if (!strip) return;
+            // Measured at least once, so it is safe to show. Set before the
+            // work rather than after, because an early return below would
+            // otherwise leave the strip invisible forever.
+            strip.classList.add('is-measured');
 
             const tabs = Array.from(strip.querySelectorAll('[data-tab-index]'));
             tabs.forEach((el) => { el.hidden = false; });
@@ -53,6 +57,10 @@ document.addEventListener('alpine:init', () => {
                 }
                 el.hidden = true;
                 hidden.push({
+                    // innerHTML, not textContent: it already holds the icon svg
+                    // the strip rendered, so the dropdown shows the same icon
+                    // without the component having to know how to draw one.
+                    html: el.innerHTML,
                     label: el.textContent.trim(),
                     href: el.getAttribute('href'),
                     active: el.classList.contains('is-active'),
@@ -72,6 +80,7 @@ document.addEventListener('alpine:init', () => {
                     if (victim && victim !== activeEl) {
                         victim.hidden = true;
                         hidden.push({
+                            html: victim.innerHTML,
                             label: victim.textContent.trim(),
                             href: victim.getAttribute('href'),
                             active: false,

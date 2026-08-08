@@ -35,6 +35,11 @@
     /* Plain CSS, not Tailwind: these classes are toggled by JS and a purged
        build has no way to know they were ever used. */
     .gm-tabs { display: flex; align-items: center; gap: .25rem; flex-wrap: nowrap; min-width: 0; }
+    /* Every tab renders visible and JS then folds the overflow away, so
+       without this the whole row paints for a frame on every page load and
+       then collapses. Hiding with visibility keeps the widths measurable
+       and keeps the row's height reserved, so nothing jumps. */
+    .gm-tabs:not(.is-measured) { visibility: hidden; }
     .gm-tab { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border-radius: .5rem;
               font-size: .875rem; font-weight: 500; color: #475569; white-space: nowrap; text-decoration: none;
               border: 1px solid transparent; transition: background .15s, color .15s, border-color .15s; }
@@ -69,12 +74,13 @@
              @click.outside="open = false" @keydown.escape="open = false">
             <button type="button" @click="open = !open" :aria-expanded="open.toString()"
                     class="gm-tab" :class="overflowHasActive && 'is-active'">
+                <x-icon name="dots" />
                 More
                 <x-icon name="chevron-down" />
             </button>
             <div class="gm-more-menu" x-show="open" x-cloak x-transition>
                 <template x-for="tab in overflow" :key="tab.href">
-                    <a :href="tab.href" :class="tab.active && 'is-active'" x-text="tab.label"></a>
+                    <a :href="tab.href" :class="tab.active && 'is-active'" x-html="tab.html"></a>
                 </template>
             </div>
         </div>
