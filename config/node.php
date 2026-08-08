@@ -10,6 +10,13 @@ return [
     // not stall a page render, it must degrade to "offline".
     'timeout' => (int) env('NODE_TIMEOUT', 10),
 
+    // Seconds a power action may take. A graceful stop sends the game its own
+    // stop command and waits for it to save, which the drivers allow 30 seconds
+    // for, and a restart is a stop followed by a start. The ten second default
+    // expired first and the panel reported "Node unreachable" about a node that
+    // was answering perfectly well and doing exactly what it was told.
+    'power_timeout' => (int) env('NODE_POWER_TIMEOUT', 90),
+
     // Seconds a file manager upload may take. Deliberately not the timeout
     // above: a few hundred megabytes over a domestic connection is minutes, and
     // ten seconds would abort every upload worth having this feature for.

@@ -50,10 +50,13 @@ class NodeClient
 
     public function power(Server $server, string $action): array
     {
+        // Longer than the shared timeout on purpose: stopping waits for the
+        // game to save. Reporting a node as unreachable because it was busy
+        // doing what we asked is worse than waiting for it.
         $res = $this->post("/api/servers/{$server->uuid}/power", [
             'server' => $server->daemonPayload(),
             'action' => $action,
-        ]);
+        ], (int) config('node.power_timeout', 90));
 
         if ($res === null && config('node.fake')) {
             // Optimistic local state so the UI still moves on a demo instance.
@@ -374,10 +377,14 @@ class NodeClient
         }
     }
 
-    private function post(string $path, array $body = []): ?array
+    private function post(string $path, array $body = [], ?int $timeout = null): ?array
     {
         try {
-            $res = $this->http()->post($this->node->daemonUrl($path), $body);
+            $client = $this->http();
+            if ($timeout !== null) {
+                $client = $client->timeout($timeout);
+            }
+            $res = $client->post($this->node->daemonUrl($path), $body);
 
             return $res->successful() ? (array) $res->json() : null;
         } catch (\Throwable $e) {
