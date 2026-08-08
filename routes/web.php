@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\Client;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DomainController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\GeneralSettingsController;
@@ -114,6 +115,7 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('/mods', [Client\ModController::class, 'index'])->name('mods');
         Route::get('/mods/browse', [Client\ModController::class, 'browse'])->name('mods.browse');
         Route::post('/mods', [Client\ModController::class, 'store'])->name('mods.store');
+        Route::post('/mods/refresh', [Client\ModController::class, 'refresh'])->name('mods.refresh');
         Route::post('/mods/{mod}/update', [Client\ModController::class, 'update'])->name('mods.update');
         Route::post('/mods/{mod}/toggle', [Client\ModController::class, 'toggle'])->name('mods.toggle');
         Route::delete('/mods/{mod}', [Client\ModController::class, 'destroy'])->name('mods.destroy');
@@ -186,6 +188,9 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('nodes/{node}/metrics', [Admin\NodeController::class, 'metrics'])->name('nodes.metrics');
         Route::delete('nodes/{node}/metrics', [Admin\NodeController::class, 'clearMetrics'])->name('nodes.metrics.clear');
         Route::post('nodes/{node}/check', [Admin\NodeController::class, 'check'])->name('nodes.check');
+        // Recreate this node's wildcard record now, rather than waiting for the
+        // hourly reconciler.
+        Route::post('nodes/{node}/wildcard', [Admin\NodeController::class, 'syncWildcard'])->name('nodes.wildcard');
         Route::resource('nodes', Admin\NodeController::class);
 
         Route::resource('games', Admin\GameController::class)->except(['show']);
@@ -228,6 +233,11 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('integrations', [IntegrationController::class, 'edit'])->name('integrations.edit');
         Route::put('integrations', [IntegrationController::class, 'update'])->name('integrations.update');
         Route::post('integrations/test', [IntegrationController::class, 'test'])->name('integrations.test');
+
+        Route::get('domains', [DomainController::class, 'edit'])->name('domains.edit');
+        Route::put('domains', [DomainController::class, 'update'])->name('domains.update');
+        Route::delete('domains/token', [DomainController::class, 'clearToken'])->name('domains.token.clear');
+        Route::post('domains/sync', [DomainController::class, 'sync'])->name('domains.sync');
 
         Route::get('firewall', [FirewallController::class, 'index'])->name('firewall.index');
         Route::put('firewall', [FirewallController::class, 'update'])->name('firewall.update');

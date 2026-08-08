@@ -48,24 +48,6 @@ class ModController extends ServerController
         $server->load('node', 'template.game', 'template.variables');
         $target = ModTarget::for($server);
 
-        // Checking every installed mod against the API is a handful of requests
-        // and belongs behind a deliberate click, not on every page load. It is
-        // a GET because it changes nothing a customer owns: it only refreshes
-        // what the panel believes the newest version is.
-        if ($request->boolean('refresh')) {
-            $this->guard($server, 'mod.update');
-
-            $waiting = $this->installer->refresh($server, $target);
-
-            return redirect()->route('server.mods', $server)->with(
-                'status',
-                $this->modrinth->degraded()
-                    ? 'Modrinth did not answer, so the version list was left as it was.'
-                    : ($waiting === 0
-                        ? 'Every mod is on the newest version this server can run.'
-                        : $waiting.' '.str('mod')->plural($waiting).' can be updated.'),
-            );
-        }
 
         $mods = $server->mods()->orderBy('name')->get();
 
@@ -78,6 +60,30 @@ class ModController extends ServerController
             'target' => $target,
             'catalogue' => $this->catalogueState($target),
         ]);
+    }
+
+    /**
+     * Re-check every installed mod against the API.
+     *
+     * A POST, because it writes: it rewrites what the panel believes the newest
+     * version is. It was a GET so that it could be a plain link, which meant a
+     * prefetch or a crawler could trigger a handful of outbound API calls.
+     */
+    public function refresh(Request $request, Server $server)
+    {
+        $this->guard($server, 'mod.update');
+
+        $server->load('node', 'template.game', 'template.variables');
+        $waiting = $this->installer->refresh($server, ModTarget::for($server));
+
+        return redirect()->route('server.mods', $server)->with(
+            'status',
+            $this->modrinth->degraded()
+                ? 'Modrinth did not answer, so the version list was left as it was.'
+                : ($waiting === 0
+                    ? 'Every mod is on the newest version this server can run.'
+                    : $waiting.' '.str('mod')->plural($waiting).' can be updated.'),
+        );
     }
 
     public function browse(Request $request, Server $server)

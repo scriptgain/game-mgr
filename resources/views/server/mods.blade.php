@@ -25,8 +25,13 @@
         <x-slot:actions>
             @can('check', [$server, 'mod.update'])
                 @if ($catalogue['ok'] && $mods->isNotEmpty())
-                    <x-button href="{{ route('server.mods', [$server, 'refresh' => 1]) }}"
-                              variant="secondary" size="sm" icon="sync">Check For Updates</x-button>
+                    {{-- A form, not a link: this writes what the panel believes
+                         the newest version is, and a link meant a prefetch could
+                         fire a handful of outbound API calls. --}}
+                    <form method="POST" action="{{ route('server.mods.refresh', $server) }}">
+                        @csrf
+                        <x-button type="submit" variant="secondary" size="sm" icon="sync">Check For Updates</x-button>
+                    </form>
                 @endif
             @endcan
             @can('check', [$server, 'mod.install'])
