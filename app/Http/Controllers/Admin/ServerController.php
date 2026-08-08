@@ -69,9 +69,17 @@ class ServerController extends Controller
         ]);
 
         $users = User::orderBy('name')->get();
-        $nodes = Node::with('location')->orderBy('name')->get();
-        $templates = Template::with(['game', 'variables'])->orderBy('name')->get();
-        $blueprints = Blueprint::with('template')->orderBy('name')->get();
+        $nodes = Node::with(['location'])->withCount('servers')->orderBy('name')->get();
+        // Grouped by game on the picker, so the order is game first, then
+        // template. Sorting here keeps the view a plain foreach.
+        $templates = Template::with(['game', 'variables'])->get()
+            ->sortBy(fn (Template $t) => mb_strtolower(($t->game?->name ?? 'zzz').' '.$t->name))
+            ->values();
+        // Smallest first: the size cards read as a ladder, and the recommended
+        // one (the cheapest that fits) is where the eye already starts.
+        $blueprints = Blueprint::with('template.game')->orderBy('name')->get()
+            ->sortBy(fn (Blueprint $b) => [(int) ($b->limits['memory'] ?? 0), $b->name])
+            ->values();
         $locations = Location::orderBy('name')->get();
 
         return view('admin.servers.create', [
@@ -84,7 +92,7 @@ class ServerController extends Controller
             'locations' => $locations,
             // Everything the wizard needs client side, as one JSON island. The
             // view stays markup and the behaviour stays in public/js.
-            'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints),
+            'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints, $locations, $server),
         ]);
     }
 
@@ -265,6 +273,36 @@ class ServerController extends Controller
         'auto_update' => 4,
     ];
 
+    /** Every field the last POST rejected, in the browser's own key form. */
+    private function failedFields(): array
+    {
+        $bag = session('errors');
+
+        return $bag ? array_keys($bag->getBag('default')->messages()) : [];
+    }
+
+    /**
+     * Did the last POST fail on a variable the template keeps to itself? Those
+     * sit in a collapsed panel, and a message nobody can see is no message.
+     */
+    private function lockedVariableFailed($templates): bool
+    {
+        $failed = [];
+
+        foreach ($this->failedFields() as $key) {
+            if (str_starts_with($key, 'variables.')) {
+                $failed[] = (int) substr($key, strlen('variables.'));
+            }
+        }
+
+        if (! $failed) {
+            return false;
+        }
+
+        return $templates->flatMap(fn (Template $t) => $t->variables)
+            ->contains(fn (TemplateVariable $v) => ! $v->user_editable && in_array($v->id, $failed, true));
+    }
+
     /** The earliest step carrying an error from the last POST, or step 1. */
     private function stepForErrors(): int
     {
@@ -290,33 +328,13 @@ class ServerController extends Controller
         return $steps ? min($steps) : 1;
     }
 
-    /** Validation messages for template variables, keyed by variable id. */
-    private function variableErrors(): array
-    {
-        $bag = session('errors');
-
-        if (! $bag) {
-            return [];
-        }
-
-        $out = [];
-
-        foreach ($bag->getBag('default')->messages() as $key => $messages) {
-            if (str_starts_with($key, 'variables.')) {
-                $out[substr($key, strlen('variables.'))] = $messages[0] ?? '';
-            }
-        }
-
-        return $out;
-    }
-
     /**
      * Everything the stepped create form needs in the browser: the allocations
      * that belong to each node, the variables each template exposes, and the
      * limits each blueprint presets. Rendered once as a JSON island rather than
      * as thousands of hidden inputs.
      */
-    private function wizardPayload($users, $nodes, $templates, $blueprints): array
+    private function wizardPayload($users, $nodes, $templates, $blueprints, $locations, Server $defaults): array
     {
         $free = Allocation::whereNull('server_id')
             ->orderBy('ip')->orderBy('port')->get()
@@ -327,16 +345,36 @@ class ServerController extends Controller
             // on step one with the message scrolled out of sight.
             'step' => $this->stepForErrors(),
 
+            // Which fields failed, so a disclosure holding one of them opens
+            // rather than hiding the message that came back with it.
+            'errors' => $this->failedFields(),
+            'open_locked' => $this->lockedVariableFailed($templates),
+
             'selected' => [
                 'template_id' => old('template_id', $templates->first()?->id),
                 'node_id' => old('node_id'),
                 'allocation_id' => old('allocation_id'),
-                'variables' => (array) old('variables', []),
+                'location_id' => old('location_id'),
+                'owner_id' => old('owner_id', $users->first()?->id),
             ],
 
-            // Variable inputs are rendered by the browser, so their messages
-            // have to travel with the data rather than come out of Blade.
-            'variable_errors' => $this->variableErrors(),
+            // Seeds for the controls the browser owns. Every one of these is
+            // x-model bound, so the state and the posted value can never drift,
+            // and a rejected POST comes back with what was typed.
+            'values' => [
+                'name' => (string) old('name', ''),
+                'description' => (string) old('description', ''),
+                'image' => (string) old('image', ''),
+                'startup' => (string) old('startup', ''),
+                'memory' => (int) old('memory', $defaults->memory),
+                'disk' => (int) old('disk', $defaults->disk),
+                'cpu' => (int) old('cpu', $defaults->cpu),
+                'swap' => (int) old('swap', $defaults->swap),
+                'io' => (int) old('io', $defaults->io),
+                'database_limit' => (int) old('database_limit', $defaults->database_limit),
+                'allocation_limit' => (int) old('allocation_limit', $defaults->allocation_limit),
+                'backup_limit' => (int) old('backup_limit', $defaults->backup_limit),
+            ],
 
             'users' => $users->map(fn (User $u) => [
                 'id' => $u->id,
@@ -344,22 +382,30 @@ class ServerController extends Controller
                 'email' => $u->email,
             ])->values()->all(),
 
+            'locations' => $locations->map(fn (Location $l) => [
+                'id' => $l->id,
+                'name' => $l->name,
+                'flag' => $l->flag,
+            ])->values()->all(),
+
             'templates' => $templates->map(fn (Template $t) => [
                 'id' => $t->id,
                 'name' => $t->name,
                 'game' => $t->game?->name,
+                'game_id' => $t->game_id,
                 'description' => $t->description,
                 'runtime' => $t->runtime,
                 'runtime_label' => $t->runtimeLabel(),
                 'default_image' => $t->defaultImage(),
                 'startup' => $t->startup,
+                // Names and ids only: the inputs themselves are rendered by
+                // Blade, one hidden block per template, so every control can be
+                // the right shape for the rule it enforces.
                 'variables' => $t->variables->map(fn (TemplateVariable $v) => [
                     'id' => $v->id,
                     'name' => $v->name,
-                    'description' => $v->description,
                     'env' => $v->env_variable,
-                    'default' => (string) $v->default_value,
-                    'required' => str_contains((string) $v->rules, 'required'),
+                    'editable' => (bool) $v->user_editable,
                 ])->values()->all(),
             ])->values()->all(),
 
@@ -374,13 +420,23 @@ class ServerController extends Controller
                 'environment' => $b->environment ?? [],
             ])->values()->all(),
 
+            // Enough capacity detail for the browser to answer "will this fit"
+            // while the operator is still dragging the memory slider, rather
+            // than after a rejected POST.
             'nodes' => $nodes->map(fn (Node $n) => [
                 'id' => $n->id,
                 'name' => $n->name,
                 'location' => $n->location?->name,
+                'location_id' => $n->location_id,
                 'runtimes' => array_values($n->runtimes ?? []),
                 'pressure' => $n->memoryPressure(),
                 'maintenance' => (bool) $n->maintenance_mode,
+                'public' => (bool) $n->public,
+                'servers' => (int) ($n->servers_count ?? 0),
+                'memory_capacity' => $n->memoryCapacity(),
+                'memory_used' => $n->memoryAllocated(),
+                'disk_capacity' => $n->diskCapacity(),
+                'disk_used' => $n->diskAllocated(),
                 'allocations' => collect($free->get($n->id, []))
                     ->map(fn (Allocation $a) => [
                         'id' => $a->id,

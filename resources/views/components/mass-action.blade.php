@@ -25,9 +25,9 @@
     <x-modal :name="$modal" :title="$confirmTitle" icon="warning" :tone="$tone === 'danger' ? 'danger' : 'warn'" maxWidth="max-w-md">
         <p><span x-text="count"></span> selected. {{ $confirm }}</p>
         <x-slot:footer>
-            <x-button variant="secondary" size="sm" x-on:click="$dispatch('close-modal', @js($modal))">Cancel</x-button>
+            <x-button variant="secondary" size="sm" x-on:click="$dispatch('close-modal', '{{ $modal }}')">Cancel</x-button>
             <x-button :variant="$tone === 'danger' ? 'danger' : 'primary'" size="sm" :icon="$icon"
-                      x-on:click="$dispatch('close-modal', @js($modal)); submitAs(@js($action))">{{ $slot }}</x-button>
+                      x-on:click="$dispatch('close-modal', '{{ $modal }}'); submitAs('{{ $action }}')">{{ $slot }}</x-button>
         </x-slot:footer>
     </x-modal>
 @else

@@ -1552,5 +1552,30 @@ document.addEventListener('alpine:init', () => {
             else if (mode === 'unlimited') this.res.swap = -1;
             else if (Number(this.res.swap) <= 0) this.res.swap = 512;
         },
+
+        /**
+         * Open the tab pane holding a field the browser just rejected.
+         *
+         * A pane that is not the active one is display:none, and a hidden
+         * required input cannot be focused, so the browser abandons the submit
+         * and says nothing: the operator presses Create and the page sits there.
+         *
+         * The classes are flipped by hand as well as through the tab button,
+         * because validation carries on in this same tick and Alpine's own
+         * update lands a microtask too late to make the field focusable.
+         */
+        openPaneFor(el) {
+            const pane = el && el.closest ? el.closest('[role="tabpanel"]') : null;
+            if (! pane || pane.classList.contains('is-active')) return;
+
+            const parent = pane.parentElement;
+            if (parent) parent.querySelectorAll('.gm-pane').forEach((p) => p.classList.remove('is-active'));
+            pane.classList.add('is-active');
+
+            // Click the tab rather than reach into its component: the tab set
+            // owns its own state, and this keeps the strip in step.
+            const button = document.getElementById('tab-' + pane.id.replace(/^pane-/, ''));
+            if (button) button.click();
+        },
     }));
 });
