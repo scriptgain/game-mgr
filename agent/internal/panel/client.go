@@ -2,7 +2,7 @@
 //
 // The relationship is dial-out only: a node calls the panel, the panel never
 // has to reach in. That is what lets a node sit behind NAT, a home connection
-// or a firewall that allows nothing inbound, and it is why enrolment and
+// or a firewall that allows nothing inbound, and it is why enrollment and
 // heartbeats both start here rather than at the panel.
 //
 // Nothing in this package is permitted to be fatal. A node whose panel is
@@ -23,9 +23,9 @@ import (
 	"time"
 )
 
-// ErrUnauthorized is the panel rejecting a credential: an enrol token that was
+// ErrUnauthorized is the panel rejecting a credential: an enroll token that was
 // already spent or has expired, or a daemon token the panel no longer knows.
-// Enrolment stops retrying on this, because no amount of waiting turns a spent
+// Enrollment stops retrying on this, because no amount of waiting turns a spent
 // single-use token back into a good one.
 var ErrUnauthorized = errors.New("panel rejected the credential")
 
@@ -47,11 +47,11 @@ func New(base, token string) *Client {
 }
 
 // Token is the credential the client is currently using, which after a
-// successful Enrol is the long-lived one the panel just issued.
+// successful Enroll is the long-lived one the panel just issued.
 func (c *Client) Token() string { return c.token }
 
-// Enrolment is what the panel hands back in exchange for a single-use token.
-type Enrolment struct {
+// Enrollment is what the panel hands back in exchange for a single-use token.
+type Enrollment struct {
 	Node struct {
 		UUID string `json:"uuid"`
 		Name string `json:"name"`
@@ -61,24 +61,24 @@ type Enrolment struct {
 	HeartbeatInterval int    `json:"heartbeat_interval"`
 }
 
-// Enrol exchanges the single-use enrol token for the long-lived daemon
+// Enroll exchanges the single-use enroll token for the long-lived daemon
 // credential and adopts it, so the caller cannot forget to.
 //
 // This is the one endpoint that carries its token in the body rather than the
 // Authorization header: at this point the node has no bearer credential yet,
 // which is the entire reason for the call.
-func (c *Client) Enrol(ctx context.Context, enrolToken string, facts Facts) (*Enrolment, error) {
+func (c *Client) Enroll(ctx context.Context, enrollToken string, facts Facts) (*Enrollment, error) {
 	body := struct {
 		Token string `json:"token"`
 		Facts
-	}{Token: enrolToken, Facts: facts}
+	}{Token: enrollToken, Facts: facts}
 
-	var out Enrolment
-	if err := c.post(ctx, "/api/node/enrol", body, &out); err != nil {
+	var out Enrollment
+	if err := c.post(ctx, "/api/node/enroll", body, &out); err != nil {
 		return nil, err
 	}
 	if out.Token == "" {
-		return nil, errors.New("panel accepted the enrolment but returned no token")
+		return nil, errors.New("panel accepted the enrollment but returned no token")
 	}
 	c.token = out.Token
 

@@ -82,7 +82,7 @@ func main() {
 		IdleTimeout: 120 * time.Second,
 	}
 
-	// Enrolment and heartbeats run alongside the listener rather than before
+	// Enrollment and heartbeats run alongside the listener rather than before
 	// it. The panel is not a dependency of this daemon: a node whose panel is
 	// unreachable still has to boot, still has to answer its own API, and above
 	// all must keep running the game servers it already has.
@@ -123,7 +123,7 @@ func main() {
 	_ = srv.Shutdown(ctx)
 }
 
-// link keeps this node's side of the panel relationship: enrol once if it has
+// link keeps this node's side of the panel relationship: enroll once if it has
 // never been enrolled, then heartbeat for as long as the daemon runs.
 //
 // Nothing in here is fatal and nothing in here touches a server. Every failure
@@ -131,7 +131,7 @@ func main() {
 // panel is down - would take a node full of running games with it.
 func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, node *api.Server) {
 	if cfg.PanelURL == "" {
-		log.Printf("no NODE_PANEL_URL: this node will not enrol or heartbeat, and only answers calls the panel makes to it")
+		log.Printf("no NODE_PANEL_URL: this node will not enroll or heartbeat, and only answers calls the panel makes to it")
 
 		return
 	}
@@ -140,12 +140,12 @@ func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, nod
 	interval := time.Duration(cfg.HeartbeatInterval) * time.Second
 
 	if cfg.Token == "" {
-		if cfg.EnrolToken == "" {
-			log.Printf("this node is not enrolled and has no enrol token: set NODE_ENROL_TOKEN from the panel's Add Node screen, or NODE_TOKEN if you have the credential already")
+		if cfg.EnrollToken == "" {
+			log.Printf("this node is not enrolled and has no enroll token: set NODE_ENROLL_TOKEN from the panel's Add Node screen, or NODE_TOKEN if you have the credential already")
 
 			return
 		}
-		result := enrol(ctx, client, cfg, drivers)
+		result := enroll(ctx, client, cfg, drivers)
 		if result == nil {
 			return
 		}
@@ -165,14 +165,14 @@ func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, nod
 	panel.Heartbeat(ctx, client, interval, sampler.Sample)
 }
 
-// enrol exchanges the single-use token for the long-lived one, retrying until
+// enroll exchanges the single-use token for the long-lived one, retrying until
 // it works or the token turns out to be spent. Returns nil if the node is not
 // going to become enrolled this run.
-func enrol(ctx context.Context, client *panel.Client, cfg config.Config, drivers gruntime.Registry) *panel.Enrolment {
+func enroll(ctx context.Context, client *panel.Client, cfg config.Config, drivers gruntime.Registry) *panel.Enrollment {
 	facts := panel.Gather(ctx, cfg.DockerSocket, cfg.Root, version, availableRuntimes(ctx, drivers))
 
 	for failures := 0; ; failures++ {
-		result, err := client.Enrol(ctx, cfg.EnrolToken, facts)
+		result, err := client.Enroll(ctx, cfg.EnrollToken, facts)
 		if err == nil {
 			log.Printf("enrolled with %s as node %q (%s)", cfg.PanelURL, result.Node.Name, result.Node.UUID)
 			persist(cfg.ConfigFile, result.Token)
@@ -185,14 +185,14 @@ func enrol(ctx context.Context, client *panel.Client, cfg config.Config, drivers
 		// A single-use token that the panel refuses will be refused forever, so
 		// retrying is just noise. Say clearly what has to happen instead.
 		if errors.Is(err, panel.ErrUnauthorized) {
-			log.Printf("ERROR: enrolment refused: %v", err)
-			log.Printf("ERROR: enrol tokens are single use and expire. Issue a fresh one from the panel and restart this daemon. Servers already on this node keep running.")
+			log.Printf("ERROR: enrollment refused: %v", err)
+			log.Printf("ERROR: enroll tokens are single use and expire. Issue a fresh one from the panel and restart this daemon. Servers already on this node keep running.")
 
 			return nil
 		}
 
 		wait := panel.Jitter(panel.Backoff(10*time.Second, failures+1))
-		log.Printf("enrolment attempt %d failed: %v; retrying in %s", failures+1, err, wait.Round(time.Second))
+		log.Printf("enrollment attempt %d failed: %v; retrying in %s", failures+1, err, wait.Round(time.Second))
 		select {
 		case <-ctx.Done():
 			return nil
@@ -203,15 +203,15 @@ func enrol(ctx context.Context, client *panel.Client, cfg config.Config, drivers
 
 // persist writes the new credential to the env file, and is loud when it
 // cannot: an in-memory token works perfectly until the first restart, at which
-// point the node quietly comes back unenrolled with a spent enrol token and no
+// point the node quietly comes back unenrolled with a spent enroll token and no
 // way to reach the panel.
 func persist(path, token string) {
 	if err := panel.SaveToken(path, token); err != nil {
 		log.Printf("WARNING: enrolled, but the node token could not be written to %s: %v", path, err)
-		log.Printf("WARNING: this node is running on an in-memory token. It will come back unenrolled after a restart, because the enrol token it still has is now spent.")
+		log.Printf("WARNING: this node is running on an in-memory token. It will come back unenrolled after a restart, because the enroll token it still has is now spent.")
 		// The token goes in the log deliberately. The panel returns it exactly
 		// once and stores only its hash, so this line is the operator's single
-		// remaining copy; without it the only way out is a new enrol token.
+		// remaining copy; without it the only way out is a new enroll token.
 		log.Printf("WARNING: fix the permissions on %s and put this line in it: NODE_TOKEN=%s", path, token)
 
 		return

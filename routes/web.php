@@ -50,7 +50,7 @@ Route::view('/docs', 'docs')->name('docs');
 
 // The node installer, served as plain text so `curl … | sudo bash` works.
 // Unauthenticated by necessity: a fresh box has no session, and the script
-// grants nothing on its own. The enrol token in the one-liner is the
+// grants nothing on its own. The enroll token in the one-liner is the
 // credential, and that is single use and short lived.
 Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('install.node');
 
@@ -165,8 +165,8 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('templates/import', [Admin\TemplateImportController::class, 'show'])->name('templates.import');
         Route::post('templates/import', [Admin\TemplateImportController::class, 'store'])->name('templates.import.store');
 
-        Route::get('nodes/{node}/enrol', [Admin\NodeController::class, 'enrol'])->name('nodes.enrol');
-        Route::post('nodes/{node}/enrol', [Admin\NodeController::class, 'regenerateEnrol'])->name('nodes.enrol.regenerate');
+        Route::get('nodes/{node}/enroll', [Admin\NodeController::class, 'enroll'])->name('nodes.enroll');
+        Route::post('nodes/{node}/enroll', [Admin\NodeController::class, 'regenerateEnroll'])->name('nodes.enroll.regenerate');
         Route::get('nodes/{node}/allocations', [Admin\NodeController::class, 'allocations'])->name('nodes.allocations');
         Route::post('nodes/{node}/allocations', [Admin\NodeController::class, 'storeAllocations'])->name('nodes.allocations.store');
         Route::delete('nodes/{node}/allocations/{allocation}', [Admin\NodeController::class, 'destroyAllocation'])->name('nodes.allocations.destroy');

@@ -1,6 +1,6 @@
 @props(['value', 'label' => null, 'masked' => false])
 {{-- A read-only value with a copy button. Used for connect addresses, tokens
-     and enrol commands: anything the user is going to select-and-copy anyway. --}}
+     and enroll commands: anything the user is going to select-and-copy anyway. --}}
 <div {{ $attributes->merge(['class' => 'space-y-1.5']) }}>
     @if ($label)<label class="block text-sm font-medium text-slate-700">{{ $label }}</label>@endif
     <div x-data="{ shown: {{ $masked ? 'false' : 'true' }}, copied: false }" class="flex items-stretch gap-2">

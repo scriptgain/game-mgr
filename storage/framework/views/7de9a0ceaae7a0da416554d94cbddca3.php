@@ -10,14 +10,14 @@
 <?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($title)]); ?>
     <?php if (isset($component)) { $__componentOriginalf8d4ea307ab1e58d4e472a43c8548d8e = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf8d4ea307ab1e58d4e472a43c8548d8e = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.page-header','data' => ['title' => 'Enrol '.$node->name,'icon' => 'key','subtitle' => 'Run one command on the machine. No config files to edit, no keys to copy by hand.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.page-header','data' => ['title' => 'Enroll '.$node->name,'icon' => 'key','subtitle' => 'Run one command on the machine. No config files to edit, no keys to copy by hand.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('page-header'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('Enrol '.$node->name),'icon' => 'key','subtitle' => 'Run one command on the machine. No config files to edit, no keys to copy by hand.']); ?>
+<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('Enroll '.$node->name),'icon' => 'key','subtitle' => 'Run one command on the machine. No config files to edit, no keys to copy by hand.']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalf8d4ea307ab1e58d4e472a43c8548d8e)): ?>
@@ -78,7 +78,7 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['type' => 'warn','title' => 'This Token Is Single Use']); ?>
-                        It expires <?php echo e($node->enrol_token_expires_at?->diffForHumans() ?? 'shortly'); ?> and can only enrol
+                        It expires <?php echo e($node->enroll_token_expires_at?->diffForHumans() ?? 'shortly'); ?> and can only enroll
                         one machine. All it buys the daemon is its long-lived credential, so a token that leaks onto a
                         support ticket is not a compromise. Generate a fresh one if in doubt.
                      <?php echo $__env->renderComponent(); ?>
@@ -98,7 +98,7 @@
                             <?php echo e($node->enrolled_at ? 'Enrolled '.$node->enrolled_at->diffForHumans() : 'Not enrolled yet'); ?>
 
                         </span>
-                        <form method="POST" action="<?php echo e(route('admin.nodes.enrol.regenerate', $node)); ?>">
+                        <form method="POST" action="<?php echo e(route('admin.nodes.enroll.regenerate', $node)); ?>">
                             <?php echo csrf_field(); ?><?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['type' => 'submit','variant' => 'secondary','size' => 'sm','icon' => 'refresh']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -149,13 +149,13 @@
                 </p>
                 <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">NODE_PANEL_URL=<?php echo e(rtrim(config('app.url'), '/')); ?>
 
-NODE_ENROL_TOKEN=<?php echo e($node->enrol_token); ?>
+NODE_ENROLL_TOKEN=<?php echo e($node->enroll_token); ?>
 
 NODE_LISTEN=:<?php echo e($node->daemon_port); ?>
 
 NODE_ROOT=<?php echo e($node->daemon_base); ?></pre>
                 <p class="mt-3 text-sm text-slate-600">
-                    It exchanges the enrol token for its real credential on first boot, writes that to its config, and
+                    It exchanges the enroll token for its real credential on first boot, writes that to its config, and
                     starts answering.
                 </p>
              <?php echo $__env->renderComponent(); ?>
@@ -305,4 +305,4 @@ NODE_ROOT=<?php echo e($node->daemon_base); ?></pre>
 <?php $component = $__componentOriginal5863877a5171c196453bfa0bd807e410; ?>
 <?php unset($__componentOriginal5863877a5171c196453bfa0bd807e410); ?>
 <?php endif; ?>
-<?php /**PATH /var/www/gamemgr/resources/views/admin/nodes/enrol.blade.php ENDPATH**/ ?>
+<?php /**PATH /var/www/gamemgr/resources/views/admin/nodes/enroll.blade.php ENDPATH**/ ?>

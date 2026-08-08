@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// What this protects: an enrol token is single use. If the long-lived token
-// does not reach the env file, the next restart replays a spent enrol token,
+// What this protects: an enroll token is single use. If the long-lived token
+// does not reach the env file, the next restart replays a spent enroll token,
 // the panel refuses it, and the node comes back with its servers running and
 // nothing able to reach them.
 func TestSaveToken(t *testing.T) {
@@ -22,15 +22,15 @@ func TestSaveToken(t *testing.T) {
 		notWant []string
 	}{
 		{
-			name:   "the enrol token is replaced by the real one",
+			name:   "the enroll token is replaced by the real one",
 			create: true,
-			before: "NODE_PANEL_URL=https://panel.example\nNODE_ENROL_TOKEN=single-use\nNODE_ROOT=/var/lib/gamemgr/volumes\n",
+			before: "NODE_PANEL_URL=https://panel.example\nNODE_ENROLL_TOKEN=single-use\nNODE_ROOT=/var/lib/gamemgr/volumes\n",
 			want: []string{
 				"NODE_TOKEN=" + token,
 				"NODE_PANEL_URL=https://panel.example",
 				"NODE_ROOT=/var/lib/gamemgr/volumes",
 			},
-			notWant: []string{"NODE_ENROL_TOKEN", "single-use"},
+			notWant: []string{"NODE_ENROLL_TOKEN", "single-use"},
 		},
 		{
 			name:    "an existing token is overwritten in place, not duplicated",
@@ -41,12 +41,22 @@ func TestSaveToken(t *testing.T) {
 		},
 		{
 			// Hand-edited files pick up export and stray whitespace, and a
-			// surviving export NODE_ENROL_TOKEN would still be in the daemon's
+			// surviving export NODE_ENROLL_TOKEN would still be in the daemon's
 			// environment on the next boot.
 			name:    "export and indentation are still recognised",
 			create:  true,
-			before:  "  export NODE_ENROL_TOKEN=single-use\n# NODE_TOKEN is written by enrolment\n",
-			want:    []string{"NODE_TOKEN=" + token, "# NODE_TOKEN is written by enrolment"},
+			before:  "  export NODE_ENROLL_TOKEN=single-use\n# NODE_TOKEN is written by enrollment\n",
+			want:    []string{"NODE_TOKEN=" + token, "# NODE_TOKEN is written by enrollment"},
+			notWant: []string{"NODE_ENROLL_TOKEN", "single-use"},
+		},
+		{
+			// A node installed before the enrol/enroll rename has the old key
+			// in its env file. Leaving it there would hand the next restart a
+			// token the panel has already spent.
+			name:    "the pre-rename NODE_ENROL_TOKEN is dropped too",
+			create:  true,
+			before:  "NODE_PANEL_URL=https://panel.example\nNODE_ENROL_TOKEN=single-use\n",
+			want:    []string{"NODE_TOKEN=" + token, "NODE_PANEL_URL=https://panel.example"},
 			notWant: []string{"NODE_ENROL_TOKEN", "single-use"},
 		},
 		{
@@ -126,7 +136,7 @@ func TestSaveTokenReportsAnUnwritableFile(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "node.env")
-	if err := os.WriteFile(path, []byte("NODE_ENROL_TOKEN=single-use\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("NODE_ENROLL_TOKEN=single-use\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// Read and execute only: the file can be read but nothing can be created
@@ -145,7 +155,7 @@ func TestSaveTokenReportsAnUnwritableFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(raw) != "NODE_ENROL_TOKEN=single-use\n" {
+	if string(raw) != "NODE_ENROLL_TOKEN=single-use\n" {
 		t.Fatalf("the original file was modified: %q", raw)
 	}
 }

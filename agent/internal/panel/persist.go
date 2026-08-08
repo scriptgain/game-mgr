@@ -7,10 +7,10 @@ import (
 )
 
 // SaveToken rewrites the daemon's env file with the long-lived token and drops
-// the enrol token.
+// the enroll token.
 //
-// This is what makes enrolment survive a restart. Enrol tokens are single use,
-// so a node that came back with NODE_ENROL_TOKEN still set and no NODE_TOKEN
+// This is what makes enrollment survive a restart. Enroll tokens are single use,
+// so a node that came back with NODE_ENROLL_TOKEN still set and no NODE_TOKEN
 // would try to spend a token the panel has already burned, be refused, and sit
 // there unenrolled with its servers running and nothing able to reach them.
 //
@@ -59,9 +59,9 @@ func SaveToken(path, token string) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// rewrite returns the file's new contents: NODE_TOKEN set, NODE_ENROL_TOKEN
+// rewrite returns the file's new contents: NODE_TOKEN set, NODE_ENROLL_TOKEN
 // gone, and every other line left exactly as the operator wrote it, comments
-// included. A missing file is not an error; the enrol one-liner may never have
+// included. A missing file is not an error; the enroll one-liner may never have
 // written one.
 func rewrite(path, token string) (string, error) {
 	raw, err := os.ReadFile(path)
@@ -80,7 +80,11 @@ func rewrite(path, token string) (string, error) {
 			}
 			out = append(out, "NODE_TOKEN="+token)
 			replaced = true
-		case "NODE_ENROL_TOKEN":
+		// NODE_ENROL_TOKEN is the pre-rename spelling. A node installed before
+		// the rename has it in its env file, and leaving it behind would hand
+		// the next restart a spent token to replay. Drop both spellings until
+		// no field node predates the rename.
+		case "NODE_ENROLL_TOKEN", "NODE_ENROL_TOKEN":
 			continue
 		default:
 			out = append(out, line)

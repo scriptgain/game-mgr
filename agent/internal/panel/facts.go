@@ -13,12 +13,12 @@ import (
 	"github.com/scriptgain/gamemgr-node/internal/docker"
 )
 
-// Facts is what a node says about itself once, at enrolment: the things the
+// Facts is what a node says about itself once, at enrollment: the things the
 // panel shows on a node's Overview tab and uses to decide what it can run.
 //
 // The field lengths mirror the panel's validation rules. They are enforced here
 // rather than hoped for, because a node whose /etc/os-release happens to be
-// verbose would otherwise fail enrolment with a 422 and no obvious cause.
+// verbose would otherwise fail enrollment with a 422 and no obvious cause.
 type Facts struct {
 	OS           string   `json:"os"`
 	Kernel       string   `json:"kernel"`
@@ -33,7 +33,7 @@ type Facts struct {
 
 // Gather collects the node's facts. Every source is optional: a missing
 // /proc, an unreachable Docker socket or an unreadable data root each leave one
-// field empty rather than failing the enrolment the node needs to complete.
+// field empty rather than failing the enrollment the node needs to complete.
 func Gather(ctx context.Context, socket, root, agentVersion string, runtimes []string) Facts {
 	sysname, release, machine := unameFacts()
 
@@ -51,7 +51,7 @@ func Gather(ctx context.Context, socket, root, agentVersion string, runtimes []s
 	}
 
 	// Bounded separately: a Docker daemon that accepts the connection and then
-	// never answers must not hold up enrolment.
+	// never answers must not hold up enrollment.
 	dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if v, err := docker.New(socket).Version(dctx); err == nil {

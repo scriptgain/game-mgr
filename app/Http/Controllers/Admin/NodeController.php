@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Nodes are the machines game servers run on, and they can be anywhere: a VPS,
  * a dedicated box, a Proxmox VM, a NUC in a cupboard. This controller is the
- * whole lifecycle: create the row, hand out an enrol one-liner, watch the
+ * whole lifecycle: create the row, hand out an enroll one-liner, watch the
  * daemon report in, carve up its ports, and eventually drain it.
  */
 class NodeController extends Controller
@@ -45,10 +45,10 @@ class NodeController extends Controller
     public function store(Request $request)
     {
         $node = Node::create($this->validated($request));
-        $this->issueEnrolToken($node);
+        $this->issueEnrollToken($node);
 
-        return redirect()->route('admin.nodes.enrol', $node)
-            ->with('status', 'Node created. Run the command below on the machine to enrol it.');
+        return redirect()->route('admin.nodes.enroll', $node)
+            ->with('status', 'Node created. Run the command below on the machine to enroll it.');
     }
 
     public function show(Node $node)
@@ -94,26 +94,26 @@ class NodeController extends Controller
         return redirect()->route('admin.nodes.index')->with('status', 'Node deleted.');
     }
 
-    // ---------------------------------------------------------------- enrol
+    // ---------------------------------------------------------------- enroll
 
-    public function enrol(Node $node)
+    public function enroll(Node $node)
     {
-        if (! $node->enrol_token || $node->enrol_token_expires_at?->isPast()) {
-            $this->issueEnrolToken($node);
+        if (! $node->enroll_token || $node->enroll_token_expires_at?->isPast()) {
+            $this->issueEnrollToken($node);
         }
 
-        return view('admin.nodes.enrol', [
-            'title' => 'Enrol '.$node->name,
+        return view('admin.nodes.enroll', [
+            'title' => 'Enroll '.$node->name,
             'node' => $node,
-            'command' => $this->enrolCommand($node),
+            'command' => $this->enrollCommand($node),
         ]);
     }
 
-    public function regenerateEnrol(Node $node)
+    public function regenerateEnroll(Node $node)
     {
-        $this->issueEnrolToken($node);
+        $this->issueEnrollToken($node);
 
-        return back()->with('status', 'A fresh enrol token was issued. The previous one no longer works.');
+        return back()->with('status', 'A fresh enroll token was issued. The previous one no longer works.');
     }
 
     /**
@@ -121,21 +121,21 @@ class NodeController extends Controller
      * and single use: all it buys the daemon is its long-lived credential, so a
      * token leaking off a support ticket is not a compromise.
      */
-    private function enrolCommand(Node $node): string
+    private function enrollCommand(Node $node): string
     {
         return sprintf(
             'curl -fsSL %s/install/node | sudo bash -s -- --panel %s --token %s',
             rtrim(config('app.url'), '/'),
             rtrim(config('app.url'), '/'),
-            $node->enrol_token,
+            $node->enroll_token,
         );
     }
 
-    private function issueEnrolToken(Node $node): void
+    private function issueEnrollToken(Node $node): void
     {
         $node->forceFill([
-            'enrol_token' => Str::random(48),
-            'enrol_token_expires_at' => now()->addSeconds((int) config('node.enrol_token_ttl', 3600)),
+            'enroll_token' => Str::random(48),
+            'enroll_token_expires_at' => now()->addSeconds((int) config('node.enroll_token_ttl', 3600)),
         ])->save();
     }
 

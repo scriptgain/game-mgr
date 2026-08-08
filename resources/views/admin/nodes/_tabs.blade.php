@@ -6,7 +6,7 @@
         ['Overview', route('admin.nodes.show', $node), 'dashboard', request()->routeIs('admin.nodes.show')],
         ['Allocations', route('admin.nodes.allocations', $node), 'network', request()->routeIs('admin.nodes.allocations')],
         ['Metrics', route('admin.nodes.metrics', $node), 'chart', request()->routeIs('admin.nodes.metrics')],
-        ['Enrol', route('admin.nodes.enrol', $node), 'key', request()->routeIs('admin.nodes.enrol')],
+        ['Enroll', route('admin.nodes.enroll', $node), 'key', request()->routeIs('admin.nodes.enroll')],
         ['Configuration', route('admin.nodes.edit', $node), 'settings', request()->routeIs('admin.nodes.edit')],
     ];
 @endphp

@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 /**
  * Serves the node installer as plain text at GET /install/node.
  *
- * This is the other half of the one-liner on the node Enrol screen:
+ * This is the other half of the one-liner on the node Enroll screen:
  *
  *   curl -fsSL {panel}/install/node | sudo bash -s -- --panel {panel} --token {t}
  *
  * Unauthenticated on purpose. A brand-new box has no session and no credential
- * yet, and the script itself grants nothing: the enrol token in the command is
+ * yet, and the script itself grants nothing: the enroll token in the command is
  * the credential, and it is single use and short lived.
  */
 class NodeInstallerController extends Controller

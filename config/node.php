@@ -18,7 +18,7 @@ return [
     // A node is considered offline once its last heartbeat is older than this.
     'offline_after' => 120,
 
-    // Enrol tokens are single use and expire quickly; they only ever buy the
+    // Enroll tokens are single use and expire quickly; they only ever buy the
     // daemon its long-lived credential.
-    'enrol_token_ttl' => 3600,
+    'enroll_token_ttl' => 3600,
 ];

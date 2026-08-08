@@ -32,7 +32,7 @@ type Server struct {
 	started time.Time
 	version string
 	sup     *supervise.Supervisor
-	// Held apart from cfg because enrolment can finish after the listener is
+	// Held apart from cfg because enrollment can finish after the listener is
 	// already up, and a node that just enrolled has to start accepting the
 	// panel without waiting for a restart.
 	token atomic.Value
@@ -45,7 +45,7 @@ func New(cfg config.Config, drivers gruntime.Registry, version string, sup *supe
 	return s
 }
 
-// SetToken swaps in the credential enrolment obtained.
+// SetToken swaps in the credential enrollment obtained.
 func (s *Server) SetToken(token string) { s.token.Store(token) }
 
 func (s *Server) currentToken() string {

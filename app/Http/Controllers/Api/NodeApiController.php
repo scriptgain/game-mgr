@@ -20,11 +20,11 @@ use Illuminate\Support\Str;
 class NodeApiController extends Controller
 {
     /**
-     * Exchange a single-use enrol token for the long-lived daemon credential.
+     * Exchange a single-use enroll token for the long-lived daemon credential.
      * The plaintext credential is returned exactly once and only its hash is
      * stored, so a database leak does not hand over live node access.
      */
-    public function enrol(Request $request)
+    public function enroll(Request $request)
     {
         $data = $request->validate([
             'token' => ['required', 'string'],
@@ -39,15 +39,15 @@ class NodeApiController extends Controller
             'runtimes' => ['nullable', 'array'],
         ]);
 
-        $node = Node::where('enrol_token', $data['token'])->first();
+        $node = Node::where('enroll_token', $data['token'])->first();
 
-        if (! $node || $node->enrol_token_expires_at?->isPast()) {
-            return response()->json(['message' => 'That enrolment token is not valid or has expired.'], 401);
+        if (! $node || $node->enroll_token_expires_at?->isPast()) {
+            return response()->json(['message' => 'That enrollment token is not valid or has expired.'], 401);
         }
 
         $plain = Str::random(64);
 
-        // Enrolment is the one moment the panel learns what a node can actually
+        // Enrollment is the one moment the panel learns what a node can actually
         // run. Until it happens the row carries the model's ['docker'] guess,
         // and Node::supports() gates server creation on that array: a node with
         // steamcmd and LinuxGSM installed and working would refuse every
@@ -66,8 +66,8 @@ class NodeApiController extends Controller
             // authenticated request is refused by a node that is working fine.
             'daemon_token' => hash('sha256', $plain),
             'daemon_secret' => $plain,
-            'enrol_token' => null,
-            'enrol_token_expires_at' => null,
+            'enroll_token' => null,
+            'enroll_token_expires_at' => null,
             'enrolled_at' => now(),
             'last_seen_at' => now(),
             'reported_os' => $data['os'] ?? null,
@@ -80,7 +80,7 @@ class NodeApiController extends Controller
             'reported_disk' => $data['disk'] ?? null,
         ])->save();
 
-        AuditLog::record('node.enrol', 'Node "'.$node->name.'" enrolled from '.$request->ip(), $node);
+        AuditLog::record('node.enroll', 'Node "'.$node->name.'" enrolled from '.$request->ip(), $node);
 
         return response()->json([
             'node' => ['uuid' => $node->uuid, 'name' => $node->name],

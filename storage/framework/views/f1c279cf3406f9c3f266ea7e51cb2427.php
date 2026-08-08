@@ -273,7 +273,7 @@ GET /api/client/servers</pre>
 <?php endif; ?>
 <?php $component->withAttributes(['title' => 'Node API']); ?>
                 <p class="text-sm text-slate-600">What the daemon on each machine talks to.</p>
-                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">POST /api/node/enrol
+                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">POST /api/node/enroll
 POST /api/node/heartbeat
 GET  /api/node/servers
 POST /api/node/servers/{uuid}/state</pre>

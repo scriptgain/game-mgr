@@ -38,13 +38,13 @@ return new class extends Migration
             $table->unsignedInteger('sftp_port')->default(2022);
             $table->boolean('behind_proxy')->default(false);
 
-            // Credentials. daemon_token is stored hashed; enrol_token is a
+            // Credentials. daemon_token is stored hashed; enroll_token is a
             // short-lived single-use secret that only buys the daemon its
             // long-lived credential.
             $table->string('daemon_token_id', 32)->nullable()->index();
             $table->string('daemon_token', 64)->nullable();
-            $table->string('enrol_token', 64)->nullable()->index();
-            $table->timestamp('enrol_token_expires_at')->nullable();
+            $table->string('enroll_token', 64)->nullable()->index();
+            $table->timestamp('enroll_token_expires_at')->nullable();
             $table->timestamp('enrolled_at')->nullable();
 
             // Declared capacity, set by the admin. Over-allocation lets a node
@@ -67,7 +67,7 @@ return new class extends Migration
             $table->boolean('maintenance_mode')->default(false);
             $table->string('daemon_base')->default('/var/lib/gamemgr/volumes');
 
-            // Self-reported inventory, filled in by the daemon at enrolment and
+            // Self-reported inventory, filled in by the daemon at enrollment and
             // refreshed on every heartbeat. Never trusted for limits, only shown.
             $table->string('reported_os')->nullable();
             $table->string('reported_kernel')->nullable();

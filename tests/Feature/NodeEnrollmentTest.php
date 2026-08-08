@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * What a node reports about itself has to survive enrolment.
+ * What a node reports about itself has to survive enrollment.
  *
  * Found on the first real install rather than in the dev stack: the daemon
  * probed all three runtimes, said so in its logs, sent the list, and the panel
@@ -17,7 +17,7 @@ use Tests\TestCase;
  * server creation on that array, so a box with working SteamCMD and LinuxGSM
  * would silently offer nothing but the Docker templates.
  */
-class NodeEnrolmentTest extends TestCase
+class NodeEnrollmentTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -36,8 +36,8 @@ class NodeEnrolmentTest extends TestCase
         // Not fillable, and deliberately so: the token is minted by the panel,
         // never posted in. forceFill is what the controller does too.
         $node->forceFill([
-            'enrol_token' => Str::random(48),
-            'enrol_token_expires_at' => now()->addHour(),
+            'enroll_token' => Str::random(48),
+            'enroll_token_expires_at' => now()->addHour(),
         ])->save();
 
         return $node;
@@ -48,8 +48,8 @@ class NodeEnrolmentTest extends TestCase
         $node = $this->node();
         $this->assertSame(['docker'], $node->runtimes, 'the model still defaults to docker');
 
-        $this->postJson('/api/node/enrol', [
-            'token' => $node->enrol_token,
+        $this->postJson('/api/node/enroll', [
+            'token' => $node->enroll_token,
             'runtimes' => ['docker', 'steamcmd', 'linuxgsm'],
         ])->assertOk();
 
@@ -64,8 +64,8 @@ class NodeEnrolmentTest extends TestCase
     {
         $node = $this->node();
 
-        $this->postJson('/api/node/enrol', [
-            'token' => $node->enrol_token,
+        $this->postJson('/api/node/enroll', [
+            'token' => $node->enroll_token,
             'runtimes' => ['docker', 'kubernetes', 'wine'],
         ])->assertOk();
 
@@ -76,7 +76,7 @@ class NodeEnrolmentTest extends TestCase
     {
         $node = $this->node(['runtimes' => ['steamcmd']]);
 
-        $this->postJson('/api/node/enrol', ['token' => $node->enrol_token])->assertOk();
+        $this->postJson('/api/node/enroll', ['token' => $node->enroll_token])->assertOk();
 
         $this->assertSame(['steamcmd'], $node->refresh()->runtimes);
     }
@@ -84,18 +84,18 @@ class NodeEnrolmentTest extends TestCase
     public function test_a_spent_token_cannot_be_replayed(): void
     {
         $node = $this->node();
-        $token = $node->enrol_token;
+        $token = $node->enroll_token;
 
-        $this->postJson('/api/node/enrol', ['token' => $token, 'runtimes' => ['docker']])->assertOk();
-        $this->postJson('/api/node/enrol', ['token' => $token, 'runtimes' => ['docker']])->assertStatus(401);
+        $this->postJson('/api/node/enroll', ['token' => $token, 'runtimes' => ['docker']])->assertOk();
+        $this->postJson('/api/node/enroll', ['token' => $token, 'runtimes' => ['docker']])->assertStatus(401);
     }
 
-    public function test_enrolment_leaves_the_panel_able_to_call_the_node(): void
+    public function test_enrollment_leaves_the_panel_able_to_call_the_node(): void
     {
         $node = $this->node();
 
-        $response = $this->postJson('/api/node/enrol', [
-            'token' => $node->enrol_token,
+        $response = $this->postJson('/api/node/enroll', [
+            'token' => $node->enroll_token,
             'runtimes' => ['docker'],
         ])->assertOk();
 
@@ -112,10 +112,30 @@ class NodeEnrolmentTest extends TestCase
         $this->assertSame(hash('sha256', $issued), $node->daemon_token);
     }
 
+    /**
+     * Daemons built before the enrol/enroll rename POST to the old path, and
+     * one of them is running on the live box. If this ever goes red, every node
+     * in the field older than the rename silently 404s on enrollment.
+     */
+    public function test_the_pre_rename_enrol_path_still_works(): void
+    {
+        $node = $this->node();
+
+        $this->postJson('/api/node/enrol', [
+            'token' => $node->enroll_token,
+            'runtimes' => ['docker', 'steamcmd'],
+        ])->assertOk();
+
+        $node->refresh();
+
+        $this->assertNotNull($node->enrolled_at);
+        $this->assertEqualsCanonicalizing(['docker', 'steamcmd'], $node->runtimes);
+    }
+
     public function test_the_daemon_secret_is_encrypted_at_rest_and_never_serialised(): void
     {
         $node = $this->node();
-        $this->postJson('/api/node/enrol', ['token' => $node->enrol_token])->assertOk();
+        $this->postJson('/api/node/enroll', ['token' => $node->enroll_token])->assertOk();
 
         $node->refresh();
         $raw = \DB::table('nodes')->where('id', $node->id)->value('daemon_secret');

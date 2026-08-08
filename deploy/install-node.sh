@@ -7,14 +7,14 @@
 # firewall holes the thing actually needs to be reachable.
 #
 # The panel serves this file at GET /install/node with its own URL substituted
-# as the default --panel, which is where the one-liner on the Enrol screen comes
+# as the default --panel, which is where the one-liner on the Enroll screen comes
 # from:
 #
 #   curl -fsSL https://panel.example/install/node | sudo bash -s -- \
-#       --panel https://panel.example --token <enrol token>
+#       --panel https://panel.example --token <enroll token>
 #
 # Re-running is safe. It will not clobber the token of a node that is already
-# enrolled and working; pass --reenrol if that is genuinely what you want.
+# enrolled and working; pass --reenroll if that is genuinely what you want.
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ NODE_NAME=""
 BINARY=""
 BINARY_SHA256=""
 SOURCE_DIR=""
-REENROL="no"
+REENROLL="no"
 TOUCH_FIREWALL="yes"
 # Game ports opened when ufw is active. Both TCP and UDP, because Source,
 # Minecraft, and everything Unreal disagree about which one matters.
@@ -69,7 +69,7 @@ Usage: install-node.sh [options]
   --panel <url>       Panel base URL, e.g. https://panel.example or
                       http://203.0.113.10 . Required unless this script was
                       served by the panel itself.
-  --token <token>     Single-use enrol token from the panel's Enrol screen.
+  --token <token>     Single-use enroll token from the panel's Enroll screen.
   --root <path>       Where server data lives. Default /var/lib/gamemgr/volumes
   --port <port>       Port the daemon listens on. Default 8942
   --name <name>       Name this node reports to the panel. Default: hostname
@@ -77,7 +77,8 @@ Usage: install-node.sh [options]
                       no Go toolchain, so this is the normal path.
   --sha256 <hex>      Expected sha256 of that binary. Verified before install.
   --source <dir>      Build from this source tree instead (needs Go installed).
-  --reenrol           Discard an existing node token and enrol again.
+  --reenroll          Discard an existing node token and enroll again.
+                      --reenrol, the old British spelling, still works.
   --game-ports <list> Game port ranges to open, comma separated, ufw syntax.
                       Default 8211:8226,25565:25595,27000:27050
   --no-firewall       Do not touch ufw at all.
@@ -98,7 +99,10 @@ while [[ $# -gt 0 ]]; do
         --sha256)      BINARY_SHA256="${2:-}"; shift 2 ;;
         --source)      SOURCE_DIR="${2:-}"; shift 2 ;;
         --game-ports)  GAME_PORTS="${2:-}"; shift 2 ;;
-        --reenrol)     REENROL="yes"; shift ;;
+        # --reenrol is the pre-rename spelling, accepted silently so a command
+        # copy-pasted out of an older runbook or support ticket still works.
+        # Can go once nobody is running instructions written before the rename.
+        --reenroll|--reenrol) REENROLL="yes"; shift ;;
         --no-firewall) TOUCH_FIREWALL="no"; shift ;;
         -h|--help)     usage; exit 0 ;;
         *)             die "Unknown option: $1 (try --help)" ;;
@@ -364,7 +368,7 @@ ERROR  No daemon binary, and this box cannot build one: that needs both a Go
        Put the binary somewhere this box can reach over HTTP(S), then re-run:
 
            sudo bash install-node.sh --panel ${PANEL} \\
-                --token <enrol token> \\
+                --token <enroll token> \\
                 --binary https://example/gamemgr-node-linux-amd64 \\
                 --sha256 <the hex from the .sha256 file>
 
@@ -408,21 +412,21 @@ env_get() {
 
 EXISTING_TOKEN="$(env_get NODE_TOKEN)"
 
-if [[ -n "$EXISTING_TOKEN" && "$REENROL" == "yes" ]]; then
-    warn "Discarding the existing node token because --reenrol was given. The panel will treat this as a new enrolment."
+if [[ -n "$EXISTING_TOKEN" && "$REENROLL" == "yes" ]]; then
+    warn "Discarding the existing node token because --reenroll was given. The panel will treat this as a new enrollment."
     EXISTING_TOKEN=""
 fi
 
-ENROL_TOKEN="$TOKEN"
+ENROLL_TOKEN="$TOKEN"
 if [[ -n "$EXISTING_TOKEN" ]]; then
     # Never clobber a working node's credential on a re-run. That is the whole
     # difference between "idempotent" and "breaks the node you just fixed".
-    ENROL_TOKEN=""
+    ENROLL_TOKEN=""
     if [[ -n "$TOKEN" ]]; then
-        warn "This node is already enrolled, so the --token you passed was ignored. Re-run with --reenrol to force a fresh enrolment."
+        warn "This node is already enrolled, so the --token you passed was ignored. Re-run with --reenroll to force a fresh enrollment."
     fi
     ok "keeping the existing node token"
-elif [[ -z "$ENROL_TOKEN" ]]; then
+elif [[ -z "$ENROLL_TOKEN" ]]; then
     warn "No --token and no existing credential: the daemon will start but stay unenrolled and refuse every panel call until you give it one."
 fi
 
@@ -440,7 +444,7 @@ tmp_env="$(mktemp "${CONFIG_DIR}/node.env.XXXXXX")"
     printf 'NODE_HEARTBEAT=%s\n' "$(env_get NODE_HEARTBEAT || true)"
     printf 'NODE_CONFIG_FILE=%s\n' "$CONFIG_FILE"
     if [[ -n "$EXISTING_TOKEN" ]]; then printf 'NODE_TOKEN=%s\n' "$EXISTING_TOKEN"; fi
-    if [[ -n "$ENROL_TOKEN" ]]; then printf 'NODE_ENROL_TOKEN=%s\n' "$ENROL_TOKEN"; fi
+    if [[ -n "$ENROLL_TOKEN" ]]; then printf 'NODE_ENROLL_TOKEN=%s\n' "$ENROLL_TOKEN"; fi
 } > "$tmp_env"
 
 # Blank values would override the daemon's own defaults with empty strings on
@@ -547,7 +551,7 @@ else
     fi
 fi
 
-# ------------------------------------------------------- 10. enrol + report
+# ------------------------------------------------------- 10. enroll + report
 
 log "Waiting for the daemon"
 
@@ -556,7 +560,7 @@ enrolled="no"
 for _ in $(seq 1 30); do
     if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then
         health_ok="yes"
-        # Enrolment is done by the daemon itself: it trades the enrol token for
+        # Enrollment is done by the daemon itself: it trades the enroll token for
         # its long-lived credential and writes that back into the config file.
         if [[ -n "$(env_get NODE_TOKEN)" ]]; then
             enrolled="yes"
@@ -581,11 +585,11 @@ if [[ "$enrolled" == "yes" ]]; then
     ok "enrolled with ${PANEL}: it holds a long-lived node token now"
 elif [[ -n "$EXISTING_TOKEN" ]]; then
     ok "already enrolled (existing token preserved)"
-elif [[ -n "$ENROL_TOKEN" ]]; then
-    warn "The daemon has not enrolled yet. Enrol tokens are single use and expire, so generate a fresh one on the panel and re-run with --token. Last few log lines:"
+elif [[ -n "$ENROLL_TOKEN" ]]; then
+    warn "The daemon has not enrolled yet. Enroll tokens are single use and expire, so generate a fresh one on the panel and re-run with --token. Last few log lines:"
     journalctl -u gamemgr-node -n 15 --no-pager 2>/dev/null | sed 's/^/       /' || true
 else
-    warn "This node is not enrolled. Get an enrol token from ${PANEL} and re-run with --token <token>."
+    warn "This node is not enrolled. Get an enroll token from ${PANEL} and re-run with --token <token>."
 fi
 
 if [[ ${#WARNINGS[@]} -gt 0 ]]; then

@@ -323,14 +323,14 @@
 <?php endif; ?>
                             <?php if (isset($component)) { $__componentOriginal658398a0e73a18931bb7def04d911f42 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal658398a0e73a18931bb7def04d911f42 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['href' => ''.e(route('admin.nodes.enrol', $node)).'','icon' => 'key','title' => 'Enrol Command']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['href' => ''.e(route('admin.nodes.enroll', $node)).'','icon' => 'key','title' => 'Enroll Command']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('icon-button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e(route('admin.nodes.enrol', $node)).'','icon' => 'key','title' => 'Enrol Command']); ?>
+<?php $component->withAttributes(['href' => ''.e(route('admin.nodes.enroll', $node)).'','icon' => 'key','title' => 'Enroll Command']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal658398a0e73a18931bb7def04d911f42)): ?>

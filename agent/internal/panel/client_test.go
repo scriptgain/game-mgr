@@ -10,11 +10,11 @@ import (
 	"testing"
 )
 
-// The whole of enrolment is one request whose answer the node can never ask for
-// again: enrol tokens are single use, so a client that mishandles the response
+// The whole of enrollment is one request whose answer the node can never ask for
+// again: enroll tokens are single use, so a client that mishandles the response
 // leaves a node that can never be enrolled without an operator issuing a new
 // token. These pin down what it sends and how it reads each answer back.
-func TestEnrol(t *testing.T) {
+func TestEnroll(t *testing.T) {
 	facts := Facts{
 		OS: "Ubuntu 24.04.1 LTS", Kernel: "6.8.0-45-generic", Arch: "x86_64",
 		Docker: "27.3.1", AgentVersion: "0.1.0", CPUCores: 8,
@@ -43,7 +43,7 @@ func TestEnrol(t *testing.T) {
 			// forever and retrying this one would be pure noise.
 			name:    "a spent or expired token is unauthorized",
 			status:  http.StatusUnauthorized,
-			body:    `{"message":"That enrolment token is not valid or has expired."}`,
+			body:    `{"message":"That enrollment token is not valid or has expired."}`,
 			wantErr: true,
 		},
 		{
@@ -76,34 +76,34 @@ func TestEnrol(t *testing.T) {
 			defer srv.Close()
 
 			client := New(srv.URL+"/", "")
-			result, err := client.Enrol(context.Background(), "single-use-token", facts)
+			result, err := client.Enroll(context.Background(), "single-use-token", facts)
 
 			if tc.wantErr {
 				if err == nil {
-					t.Fatalf("Enrol succeeded, want an error")
+					t.Fatalf("Enroll succeeded, want an error")
 				}
 				if want := tc.status == http.StatusUnauthorized; errors.Is(err, ErrUnauthorized) != want {
 					t.Fatalf("errors.Is(err, ErrUnauthorized) = %v, want %v (err: %v)", !want, want, err)
 				}
-				// A failed enrolment must not leave the client holding
+				// A failed enrollment must not leave the client holding
 				// something it will then send as a bearer token.
 				if client.Token() != "" {
-					t.Fatalf("client adopted %q from a failed enrolment", client.Token())
+					t.Fatalf("client adopted %q from a failed enrollment", client.Token())
 				}
 
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("Enrol: %v", err)
+				t.Fatalf("Enroll: %v", err)
 			}
-			if gotPath != "/api/node/enrol" {
-				t.Fatalf("posted to %s, want /api/node/enrol", gotPath)
+			if gotPath != "/api/node/enroll" {
+				t.Fatalf("posted to %s, want /api/node/enroll", gotPath)
 			}
-			// Enrolment is the one call with no credential to present: the
+			// Enrollment is the one call with no credential to present: the
 			// token goes in the body precisely because there is no bearer yet.
 			if gotAuth != "" {
-				t.Fatalf("sent Authorization %q on enrol, want none", gotAuth)
+				t.Fatalf("sent Authorization %q on enroll, want none", gotAuth)
 			}
 			if result.Token != tc.wantToken || client.Token() != tc.wantToken {
 				t.Fatalf("token = %q / client %q, want %q", result.Token, client.Token(), tc.wantToken)
@@ -184,7 +184,7 @@ func TestHeartbeatUnauthorizedIsRecognisable(t *testing.T) {
 	}
 }
 
-// Enrolment fails with a 422 and no explanation if a fact is longer than the
+// Enrollment fails with a 422 and no explanation if a fact is longer than the
 // panel's column, so the lengths are capped at the source.
 func TestGatherStaysWithinThePanelValidation(t *testing.T) {
 	facts := Gather(context.Background(), "/nonexistent/docker.sock", t.TempDir(), strings.Repeat("v", 80), []string{"stub"})

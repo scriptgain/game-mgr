@@ -95,7 +95,7 @@ Built into ${DIST_DIR}
 
 Install on a node with:
 
-    sudo bash install-node.sh --panel <panel url> --token <enrol token> \\
+    sudo bash install-node.sh --panel <panel url> --token <enroll token> \\
          --binary <url or path to the binary> \\
          --sha256 <the hex above>
 

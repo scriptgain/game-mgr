@@ -43,12 +43,22 @@ Route::prefix('client')->name('api.client.')->middleware('api.token')->group(fun
 });
 
 /*
- * Node daemon API. Daemons dial out to this. Enrolment exchanges a short-lived
+ * Node daemon API. Daemons dial out to this. Enrollment exchanges a short-lived
  * single-use token for a long-lived credential; everything else uses that
  * credential.
  */
 Route::prefix('node')->name('api.node.')->group(function () {
-    Route::post('enrol', [\App\Http\Controllers\Api\NodeApiController::class, 'enrol']);
+    Route::post('enroll', [\App\Http\Controllers\Api\NodeApiController::class, 'enroll']);
+
+    // Backward compatibility: the endpoint was spelled /api/node/enrol until the
+    // rename to US English. Daemons built before that still POST to the old
+    // path, and a node that cannot enroll is a node that cannot be controlled,
+    // so the old spelling stays registered against the same action. Safe to
+    // delete once every node in the field reports an agent version at or above
+    // the first release that ships the "enroll" spelling.
+    Route::post('enrol', [\App\Http\Controllers\Api\NodeApiController::class, 'enroll'])
+        ->name('enroll.legacy');
+
     Route::middleware('agent.auth')->group(function () {
         Route::post('heartbeat', [\App\Http\Controllers\Api\NodeApiController::class, 'heartbeat']);
         Route::get('servers', [\App\Http\Controllers\Api\NodeApiController::class, 'servers']);

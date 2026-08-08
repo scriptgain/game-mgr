@@ -1,5 +1,5 @@
 <x-layouts.app :title="$title">
-    <x-page-header :title="'Enrol '.$node->name" icon="key"
+    <x-page-header :title="'Enroll '.$node->name" icon="key"
                    subtitle="Run one command on the machine. No config files to edit, no keys to copy by hand." />
 
     @include('admin.nodes._tabs', ['node' => $node])
@@ -14,7 +14,7 @@
                 <x-copy-field :value="$command" />
                 <div class="mt-4">
                     <x-alert type="warn" title="This Token Is Single Use">
-                        It expires {{ $node->enrol_token_expires_at?->diffForHumans() ?? 'shortly' }} and can only enrol
+                        It expires {{ $node->enroll_token_expires_at?->diffForHumans() ?? 'shortly' }} and can only enroll
                         one machine. All it buys the daemon is its long-lived credential, so a token that leaks onto a
                         support ticket is not a compromise. Generate a fresh one if in doubt.
                     </x-alert>
@@ -24,7 +24,7 @@
                         <span class="text-xs text-slate-500">
                             {{ $node->enrolled_at ? 'Enrolled '.$node->enrolled_at->diffForHumans() : 'Not enrolled yet' }}
                         </span>
-                        <form method="POST" action="{{ route('admin.nodes.enrol.regenerate', $node) }}">
+                        <form method="POST" action="{{ route('admin.nodes.enroll.regenerate', $node) }}">
                             @csrf<x-button type="submit" variant="secondary" size="sm" icon="refresh">New Token</x-button>
                         </form>
                     </div>
@@ -38,11 +38,11 @@
                     and run it with these environment variables:
                 </p>
                 <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">NODE_PANEL_URL={{ rtrim(config('app.url'), '/') }}
-NODE_ENROL_TOKEN={{ $node->enrol_token }}
+NODE_ENROLL_TOKEN={{ $node->enroll_token }}
 NODE_LISTEN=:{{ $node->daemon_port }}
 NODE_ROOT={{ $node->daemon_base }}</pre>
                 <p class="mt-3 text-sm text-slate-600">
-                    It exchanges the enrol token for its real credential on first boot, writes that to its config, and
+                    It exchanges the enroll token for its real credential on first boot, writes that to its config, and
                     starts answering.
                 </p>
             </x-card>

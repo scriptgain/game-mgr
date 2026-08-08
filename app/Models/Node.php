@@ -32,7 +32,7 @@ class Node extends Model
         'public', 'maintenance_mode', 'daemon_base',
     ];
 
-    protected $hidden = ['daemon_token', 'daemon_secret', 'enrol_token'];
+    protected $hidden = ['daemon_token', 'daemon_secret', 'enroll_token'];
 
     protected function casts(): array
     {
@@ -47,7 +47,7 @@ class Node extends Model
             'maintenance_mode' => 'boolean',
             'last_seen_at' => 'datetime',
             'enrolled_at' => 'datetime',
-            'enrol_token_expires_at' => 'datetime',
+            'enroll_token_expires_at' => 'datetime',
         ];
     }
 
@@ -105,7 +105,7 @@ class Node extends Model
             return 'Maintenance';
         }
         if (! $this->enrolled_at) {
-            return 'Awaiting Enrolment';
+            return 'Awaiting Enrollment';
         }
 
         return $this->isOnline() ? 'Online' : 'Offline';
@@ -117,7 +117,7 @@ class Node extends Model
         return match ($this->statusLabel()) {
             'Online' => 'emerald',
             'Maintenance' => 'amber',
-            'Awaiting Enrolment' => 'slate',
+            'Awaiting Enrollment' => 'slate',
             default => 'rose',
         };
     }

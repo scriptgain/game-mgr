@@ -239,9 +239,9 @@ class NodeClient
     /**
      * The credential this panel presents when it calls the node.
      *
-     * An enrolled node has its own, stored encrypted at enrolment. The env
+     * An enrolled node has its own, stored encrypted at enrollment. The env
      * fallback exists only for the dev stack, where the daemon is handed a
-     * fixed token and never enrols. Falling back on a real install is what made
+     * fixed token and never enrolls. Falling back on a real install is what made
      * a healthy node report "did not respond": the panel was presenting the dev
      * token to a daemon holding a 64 character one, so only the unauthenticated
      * health check ever succeeded.

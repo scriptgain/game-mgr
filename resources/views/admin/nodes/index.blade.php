@@ -54,7 +54,7 @@
                         <div class="flex items-center gap-1">
                             <x-icon-button href="{{ route('admin.nodes.show', $node) }}" icon="eye" title="Open Node" />
                             <x-icon-button href="{{ route('admin.nodes.allocations', $node) }}" icon="network" title="Allocations" />
-                            <x-icon-button href="{{ route('admin.nodes.enrol', $node) }}" icon="key" title="Enrol Command" />
+                            <x-icon-button href="{{ route('admin.nodes.enroll', $node) }}" icon="key" title="Enroll Command" />
                             <x-icon-button href="{{ route('admin.nodes.edit', $node) }}" icon="edit" title="Edit Node" />
                         </div>
                     </div>

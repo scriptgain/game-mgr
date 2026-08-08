@@ -2,7 +2,7 @@
 {{-- A read-only block of shell or config with a copy button.
 
      x-copy-field is the right control for one short value on one line: an
-     address, a token, an enrol command. A startup script is two thousand
+     address, a token, an enroll command. A startup script is two thousand
      characters of multi-line shell, which an <input> cannot show at all, so it
      gets a capped pane that scrolls on its own instead of setting the height of
      the whole page.
