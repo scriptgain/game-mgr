@@ -363,6 +363,25 @@ class CatalogueSeeder extends Seeder
                         // into the file before boot. config_schema is the Config
                         // tab: which settings inside that file a customer sees.
                         'config_schema' => [$this->minecraftProperties(), $this->bukkitYaml()],
+                        // Carrying this document is the ONLY thing that makes a
+                        // template Minecraft as far as the panel is concerned,
+                        // and it is what turns the type and version boxes into
+                        // the MCJars picker. The keys of `builds` are the types
+                        // offered; the value is the variable that pins a build
+                        // for that type, which differs per project and is null
+                        // where the image has nowhere to put one.
+                        'mcjars' => [
+                            'type_variable' => 'TYPE',
+                            'version_variable' => 'VERSION',
+                            'builds' => [
+                                'PAPER' => 'PAPER_BUILD',
+                                'PURPUR' => 'PURPUR_BUILD',
+                                'FOLIA' => 'FOLIABUILD',
+                                'PUFFERFISH' => 'PUFFERFISH_BUILD',
+                                'SPIGOT' => null,
+                                'VANILLA' => null,
+                            ],
+                        ],
                         'features' => ['eula', 'java_version', 'pid_limit'],
                         'rcon_supported' => true,
                         'rcon_protocol' => 'minecraft',
@@ -375,9 +394,16 @@ class CatalogueSeeder extends Seeder
                         'update_command' => 'docker pull itzg/minecraft-server:latest',
                         'variables' => [
                             ['name' => 'Accept the Minecraft EULA', 'env_variable' => 'EULA', 'default_value' => 'TRUE', 'rules' => 'required|in:TRUE,true', 'description' => 'Mojang requires this. Without it the container prints the EULA notice and exits immediately, which reads as a crash loop.', 'user_viewable' => true, 'user_editable' => false],
-                            ['name' => 'Server Type', 'env_variable' => 'TYPE', 'default_value' => 'PAPER', 'rules' => 'required|in:PAPER', 'description' => 'Which server software the image downloads. Locked, because a Paper template that quietly installs Forge is not a Paper template.', 'user_viewable' => true, 'user_editable' => false],
-                            ['name' => 'Minecraft Version', 'env_variable' => 'VERSION', 'default_value' => 'LATEST', 'rules' => 'required|string|max:20', 'description' => 'LATEST tracks the newest Paper release. A specific version such as 1.20.4 pins it.', 'user_viewable' => true, 'user_editable' => true],
-                            ['name' => 'Paper Build', 'env_variable' => 'PAPER_BUILD', 'default_value' => '', 'rules' => 'nullable|string|max:20', 'description' => 'Leave blank for the newest build of the chosen version. A number pins one build.', 'user_viewable' => true, 'user_editable' => true],
+                            // The type is a choice, not a lock. It stays inside
+                            // the Paper family plus the two plain servers that
+                            // read the same config files, so the Config tab
+                            // never describes files this server will not write.
+                            ['name' => 'Server Type', 'env_variable' => 'TYPE', 'default_value' => 'PAPER', 'rules' => 'required|in:PAPER,PURPUR,FOLIA,PUFFERFISH,SPIGOT,VANILLA', 'description' => 'Which server software the image downloads. Picked from the live MCJars catalogue.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Minecraft Version', 'env_variable' => 'VERSION', 'default_value' => 'LATEST', 'rules' => 'required|string|max:40', 'description' => 'LATEST tracks the newest release of the chosen type. Anything else pins that version.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Paper Build', 'env_variable' => 'PAPER_BUILD', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Leave blank for the newest build of the chosen version. A number pins one build.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Purpur Build', 'env_variable' => 'PURPUR_BUILD', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Purpur. Blank means the newest build of the chosen version.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Folia Build', 'env_variable' => 'FOLIABUILD', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Folia. No underscore: that is the name the image uses.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Pufferfish Build', 'env_variable' => 'PUFFERFISH_BUILD', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Pufferfish. Blank means the newest build.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Java Heap', 'env_variable' => 'MEMORY', 'default_value' => '75%', 'rules' => 'required|string|max:10', 'description' => 'A percentage of the container limit, which is what keeps the heap under the cap. An absolute size equal to the cap gets the server OOM killed rather than throwing, because the JVM needs metaspace and threads on top of the heap.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Aikar Flags', 'env_variable' => 'USE_AIKAR_FLAGS', 'default_value' => 'true', 'rules' => 'required|in:true,false', 'description' => 'The garbage collector tuning the Paper community settled on. Worth leaving on.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Max Players', 'env_variable' => 'MAX_PLAYERS', 'default_value' => '20', 'rules' => 'required|integer|between:1,200', 'user_viewable' => true, 'user_editable' => true],
@@ -420,6 +446,21 @@ class CatalogueSeeder extends Seeder
                         // offering a tab for a file that will never exist is worse
                         // than not offering one.
                         'config_schema' => [$this->minecraftProperties()],
+                        // The four mod loaders, kept apart from the Paper list
+                        // on purpose: a template is a promise about what a
+                        // server is, and one dropdown offering both families
+                        // would have a Config tab describing files half of its
+                        // own choices never write.
+                        'mcjars' => [
+                            'type_variable' => 'TYPE',
+                            'version_variable' => 'VERSION',
+                            'builds' => [
+                                'FORGE' => 'FORGE_VERSION',
+                                'NEOFORGE' => 'NEOFORGE_VERSION',
+                                'FABRIC' => 'FABRIC_LOADER_VERSION',
+                                'QUILT' => 'QUILT_LOADER_VERSION',
+                            ],
+                        ],
                         'features' => ['eula', 'java_version', 'pid_limit'],
                         'rcon_supported' => true,
                         'rcon_protocol' => 'minecraft',
@@ -432,9 +473,12 @@ class CatalogueSeeder extends Seeder
                         'update_command' => 'docker pull itzg/minecraft-server:latest',
                         'variables' => [
                             ['name' => 'Accept the Minecraft EULA', 'env_variable' => 'EULA', 'default_value' => 'TRUE', 'rules' => 'required|in:TRUE,true', 'description' => 'Mojang requires this. Without it the container prints the EULA notice and exits immediately.', 'user_viewable' => true, 'user_editable' => false],
-                            ['name' => 'Server Type', 'env_variable' => 'TYPE', 'default_value' => 'FORGE', 'rules' => 'required|in:FORGE', 'description' => 'Locked. Switching this is really a different template.', 'user_viewable' => true, 'user_editable' => false],
-                            ['name' => 'Minecraft Version', 'env_variable' => 'VERSION', 'default_value' => '1.20.1', 'rules' => 'required|string|max:20', 'description' => 'Pinned rather than LATEST, because Forge lags Minecraft by weeks and the pair has to match.', 'user_viewable' => true, 'user_editable' => true],
-                            ['name' => 'Forge Version', 'env_variable' => 'FORGE_VERSION', 'default_value' => '47.3.0', 'rules' => 'required|string|max:20', 'description' => 'A Forge build for the Minecraft version above, or "latest". 47.3.0 is a 1.20.1 build.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Server Type', 'env_variable' => 'TYPE', 'default_value' => 'FORGE', 'rules' => 'required|in:FORGE,NEOFORGE,FABRIC,QUILT', 'description' => 'Which mod loader the image installs. Picked from the live MCJars catalogue.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Minecraft Version', 'env_variable' => 'VERSION', 'default_value' => '1.20.1', 'rules' => 'required|string|max:40', 'description' => 'Pinned rather than LATEST, because a loader lags Minecraft by weeks and the pair has to match.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Forge Version', 'env_variable' => 'FORGE_VERSION', 'default_value' => '47.3.0', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Forge. Blank means the newest build for the Minecraft version above.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'NeoForge Version', 'env_variable' => 'NEOFORGE_VERSION', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is NeoForge. Blank means the newest build for the chosen Minecraft version.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Fabric Loader Version', 'env_variable' => 'FABRIC_LOADER_VERSION', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Fabric. Blank means the newest loader.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Quilt Loader Version', 'env_variable' => 'QUILT_LOADER_VERSION', 'default_value' => '', 'rules' => 'nullable|string|max:40', 'description' => 'Only read when the server type is Quilt. Blank means the newest loader.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Java Heap', 'env_variable' => 'MEMORY', 'default_value' => '75%', 'rules' => 'required|string|max:10', 'description' => 'A percentage of the container limit. Modded packs want the headroom the remaining quarter gives the JVM.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Aikar Flags', 'env_variable' => 'USE_AIKAR_FLAGS', 'default_value' => 'true', 'rules' => 'required|in:true,false', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Max Players', 'env_variable' => 'MAX_PLAYERS', 'default_value' => '10', 'rules' => 'required|integer|between:1,100', 'description' => 'Modded play is far heavier per player than vanilla.', 'user_viewable' => true, 'user_editable' => true],

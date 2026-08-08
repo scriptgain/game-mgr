@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Client;
 
 use App\Models\Server;
 use App\Models\ServerVariable;
+use App\Services\Minecraft\McJars;
+use App\Support\McJarsPicker;
 use Illuminate\Http\Request;
 
 /**
@@ -12,7 +14,7 @@ use Illuminate\Http\Request;
  */
 class StartupController extends ServerController
 {
-    public function index(Server $server)
+    public function index(Server $server, McJars $mcjars)
     {
         $this->guard($server, 'startup.read');
 
@@ -30,13 +32,51 @@ class StartupController extends ServerController
             fn ($sv) => [$sv->template_variable_id => $sv->value]
         );
 
+        // A Minecraft template swaps its type, version and build boxes for the
+        // MCJars picker. Only when this viewer may actually change them: a
+        // client looking at settings an administrator has locked should see the
+        // values, not a dropdown that will not save.
+        $picker = $server->template->mcjarsPicker();
+        $mc = null;
+
+        if ($picker && $this->mayPick($picker, $isAdmin)) {
+            $mc = $picker->payload($mcjars, $values->all());
+        } else {
+            $picker = null;
+        }
+
         return view('server.startup', [
             'title' => $server->name.' Startup',
             'server' => $server,
             'variables' => $variables,
             'values' => $values,
             'isAdmin' => $isAdmin,
+            'picker' => $picker,
+            'mc' => $mc,
         ]);
+    }
+
+    /**
+     * Can this viewer edit everything the picker would take over? A picker that
+     * owns one locked variable would offer a control whose value the update
+     * action then throws away, which is the exact "the panel is broken" the
+     * update action already goes out of its way to avoid.
+     */
+    private function mayPick(McJarsPicker $picker, bool $isAdmin): bool
+    {
+        if ($isAdmin) {
+            return true;
+        }
+
+        foreach ($picker->ownedVariableIds() as $id) {
+            $variable = $picker->template->variables->firstWhere('id', $id);
+
+            if (! $variable || ! $variable->user_editable || ! $variable->user_viewable) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function update(Request $request, Server $server)

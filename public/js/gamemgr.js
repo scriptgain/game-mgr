@@ -580,9 +580,29 @@ document.addEventListener('alpine:init', () => {
      * Multi-select for the file table. Shift-click ranges, because deleting
      * forty files one checkbox at a time is nobody's idea of a file manager.
      */
-    Alpine.data('fileBrowser', () => ({
+    /* -------------------------------------------------------- file browser
+     * Selection (including shift-click ranges and the select-all switch) plus
+     * uploads. Both live here because the drop target is the same element the
+     * table sits in.
+     *
+     * config comes from Blade: { path, uploadUrl, maxBytes, csrf }. uploadUrl
+     * is null when this user has no file.create permission, and every upload
+     * entry point checks it, so the UI cannot start something the controller
+     * will only 403.
+     */
+    Alpine.data('fileBrowser', (config = {}) => ({
         selected: [],
         lastIndex: null,
+
+        config,
+        uploads: [],
+        /* Depth, not a boolean. dragleave fires every time the pointer crosses
+         * into a child element, so a single flag flickers off the moment the
+         * cursor moves over a table row and the drop zone disappears under the
+         * file being dragged. Counting enters against leaves does not. */
+        dragDepth: 0,
+        sending: false,
+        nextId: 1,
 
         toggle(path, index, shiftKey) {
             if (shiftKey && this.lastIndex !== null) {
@@ -630,6 +650,164 @@ document.addEventListener('alpine:init', () => {
         clear() {
             this.selected = [];
             this.lastIndex = null;
+        },
+
+        /* ------------------------------------------------------- uploading */
+
+        dragIn() {
+            if (this.config.uploadUrl) this.dragDepth++;
+        },
+
+        dragOut() {
+            if (this.dragDepth > 0) this.dragDepth--;
+        },
+
+        dropped(event) {
+            this.dragDepth = 0;
+            const files = event.dataTransfer?.files;
+            if (files?.length) this.queue(files);
+        },
+
+        picked(event) {
+            this.queue(event.target.files);
+            /* Cleared so picking the same file again still fires change.
+             * Without this, a failed upload cannot be retried from the button. */
+            event.target.value = '';
+        },
+
+        queue(files) {
+            if (!this.config.uploadUrl) return;
+
+            for (const file of Array.from(files)) {
+                const item = {
+                    id: this.nextId++,
+                    file,
+                    name: file.name,
+                    percent: 0,
+                    state: 'waiting',
+                    detail: 'Waiting',
+                    error: '',
+                };
+
+                /* Refused here rather than after a progress bar has crawled to
+                 * the end. The panel and the node both check again; this one
+                 * only exists to save somebody's time and bandwidth. */
+                if (this.config.maxBytes > 0 && file.size > this.config.maxBytes) {
+                    item.state = 'failed';
+                    item.percent = 100;
+                    item.detail = 'Too large';
+                    item.error = `${this.bytes(file.size)} is over the ${this.bytes(this.config.maxBytes)} limit for this node.`;
+                }
+
+                this.uploads.push(item);
+            }
+
+            this.drain();
+        },
+
+        /* One at a time. A dropped folder of forty files opening forty sockets
+         * gets every one of them throttled and makes each individual progress
+         * bar meaningless. */
+        async drain() {
+            if (this.sending) return;
+            this.sending = true;
+
+            let sent = 0;
+            let failed = 0;
+            for (const item of this.uploads) {
+                if (item.state !== 'waiting') {
+                    if (item.state === 'failed') failed++;
+                    continue;
+                }
+                const ok = await this.send(item);
+                ok ? sent++ : failed++;
+            }
+            this.sending = false;
+
+            /* The table is rendered server side, so the only honest way to show
+             * what landed is to ask for it again. Not on a partial failure:
+             * reloading would take the error message with it. */
+            if (sent > 0 && failed === 0) {
+                setTimeout(() => window.location.reload(), 700);
+            }
+        },
+
+        send(item) {
+            return new Promise((resolve) => {
+                const body = new FormData();
+                body.append('_token', this.config.csrf);
+                body.append('path', this.config.path);
+                body.append('file', item.file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', this.config.uploadUrl);
+                xhr.setRequestHeader('Accept', 'application/json');
+
+                /* fetch() has no upload progress at all, which is the entire
+                 * reason this is an XMLHttpRequest in 2026. */
+                xhr.upload.addEventListener('progress', (e) => {
+                    item.state = 'sending';
+                    if (e.lengthComputable) {
+                        item.percent = Math.round((e.loaded / e.total) * 100);
+                        item.detail = `${this.bytes(e.loaded)} of ${this.bytes(e.total)}`;
+                    } else {
+                        item.detail = 'Sending';
+                    }
+                });
+
+                const fail = (message) => {
+                    item.state = 'failed';
+                    item.percent = 100;
+                    item.detail = 'Failed';
+                    item.error = message;
+                    resolve(false);
+                };
+
+                xhr.addEventListener('load', () => {
+                    let payload = {};
+                    try {
+                        payload = JSON.parse(xhr.responseText || '{}');
+                    } catch (e) {
+                        /* An HTML body here is a PHP error page or a login
+                         * redirect, neither of which is worth showing raw. */
+                        return fail(`The panel returned an unexpected response (HTTP ${xhr.status}).`);
+                    }
+                    if (xhr.status >= 200 && xhr.status < 300 && payload.ok) {
+                        item.state = 'done';
+                        item.percent = 100;
+                        item.detail = this.bytes(payload.bytes ?? item.file.size);
+                        return resolve(true);
+                    }
+                    /* Laravel's validation shape, then ours, then a fallback. */
+                    const validation = payload.errors ? Object.values(payload.errors).flat()[0] : null;
+                    fail(payload.error || validation || payload.message || `The upload was refused (HTTP ${xhr.status}).`);
+                });
+
+                xhr.addEventListener('error', () => fail('The connection dropped during the upload.'));
+                xhr.addEventListener('abort', () => fail('The upload was cancelled.'));
+
+                item.state = 'sending';
+                item.detail = 'Sending';
+                xhr.send(body);
+            });
+        },
+
+        /* True once nothing is in flight, which is when a Clear button is safe
+         * to offer. */
+        idle() {
+            return !this.sending && this.uploads.every((u) => u.state === 'done' || u.state === 'failed');
+        },
+
+        bytes(n) {
+            n = Number(n) || 0;
+            const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+            let power = 0;
+            while (n >= 1024 && power < units.length - 1) {
+                n /= 1024;
+                power++;
+            }
+
+            return (power === 0 ? n : Math.round(n * 10) / 10) + ' ' + units[power];
         },
     }));
 
@@ -1821,3 +1999,340 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/* -------------------------------------------------------------------------
+ * The Minecraft server type, version and build picker.
+ *
+ * Markup is resources/views/admin/servers/_minecraft.blade.php, which renders
+ * on the create wizard and on the Startup tab for any template carrying an
+ * `mcjars` document. The lists come from MCJars through two cached panel
+ * endpoints; nothing here talks to a third party directly.
+ *
+ * The rule this component is built around: a list that does not arrive must
+ * never cost anybody a server. Every failure path lands on the same free text
+ * box the panel used before there was a picker, and the hidden inputs that
+ * actually post are bound to state that the operator can always reach.
+ * ------------------------------------------------------------------------- */
+document.addEventListener('alpine:init', () => {
+    Alpine.data('minecraftPicker', (dataId) => ({
+        mc: { types: [], versions: [], builds: {}, endpoints: {} },
+
+        type: '',
+        version: '',
+        build: '',
+
+        /** Current value of every build variable, keyed by template variable id. */
+        buildValues: {},
+
+        /** The build list for the type and version on screen. */
+        buildList: [],
+
+        snapshots: false,
+        loadingVersions: false,
+        loadingBuilds: false,
+        versionsFailed: false,
+
+        /* Version lists already fetched this page load, keyed by type. Flicking
+         * between Paper and Purpur to compare is a normal thing to do, and it
+         * should not be four round trips. */
+        versionCache: {},
+        versions: [],
+
+        /* Builds are fetched lazily, on the first look at the build select,
+         * rather than on page load. The create wizard renders one of these per
+         * Minecraft template, all hidden but one, and a panel with a dozen of
+         * them should not open a dozen connections to draw one dropdown. */
+        buildsLoadedFor: '',
+
+        init() {
+            const island = document.getElementById(dataId);
+            if (island) {
+                try { this.mc = JSON.parse(island.textContent); } catch (e) { /* keep the empty shape */ }
+            }
+
+            this.type = String(this.mc.type || (this.mc.types[0] || {}).code || '');
+            this.version = String(this.mc.version || '');
+            this.buildValues = Object.assign({}, this.mc.builds || {});
+            this.versions = Array.isArray(this.mc.versions) ? this.mc.versions : [];
+            this.versionCache[this.type] = this.versions;
+            this.build = this.currentBuildValue();
+
+            // A stored version outside the release list is almost always a
+            // snapshot somebody pinned on purpose, so the toggle opens showing
+            // it rather than silently hiding what is actually configured.
+            this.snapshots = this.versionIsSnapshot(this.version);
+
+            this.$watch('type', () => this.onTypeChange());
+            this.$watch('version', () => this.onVersionChange());
+            this.$watch('build', (value) => this.writeBuild(value));
+        },
+
+        // ----------------------------------------------------------- lookups
+
+        activeType() {
+            return (this.mc.types || []).find((t) => t.code === this.type) || null;
+        },
+
+        hasBuild() {
+            const t = this.activeType();
+
+            return !!(t && t.build_variable);
+        },
+
+        buildLabel() {
+            const t = this.activeType();
+
+            return (t && t.build_label) || 'Build';
+        },
+
+        buildEnv() {
+            const t = this.activeType();
+
+            return (t && t.build_env) || '';
+        },
+
+        /** The value currently stored for the active type's build variable. */
+        currentBuildValue() {
+            const t = this.activeType();
+            if (! t || ! t.build_variable) return '';
+
+            return String(this.buildValues[t.build_variable] || '');
+        },
+
+        /** Write the chosen build back to the hidden input that posts it. */
+        writeBuild(value) {
+            const t = this.activeType();
+            if (! t || ! t.build_variable) return;
+
+            this.buildValues[t.build_variable] = value === undefined || value === null ? '' : String(value);
+        },
+
+        buildKnown(value) {
+            return this.buildList.some((row) => String(row.value) === String(value));
+        },
+
+        // ---------------------------------------------------------- versions
+
+        versionsUsable() {
+            return ! this.versionsFailed && this.versions.length > 0;
+        },
+
+        hasSnapshots() {
+            return this.versionsUsable() && this.versions.some((row) => row.channel !== 'RELEASE');
+        },
+
+        visibleVersions() {
+            if (this.snapshots) return this.versions;
+
+            const releases = this.versions.filter((row) => row.channel === 'RELEASE');
+
+            // Never hide what is actually selected. A pinned snapshot with the
+            // toggle off would otherwise leave the select showing the wrong
+            // version while the hidden input posted the right one.
+            if (this.version && ! releases.some((row) => row.id === this.version)) {
+                const pinned = this.versions.find((row) => row.id === this.version);
+                if (pinned) return [pinned].concat(releases);
+            }
+
+            return releases;
+        },
+
+        versionIsSnapshot(id) {
+            const row = this.versions.find((v) => v.id === id);
+
+            return !!row && row.channel !== 'RELEASE';
+        },
+
+        versionLabel(row) {
+            let label = row.id;
+            if (row.channel && row.channel !== 'RELEASE') label += '  ' + this.titleCase(row.channel);
+            if (row.java) label += '  Java ' + row.java;
+
+            return label;
+        },
+
+        buildOptionLabel(row) {
+            let label = row.label || row.value;
+            if (row.experimental) label += '  Experimental';
+
+            return label;
+        },
+
+        // ----------------------------------------------------------- notices
+
+        typeNote() {
+            const t = this.activeType();
+            if (! t) return '';
+
+            const bits = [];
+            if (t.deprecated) bits.push('No longer maintained.');
+            if (t.experimental) bits.push('Experimental.');
+            if (t.description) bits.push(t.description);
+
+            return bits.join(' ').slice(0, 140);
+        },
+
+        versionNote() {
+            if (this.loadingVersions) return 'Loading versions...';
+            if (this.versionsFailed) return 'MCJars did not answer. Type a version instead.';
+
+            const total = this.versions.length;
+            if (! total) return 'No versions listed for this type.';
+
+            return total + ' version' + (total === 1 ? '' : 's') + ' available.';
+        },
+
+        buildNote() {
+            if (this.loadingBuilds) return 'Loading builds...';
+            if (! this.build) return 'Newest build at each start.';
+
+            return 'Pinned. The server will not move off this build.';
+        },
+
+        // ----------------------------------------------------------- changes
+
+        async onTypeChange() {
+            this.build = this.currentBuildValue();
+            this.buildList = [];
+            this.buildsLoadedFor = '';
+
+            await this.loadVersions();
+
+            if (this.hasBuild()) this.loadBuilds();
+        },
+
+        onVersionChange() {
+            this.buildList = [];
+            this.buildsLoadedFor = '';
+
+            if (this.hasBuild()) this.loadBuilds();
+        },
+
+        async loadVersions() {
+            const type = this.type;
+            if (! type) return;
+
+            if (this.versionCache[type]) {
+                this.versions = this.versionCache[type];
+                this.versionsFailed = false;
+                this.reconcileVersion();
+
+                return;
+            }
+
+            this.loadingVersions = true;
+            const rows = await this.fetchList(this.mc.endpoints.versions, { type: type }, 'versions');
+            this.loadingVersions = false;
+
+            // A different type may have been picked while this was in flight.
+            if (this.type !== type) return;
+
+            this.versionsFailed = rows === null;
+            this.versions = rows || [];
+            if (rows) this.versionCache[type] = rows;
+            this.reconcileVersion();
+        },
+
+        async loadBuilds() {
+            if (! this.hasBuild() || ! this.version) return;
+
+            const key = this.type + '/' + this.version;
+            if (this.buildsLoadedFor === key || this.loadingBuilds) return;
+
+            this.loadingBuilds = true;
+            const rows = await this.fetchList(this.mc.endpoints.builds, { type: this.type, version: this.version }, 'builds');
+            this.loadingBuilds = false;
+
+            if (this.type + '/' + this.version !== key) return;
+
+            this.buildList = rows || [];
+            this.buildsLoadedFor = key;
+        },
+
+        /* A version that no longer exists for the newly chosen type has to
+         * become one that does, or the form posts a pair the image cannot
+         * resolve. The newest release wins, which is what somebody switching
+         * from Paper to Purpur almost always wanted anyway. */
+        reconcileVersion() {
+            if (! this.versions.length) return;
+            if (this.versions.some((row) => row.id === this.version)) return;
+
+            const release = this.versions.find((row) => row.channel === 'RELEASE');
+            this.version = (release || this.versions[0]).id;
+            this.snapshots = this.versionIsSnapshot(this.version);
+        },
+
+        // ------------------------------------------------------------- wire
+
+        /**
+         * One lookup. Answers an array, or null when the panel could not get a
+         * usable list, which is the only signal the rest of the component needs
+         * to fall back to a text box.
+         */
+        async fetchList(url, params, key) {
+            if (! url) return null;
+
+            try {
+                const query = new URLSearchParams(params).toString();
+                const response = await fetch(url + '?' + query, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+
+                if (! response.ok) return null;
+
+                const body = await response.json();
+
+                return body && body.ok && Array.isArray(body[key]) ? body[key] : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        titleCase(word) {
+            const lower = String(word || '').toLowerCase();
+
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
+        },
+    }));
+});
+
+/* A switch that is its own submit button.
+ *
+ * The Mods tab turns a plugin on and off with a toggle switch, per house style,
+ * and a switch that needs a Save button beside it is not a switch. So the form
+ * it sits in carries data-autosubmit and posts the moment the switch changes.
+ *
+ * Delegated from the document rather than bound per form: the listener is
+ * registered once, works for rows added later, and costs nothing on a page that
+ * has no such form. Outside alpine:init because it touches no Alpine state.
+ *
+ * The switch is disabled straight after firing. A real POST takes long enough
+ * to click twice, and two posts of the same toggle land as on, then off.
+ */
+(function autoSubmitSwitches() {
+    document.addEventListener('change', function (event) {
+        var input = event.target;
+        if (! input || input.type !== 'checkbox') return;
+
+        var form = input.form;
+        if (! form || ! form.hasAttribute('data-autosubmit')) return;
+
+        form.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+            box.disabled = true;
+        });
+
+        // A disabled checkbox is not submitted at all, and "absent" is how the
+        // controller reads "off". So the state is carried by a hidden field
+        // that is immune to the disabling above.
+        if (input.checked) {
+            var carry = document.createElement('input');
+            carry.type = 'hidden';
+            carry.name = input.name;
+            carry.value = input.value || '1';
+            form.appendChild(carry);
+        }
+
+        form.submit();
+    });
+})();

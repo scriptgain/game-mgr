@@ -132,7 +132,7 @@
                             </x-empty-state>
                         </x-card>
                     @else
-                        <x-card title="Pick A Game"
+                        <x-card title="Pick A Game" icon="controller"
                                 subtitle="Every template on this panel, grouped by the game it runs.">
                             <div class="space-y-6">
                                 <div class="relative sm:max-w-sm">
@@ -246,7 +246,7 @@
                         <x-alert type="danger" title="That Placement Will Not Work">{{ $message }}</x-alert>
                     @enderror
 
-                    <x-card title="Pick A Machine"
+                    <x-card title="Pick A Machine" icon="cpu"
                             subtitle="Auto puts it on the emptiest machine that can run this template and has the room.">
                         <div class="space-y-5">
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Placement">
@@ -465,7 +465,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="Name And Owner" subtitle="What this server is called, and who it belongs to.">
+                    <x-card title="Name And Owner" icon="users" subtitle="What this server is called, and who it belongs to.">
                         <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
                             <div class="space-y-4">
                                 <x-field label="Name" for="server-name" required :error="$errors->first('name')">
@@ -540,7 +540,7 @@
                              saved sizes. Otherwise the sliders below are the
                              whole story and an empty panel is just noise. --}}
                         <div x-show="blueprintChoices.length > 0" x-cloak>
-                            <x-card title="Start From A Saved Size"
+                            <x-card title="Start From A Saved Size" icon="sparkles"
                                     subtitle="Sizes your panel already keeps for this template. One click fills in every limit below.">
                                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                     @foreach ($blueprints as $blueprint)
@@ -576,7 +576,7 @@
 
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                         <div class="space-y-6 lg:col-span-2">
-                            <x-card title="Size" subtitle="Drag for the common sizes, type for anything else.">
+                            <x-card title="Size" icon="memory" subtitle="Drag for the common sizes, type for anything else.">
                                 <div class="space-y-6">
                                     {{-- memory --}}
                                     <div>
@@ -683,7 +683,7 @@
                                 </x-slot:footer>
                             </x-card>
 
-                            <x-card title="What The Owner May Add Later"
+                            <x-card title="What The Owner May Add Later" icon="lock"
                                     subtitle="Caps the owner manages for themselves, without asking you.">
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     @foreach ([
@@ -726,7 +726,7 @@
                              rejected POST two steps later. --}}
                         <div class="lg:col-span-1">
                             <div class="lg:sticky lg:top-20">
-                                <x-card title="Will It Fit">
+                                <x-card title="Will It Fit" icon="chart">
                                     <div class="space-y-4">
                                         <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg bg-slate-50 px-3 py-2 text-sm ring-1 ring-inset ring-slate-200">
                                             <span class="text-slate-500">Asking for</span>
@@ -836,8 +836,21 @@
                             subtitle="These are baked into the startup command. The template defaults are already filled in.">
                         @foreach ($templates as $template)
                             @php
-                                $editable = $template->variables->filter(fn ($v) => $v->user_editable);
-                                $locked = $template->variables->reject(fn ($v) => $v->user_editable);
+                                // A Minecraft template draws its type, version
+                                // and build through the MCJars picker instead
+                                // of as three text boxes, so those variables
+                                // come out of the generic loop. When MCJars is
+                                // unreachable the picker owns nothing and they
+                                // go back to being text boxes, which is exactly
+                                // what this screen did before.
+                                $picker = $minecraft[$template->id]['picker'] ?? null;
+                                $mc = $minecraft[$template->id]['payload'] ?? null;
+                                $owned = $picker && $mc['available'] ? $picker->ownedVariableIds() : [];
+
+                                $editable = $template->variables
+                                    ->filter(fn ($v) => $v->user_editable && ! in_array($v->id, $owned, true));
+                                $locked = $template->variables
+                                    ->reject(fn ($v) => $v->user_editable || in_array($v->id, $owned, true));
                             @endphp
                             {{-- Every template's inputs are in the DOM, and every
                                  one but the chosen template's is disabled, so only
@@ -849,6 +862,14 @@
                                                    description="This template exposes no settings. Move straight on to the review." />
                                 @else
                                     <div class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+                                        @if ($picker)
+                                            @include('admin.servers._minecraft', [
+                                                'picker' => $picker,
+                                                'mc' => $mc,
+                                                'owner' => $template->id,
+                                                'group' => 'variables',
+                                            ])
+                                        @endif
                                         @foreach ($editable as $variable)
                                             @include('admin.servers._variable', ['variable' => $variable, 'owner' => $template->id])
                                         @endforeach
@@ -934,7 +955,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <x-card title="What It Runs">
+                        <x-card title="What It Runs" icon="play">
                             <x-slot:actions>
                                 <x-button type="button" variant="ghost" size="sm" @click="go(1)">Change</x-button>
                             </x-slot:actions>
@@ -965,7 +986,7 @@
                             </dl>
                         </x-card>
 
-                        <x-card title="Where It Runs">
+                        <x-card title="Where It Runs" icon="cpu">
                             <x-slot:actions>
                                 <x-button type="button" variant="ghost" size="sm" @click="go(2)">Change</x-button>
                             </x-slot:actions>
@@ -989,7 +1010,7 @@
                             </dl>
                         </x-card>
 
-                        <x-card title="Name And Owner">
+                        <x-card title="Name And Owner" icon="users">
                             <x-slot:actions>
                                 <x-button type="button" variant="ghost" size="sm" @click="go(3)">Change</x-button>
                             </x-slot:actions>
@@ -1012,7 +1033,7 @@
                             </dl>
                         </x-card>
 
-                        <x-card title="Size And Caps">
+                        <x-card title="Size And Caps" icon="memory">
                             <x-slot:actions>
                                 <x-button type="button" variant="ghost" size="sm" @click="go(4)">Change</x-button>
                             </x-slot:actions>

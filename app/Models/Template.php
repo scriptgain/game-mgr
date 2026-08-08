@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\ConfigFile;
+use App\Support\McJarsPicker;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -34,7 +35,7 @@ class Template extends Model
         'docker_images', 'script_container', 'script_entry', 'data_path', 'script_install',
         'steam_app_id', 'steam_anonymous', 'steam_branch', 'steam_beta_password',
         'lgsm_shortname', 'startup', 'update_command',
-        'config_files', 'config_startup', 'config_stop', 'config_logs', 'config_schema',
+        'config_files', 'config_startup', 'config_stop', 'config_logs', 'config_schema', 'mcjars',
         'features', 'file_denylist', 'force_outgoing_ip',
         'rcon_supported', 'rcon_protocol', 'query_protocol',
         'rcon_port_offset', 'query_port_offset', 'mod_sources',
@@ -50,6 +51,7 @@ class Template extends Model
             'config_stop' => 'array',
             'config_logs' => 'array',
             'config_schema' => 'array',
+            'mcjars' => 'array',
             'features' => 'array',
             'file_denylist' => 'array',
             'mod_sources' => 'array',
@@ -168,6 +170,32 @@ class Template extends Model
     public function hasConfigSchema(): bool
     {
         return $this->configFiles() !== [];
+    }
+
+    // ------------------------------------------------------------- minecraft
+
+    /**
+     * The MCJars type and version picker for this template, or null when it is
+     * not a Minecraft Java template.
+     *
+     * Carrying an `mcjars` document is the ONLY thing that makes a template
+     * Minecraft as far as the panel is concerned. Nothing infers it from the
+     * game name or the image, so Palworld cannot grow a Minecraft version
+     * picker by being filed under the wrong game.
+     */
+    public function mcjarsPicker(): ?McJarsPicker
+    {
+        if (! is_array($this->mcjars) || $this->mcjars === []) {
+            return null;
+        }
+
+        // The picker walks the variables, so they have to be loaded. Left as a
+        // lazy load rather than a required eager one: every caller already
+        // eager loads them, and a template fetched on its own should still
+        // answer this correctly rather than silently say "not Minecraft".
+        $this->loadMissing('variables');
+
+        return McJarsPicker::for($this);
     }
 
     // ---------------------------------------------------------------- ports

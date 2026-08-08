@@ -10,6 +10,11 @@ return [
     // not stall a page render, it must degrade to "offline".
     'timeout' => (int) env('NODE_TIMEOUT', 10),
 
+    // Seconds a file manager upload may take. Deliberately not the timeout
+    // above: a few hundred megabytes over a domestic connection is minutes, and
+    // ten seconds would abort every upload worth having this feature for.
+    'upload_timeout' => (int) env('NODE_UPLOAD_TIMEOUT', 3600),
+
     // When true, an unreachable daemon is answered with synthetic data instead
     // of an error, so the whole UI stays exercisable while the real runtime
     // drivers are still being written. Turn this OFF in production.

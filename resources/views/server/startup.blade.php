@@ -12,8 +12,28 @@
                         <x-empty-state icon="bolt" title="Nothing To Configure"
                                        description="This template exposes no variables you are allowed to change." />
                     @else
+                        {{-- A Minecraft template draws its type, version and
+                             build through the MCJars picker and drops them from
+                             the list below. When MCJars is unreachable the
+                             picker owns nothing, the partial prints a note, and
+                             all three stay as the text boxes they always were. --}}
+                        @php
+                            $owned = $picker && $mc['available'] ? $picker->ownedVariableIds() : [];
+                        @endphp
+
+                        @if ($picker)
+                            <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                @include('admin.servers._minecraft', [
+                                    'picker' => $picker,
+                                    'mc' => $mc,
+                                    'group' => 'variables',
+                                ])
+                            </div>
+                        @endif
+
                         <div class="space-y-5">
                             @foreach ($variables as $variable)
+                                @continue(in_array($variable->id, $owned, true))
                                 @php
                                     $locked = ! $isAdmin && ! $variable->user_editable;
                                     $value = old('variables.'.$variable->id, $values[$variable->id] ?? $variable->default_value);

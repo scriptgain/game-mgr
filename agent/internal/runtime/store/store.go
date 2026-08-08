@@ -216,8 +216,17 @@ func (s Store) Write(_ context.Context, server runtime.Server, path string, body
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		return err
 	}
+	if err := os.WriteFile(full, body, 0o644); err != nil {
+		return err
+	}
+	// A file this daemon created belongs to the game, not to root. Observed on
+	// the dev node: "New File" produced a root-owned empty file in a directory
+	// the server runs unprivileged in, so the game could read it and never
+	// write it. Chowned after the write rather than before, because the file
+	// does not exist until then.
+	s.ownUpTo(server, full)
 
-	return os.WriteFile(full, body, 0o644)
+	return nil
 }
 
 // ErrTooLarge is what Upload returns when the body ran past the cap. The API
@@ -358,8 +367,15 @@ func (s Store) MakeDir(_ context.Context, server runtime.Server, path string) er
 	if err != nil {
 		return err
 	}
+	if err := os.MkdirAll(full, 0o755); err != nil {
+		return err
+	}
+	// Same reasoning as Write: a root-owned folder is one the game cannot put
+	// anything into, and "New Folder" is usually followed by putting something
+	// into it.
+	s.ownUpTo(server, full)
 
-	return os.MkdirAll(full, 0o755)
+	return nil
 }
 
 // ------------------------------------------------------------------- backups

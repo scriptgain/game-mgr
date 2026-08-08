@@ -13,6 +13,7 @@ use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\MinecraftController;
 use App\Http\Controllers\NodeInstallerController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
@@ -62,6 +63,11 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
     // Dashboard. Admins get the fleet, clients get their own servers.
     Route::get('/', DashboardController::class)->name('dashboard');
 
+    // Cascading lookups for the Minecraft type and version picker, read only
+    // and cached hard. See App\Services\Minecraft\McJars.
+    Route::get('/minecraft/versions', [MinecraftController::class, 'versions'])->name('minecraft.versions');
+    Route::get('/minecraft/builds', [MinecraftController::class, 'builds'])->name('minecraft.builds');
+
     // ---------------------------------------------------------------- client
     // Everything a server owner or subuser touches. Authorised per action by
     // ServerPolicy, never by which menu the link came from.
@@ -75,6 +81,8 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('/files/edit', [Client\FileController::class, 'edit'])->name('files.edit');
         Route::post('/files/save', [Client\FileController::class, 'save'])->name('files.save');
         Route::post('/files/mkdir', [Client\FileController::class, 'mkdir'])->name('files.mkdir');
+        Route::post('/files/new', [Client\FileController::class, 'create'])->name('files.create');
+        Route::post('/files/upload', [Client\FileController::class, 'upload'])->name('files.upload');
         Route::post('/files/rename', [Client\FileController::class, 'rename'])->name('files.rename');
         Route::delete('/files', [Client\FileController::class, 'destroy'])->name('files.destroy');
 

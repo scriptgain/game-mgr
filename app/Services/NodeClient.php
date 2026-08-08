@@ -145,6 +145,65 @@ class NodeClient
         return (bool) ($res['ok'] ?? false);
     }
 
+    /**
+     * Stream a file to the node.
+     *
+     * $body is an open stream resource, not a string, and that is the whole
+     * point. writeFile sends its content as a JSON string field, so a 200 MiB
+     * modpack through that path would be the file in memory here, base64 in
+     * memory again while json_encode runs, and a third copy on the daemon as it
+     * decodes: three copies of a file that is going straight to disk. This hands
+     * Guzzle the handle and the bytes go from the temporary upload file to the
+     * socket without the panel ever holding them.
+     *
+     * Returns the daemon's reply, or an ['error' => ...] the caller can show.
+     * Never throws: the file manager stays usable when a node is down.
+     */
+    public function upload(Server $server, string $path, $body, int $maxBytes, ?int $bytes = null): array
+    {
+        try {
+            $request = Http::withToken($this->daemonToken())
+                ->withoutVerifying()
+                ->withOptions([
+                    'connect_timeout' => 10,
+                    // A large file over a slow link is minutes, not seconds, so
+                    // the ten second default every other call uses would abort
+                    // exactly the uploads this exists for.
+                    'read_timeout' => (int) config('node.upload_timeout', 3600),
+                    'timeout' => (int) config('node.upload_timeout', 3600),
+                ])
+                ->withBody($body, 'application/octet-stream');
+
+            // Guzzle cannot measure a stream it did not open, and without a
+            // length it falls back to chunked. The daemon copes either way, but
+            // a declared length lets it refuse an oversized upload before the
+            // bytes are sent rather than after.
+            if ($bytes !== null) {
+                $request = $request->withHeaders(['Content-Length' => (string) $bytes]);
+            }
+
+            $query = http_build_query($this->serverQuery($server) + [
+                'path' => $path,
+                'max_bytes' => $maxBytes,
+            ]);
+
+            $res = $request->post($this->node->daemonUrl("/api/servers/{$server->uuid}/files/upload").'?'.$query);
+
+            if ($res->successful()) {
+                return (array) $res->json();
+            }
+
+            // The daemon's own wording, which is more specific than anything
+            // that could be invented here, and 413 in particular is a message
+            // the person uploading can act on.
+            return ['ok' => false, 'error' => (string) ($res->json('error') ?: 'The node refused the upload (HTTP '.$res->status().').')];
+        } catch (\Throwable $e) {
+            $this->note($e);
+
+            return ['ok' => false, 'error' => 'Lost contact with the node during the upload.'];
+        }
+    }
+
     public function deleteFiles(Server $server, array $paths): bool
     {
         $res = $this->post("/api/servers/{$server->uuid}/files/delete", [

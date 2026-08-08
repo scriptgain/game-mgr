@@ -431,6 +431,50 @@ if ! command -v composer >/dev/null; then
   "$PHP" "$WORK/composer-setup.php" --install-dir=/usr/local/bin --filename=composer --quiet
 fi
 
+# ------------------------------------------------------------- php.ini limits
+# The file manager uploads through PHP, and PHP ships with upload_max_filesize
+# at 2M and post_max_size at 8M. A node's upload limit defaults to 256 MiB, so
+# out of the box the panel would advertise a limit it physically cannot receive.
+#
+# The failure is silent and it is nasty: past post_max_size, PHP discards the
+# entire request body before any code runs. $_FILES is empty, so the panel sees
+# "no file was sent" and nothing anywhere mentions a size. Raised here rather
+# than only detected at runtime, because the operator who set 256 MiB in the
+# node form meant it, and 512M matches the client_max_body_size this same script
+# writes into the vhost, so nginx and PHP agree.
+#
+# Anything above this stays honest instead: the panel reads these two settings
+# back, caps the effective limit at the smaller of the two, and says on the
+# files page which one is doing the limiting.
+#
+# A drop-in rather than an edit to php.ini, so a re-run converges and a PHP
+# package upgrade does not revert it. memory_limit is deliberately untouched:
+# an upload streams to a temporary file and never lands in PHP's heap.
+log "Setting PHP upload limits for the file manager"
+PHP_INI_DROPIN="/etc/php/${PHP_VER}/fpm/conf.d/99-gamemgr.ini"
+if [ -d "$(dirname "$PHP_INI_DROPIN")" ]; then
+  cat > "$PHP_INI_DROPIN" <<'PHPINI'
+; GameMGR file manager uploads. Matches client_max_body_size in the vhost.
+upload_max_filesize = 512M
+post_max_size = 512M
+; A large upload over a slow link is minutes, and the default 30s cuts it off
+; part way with nothing useful in the log.
+max_execution_time = 600
+max_input_time = 600
+PHPINI
+  echo "    ${PHP_INI_DROPIN}: 512M upload_max_filesize and post_max_size"
+  # Reload, never restart. apt already started php-fpm when it installed it, so
+  # without this the drop-in sits on disk doing nothing and a fresh install
+  # would still refuse anything over 2M. SIGUSR2 re-reads the config and
+  # finishes the requests already in flight; a restart would drop them.
+  if systemctl is-active --quiet "php${PHP_VER}-fpm"; then
+    systemctl reload "php${PHP_VER}-fpm" >/dev/null 2>&1 \
+      || warn "Could not reload php${PHP_VER}-fpm. The new upload limits apply at its next reload; until then the files page will report the smaller limit."
+  fi
+else
+  warn "No PHP FPM conf.d directory at $(dirname "$PHP_INI_DROPIN"); upload limits left at the PHP defaults (2M). The files page will say so."
+fi
+
 systemctl enable --now mariadb >/dev/null 2>&1 || true
 systemctl enable --now "php${PHP_VER}-fpm" >/dev/null 2>&1 || true
 

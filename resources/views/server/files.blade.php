@@ -1,7 +1,83 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <div x-data="fileBrowser()">
+    @php
+        $canCreate = auth()->user()->can('check', [$server, 'file.create']);
+    @endphp
+
+    {{-- The upload settings are handed to Alpine as one object rather than a
+         string of attributes, so the markup stays readable and the escaping is
+         Blade's problem. x-data on a plain element, so @js is compiled here;
+         inside a COMPONENT attribute it would ship as literal text. --}}
+    <div x-data="fileBrowser(@js([
+            'path' => $path,
+            'uploadUrl' => $canCreate ? route('server.files.upload', $server) : null,
+            'maxBytes' => $uploadLimit,
+            'csrf' => csrf_token(),
+        ]))"
+         @if ($canCreate)
+             x-on:dragenter.prevent="dragIn()"
+             x-on:dragover.prevent
+             x-on:dragleave.prevent="dragOut()"
+             x-on:drop.prevent="dropped($event)"
+         @endif
+         class="relative">
+
+        @if ($canCreate)
+            {{-- One picker for both the button and the drop zone. --}}
+            <input type="file" x-ref="picker" multiple class="hidden" x-on:change="picked($event)">
+
+            {{-- Drop target. Covers the whole browser rather than a strip, so
+                 there is nothing to aim at. --}}
+            <div x-show="dragDepth > 0" x-cloak
+                 class="absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-brand-400 bg-brand-50/80 backdrop-blur-[1px] pointer-events-none">
+                <div class="flex flex-col items-center gap-2 text-brand-700">
+                    <x-icon name="upload" class="w-8 h-8" />
+                    <p class="font-medium">Drop To Upload Into {{ $path }}</p>
+                </div>
+            </div>
+
+            {{-- Progress. An upload that appears to do nothing for two minutes
+                 reads as broken, so every file gets a bar and a byte count. --}}
+            <div x-show="uploads.length" x-cloak class="mb-4">
+                <x-card>
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="text-[15px] font-semibold text-slate-900">Uploads</h3>
+                        <button type="button" x-show="idle()" x-on:click="uploads = []"
+                                class="text-sm text-slate-500 hover:text-slate-800 rounded-lg px-2 py-1 border border-transparent hover:border-slate-200 transition">Clear</button>
+                    </div>
+                    <ul class="space-y-3">
+                        <template x-for="item in uploads" :key="item.id">
+                            <li>
+                                <div class="flex items-baseline justify-between gap-3 text-sm">
+                                    <span class="font-medium text-slate-800 truncate" x-text="item.name"></span>
+                                    <span class="tabular text-xs shrink-0"
+                                          :class="item.state === 'failed' ? 'text-rose-600' : 'text-slate-500'"
+                                          x-text="item.detail"></span>
+                                </div>
+                                <div class="mt-1.5 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div class="h-full rounded-full transition-[width] duration-150"
+                                         :class="{
+                                            'bg-brand-500': item.state === 'sending',
+                                            'bg-emerald-500': item.state === 'done',
+                                            'bg-rose-500': item.state === 'failed',
+                                         }"
+                                         :style="`width: ${item.percent}%`"></div>
+                                </div>
+                                <p x-show="item.error" x-cloak class="mt-1.5 text-xs text-rose-600" x-text="item.error"></p>
+                            </li>
+                        </template>
+                    </ul>
+                    @if ($uploadShortfall)
+                        <p class="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
+                            <x-icon name="warning" class="w-4 h-4 shrink-0 mt-px" />
+                            <span>{{ $uploadShortfall }}</span>
+                        </p>
+                    @endif
+                </x-card>
+            </div>
+        @endif
+
         <x-card flush>
             <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
                 <nav class="flex items-center gap-1 text-sm min-w-0 flex-wrap" aria-label="Breadcrumb">
@@ -29,6 +105,10 @@
                         </form>
                     @endcan
                     @can('check', [$server, 'file.create'])
+                        <x-button type="button" size="sm" variant="secondary" icon="upload"
+                                  x-on:click="$refs.picker.click()">Upload</x-button>
+                        <x-button type="button" size="sm" variant="secondary" icon="file"
+                                  x-on:click="$dispatch('open-modal', 'new-file')">New File</x-button>
                         <x-button type="button" size="sm" variant="secondary" icon="plus"
                                   x-on:click="$dispatch('open-modal', 'new-folder')">New Folder</x-button>
                     @endcan
@@ -37,7 +117,7 @@
 
             @if (empty($entries))
                 <x-empty-state icon="folder" title="This Folder Is Empty"
-                               description="Nothing here yet. Create a folder or upload files from your game client's export." />
+                               description="Nothing here yet. Create a file or a folder, or drag files straight onto this page to upload them." />
             @else
                 <x-table flush>
                     <thead>
@@ -116,6 +196,23 @@
         </x-card>
 
         @can('check', [$server, 'file.create'])
+            <x-modal name="new-file" title="New File" icon="file" maxWidth="max-w-md"
+                     subtitle="The file is created empty and opens in the editor.">
+                <form method="POST" action="{{ route('server.files.create', $server) }}" id="new-file-form">
+                    @csrf
+                    <input type="hidden" name="path" value="{{ $path }}">
+                    <x-field label="File Name" for="file-name" hint="Created inside {{ $path }}"
+                             :error="$errors->first('name')">
+                        <x-input id="file-name" name="name" required placeholder="server.properties"
+                                 value="{{ old('name') }}" />
+                    </x-field>
+                </form>
+                <x-slot:footer>
+                    <x-button variant="secondary" size="sm" x-on:click="$dispatch('close-modal', 'new-file')">Cancel</x-button>
+                    <x-button size="sm" type="submit" form="new-file-form">Create File</x-button>
+                </x-slot:footer>
+            </x-modal>
+
             <x-modal name="new-folder" title="New Folder" icon="folder" maxWidth="max-w-md">
                 <form method="POST" action="{{ route('server.files.mkdir', $server) }}" id="new-folder-form">
                     @csrf
