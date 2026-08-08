@@ -186,9 +186,18 @@ class ServerController extends Controller
         // Only paid for when it is the question on the screen. A server that is
         // mid install, or has failed one, is waiting on the node, so "is the
         // node answering at all" is the first thing to establish.
-        $nodeReachable = null;
+        //
+        // Two checks, not one. /healthz needs no credential and a wrong daemon
+        // token still passes it, which is exactly how a node that looks healthy
+        // never installs anything: every authenticated call is a 401 and the
+        // only symptom is a server that sits at "installing" forever.
+        $nodeCheck = null;
         if ($client && in_array($server->status, ['installing', 'install_failed'], true)) {
-            $nodeReachable = $client->ping();
+            $alive = $client->ping();
+            $nodeCheck = [
+                'alive' => $alive,
+                'authenticated' => $alive ? $client->system() !== null : false,
+            ];
         }
 
         return view('admin.servers.show', [
@@ -196,7 +205,7 @@ class ServerController extends Controller
             'server' => $server,
             'backlog' => $backlog,
             'streamUrl' => $client?->streamUrl($server),
-            'nodeReachable' => $nodeReachable,
+            'nodeCheck' => $nodeCheck,
             'memoryFloor' => $this->memoryFloor($server),
             'clientLinks' => $this->clientLinks($server),
         ]);

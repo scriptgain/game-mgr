@@ -640,7 +640,14 @@ Group=www-data
 Restart=always
 RestartSec=5
 WorkingDirectory=${APP_DIR}
-ExecStart=${PHP} ${APP_DIR}/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+# --max-time is the worker's lifetime, not a job timeout, and the worker will
+# not abandon a job it is already running. It was an hour, which is shorter than
+# a large SteamCMD download: a 15 GB game would see the worker retire mid
+# install. Eight hours, and installs carry their own six hour cap in the job.
+# --tries stays at 3 for ordinary jobs; InstallServer sets its own tries = 1,
+# because retrying a multi gigabyte download automatically turns one failure
+# into three.
+ExecStart=${PHP} ${APP_DIR}/artisan queue:work database --sleep=3 --tries=3 --max-time=28800
 ExecReload=/bin/kill -USR2 \$MAINPID
 StandardOutput=append:${APP_DIR}/storage/logs/queue.log
 StandardError=append:${APP_DIR}/storage/logs/queue.log

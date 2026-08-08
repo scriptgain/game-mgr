@@ -25,13 +25,13 @@
             <x-icon name="terminal" class="w-4 h-4 text-slate-400 shrink-0" />
             <span class="font-medium text-slate-900 truncate">{{ $title }}</span>
             <span class="inline-flex items-center gap-1.5 text-xs shrink-0"
-                  :class="connected ? 'text-emerald-600' : (polled ? 'text-amber-600' : 'text-slate-400')"
-                  data-tip="Live means the browser holds an event stream open to the node. Polling means the stream is unavailable and the panel is fetching output on your behalf.">
+                  :class="connected ? 'text-emerald-600' : (unreachable ? 'text-rose-600' : (polled ? 'text-amber-600' : 'text-slate-400'))"
+                  data-tip="Live means the browser holds an event stream open to the node. Polling means the stream is unavailable and the panel is fetching output on your behalf. Node Unreachable means the panel could not reach the daemon either, so nothing on screen was measured.">
                 <span class="relative flex h-1.5 w-1.5">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70"
                           x-show="connected" x-cloak></span>
                     <span class="relative inline-flex h-1.5 w-1.5 rounded-full"
-                          :class="connected ? 'bg-emerald-500' : (polled ? 'bg-amber-500' : 'bg-slate-300')"></span>
+                          :class="connected ? 'bg-emerald-500' : (unreachable ? 'bg-rose-500' : (polled ? 'bg-amber-500' : 'bg-slate-300'))"></span>
                 </span>
                 <span x-text="feedLabel()">Reconnecting</span>
             </span>

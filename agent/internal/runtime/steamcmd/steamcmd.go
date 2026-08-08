@@ -16,9 +16,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
@@ -33,6 +35,19 @@ type Driver struct {
 
 	binary string
 	sup    *supervise.Supervisor
+	// The account game files are downloaded as when this daemon is root. The
+	// LinuxGSM driver has always had this; steamcmd never did, and the
+	// consequence was silent: EnsureDir creates the server directory as root,
+	// steamcmd runs unprivileged, and the download has nowhere to write. On a
+	// real node it looked like a hang, with an empty data directory, no error,
+	// and steamcmd sitting there burning a few seconds of CPU.
+	runAs *credential
+}
+
+type credential struct {
+	name string
+	uid  uint32
+	gid  uint32
 }
 
 func New(binary, root string, sup *supervise.Supervisor) *Driver {
@@ -40,7 +55,45 @@ func New(binary, root string, sup *supervise.Supervisor) *Driver {
 		binary = "steamcmd"
 	}
 
-	return &Driver{Store: store.New(root), binary: binary, sup: sup}
+	return &Driver{Store: store.New(root), binary: binary, sup: sup, runAs: unprivilegedUser()}
+}
+
+// unprivilegedUser mirrors the LinuxGSM driver: only relevant when the daemon
+// is root, and a daemon already running as a normal user keeps its own identity.
+func unprivilegedUser() *credential {
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	for _, name := range []string{"gamemgr", "steam", "nobody"} {
+		u, err := user.Lookup(name)
+		if err != nil {
+			continue
+		}
+		uid, err1 := strconv.Atoi(u.Uid)
+		gid, err2 := strconv.Atoi(u.Gid)
+		if err1 != nil || err2 != nil || uid == 0 {
+			continue
+		}
+
+		return &credential{name: name, uid: uint32(uid), gid: uint32(gid)}
+	}
+
+	return nil
+}
+
+// own hands the server directory to the account steamcmd downloads as.
+func (d *Driver) own(dir string) error {
+	if d.runAs == nil {
+		return nil
+	}
+
+	return filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		return os.Chown(path, int(d.runAs.uid), int(d.runAs.gid))
+	})
 }
 
 func (d *Driver) Name() string { return "steamcmd" }
@@ -65,6 +118,13 @@ func (d *Driver) Install(ctx context.Context, s runtime.Server, w io.Writer) err
 		return err
 	}
 	fmt.Fprintf(w, "[gamemgr] data directory %s\n", dir)
+
+	// Before anything downloads: the directory was created by root and
+	// steamcmd runs unprivileged, so without this the install writes nothing
+	// and reports nothing.
+	if err := d.own(dir); err != nil {
+		return fmt.Errorf("hand the data directory to %s: %w", d.runAs.name, err)
+	}
 
 	if s.SteamAppID <= 0 {
 		return fmt.Errorf("this template has no Steam app id, so there is nothing to download")
@@ -104,6 +164,11 @@ func (d *Driver) runSteamCMD(ctx context.Context, s runtime.Server, dir string, 
 
 	cmd := exec.CommandContext(ctx, d.binary, "+runscript", script)
 	cmd.Dir = dir
+	if d.runAs != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Credential: &syscall.Credential{Uid: d.runAs.uid, Gid: d.runAs.gid},
+		}
+	}
 
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {

@@ -198,6 +198,7 @@ document.addEventListener('alpine:init', () => {
         lines: config.backlog || [],
         connected: false,
         polled: false,
+        unreachable: false,
         autoScroll: true,
         command: '',
         history: [],
@@ -287,6 +288,17 @@ document.addEventListener('alpine:init', () => {
                 const data = await res.json();
                 if (Array.isArray(data.lines)) this.absorb(data.lines);
                 delete data.lines;
+
+                // Nothing in an unreachable sample was measured. Taking its
+                // state would turn "we could not ask" into "it is off".
+                this.unreachable = !!data.unreachable;
+                if (this.unreachable) {
+                    delete data.state;
+                    delete data.cpu;
+                    delete data.memory_mib;
+                    delete data.disk_mib;
+                }
+
                 this.stats = Object.assign({}, this.stats, data);
                 this.polled = true;
             } catch (e) {
@@ -322,6 +334,7 @@ document.addEventListener('alpine:init', () => {
         /** How the feed is arriving, in the words shown next to the dot. */
         feedLabel() {
             if (this.connected) return 'Live';
+            if (this.unreachable) return 'Node Unreachable';
             if (this.polled) return 'Polling';
             return 'Reconnecting';
         },
@@ -402,7 +415,11 @@ document.addEventListener('alpine:init', () => {
 
         diskPercent() {
             const cap = config.disk || 1;
-            return Math.min(100, Math.round(((this.stats.disk_mib || 0) / cap) * 100));
+            // Disk is sampled far less often than cpu and memory, so a frame
+            // without it falls back to the figure the page was rendered with
+            // rather than dropping the bar to zero under a non-zero number.
+            const used = this.stats.disk_mib || config.diskUsed || 0;
+            return Math.min(100, Math.round((used / cap) * 100));
         },
 
         cpuPercent() {

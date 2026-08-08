@@ -373,7 +373,10 @@ class NodeClient
     private function fakeStats(Server $server): array
     {
         if (! config('node.fake')) {
-            return ['state' => 'offline', 'cpu' => 0, 'memory_mib' => 0, 'disk_mib' => 0, 'players' => 0];
+            // `unreachable` matters to the caller: nothing here was measured, so
+            // a console that overwrites its state with this would be claiming
+            // the server is off when the truth is that nobody asked it.
+            return ['state' => 'offline', 'cpu' => 0, 'memory_mib' => 0, 'disk_mib' => 0, 'players' => 0, 'unreachable' => true];
         }
 
         return [

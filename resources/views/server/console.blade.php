@@ -11,14 +11,17 @@
             status: @js($server->status)
          })" class="grid gap-6 lg:grid-cols-4">
 
-        <div class="lg:col-span-3 space-y-4">
+        {{-- min-w-0 on both columns: a grid item defaults to min-width:auto, so
+             the Connect card's input set a 341px floor for the whole grid and
+             the page scrolled sideways at 320. --}}
+        <div class="lg:col-span-3 space-y-4 min-w-0">
             {{-- Above the console: while a server is installing there is no game
                  output to read, and the install is the only thing happening. --}}
             <x-install-progress :server="$server" />
             <x-live-console :server="$server" />
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 min-w-0">
             <x-card title="Power">
                 <div class="grid grid-cols-2 gap-2">
                     @can('check', [$server, 'control.start'])

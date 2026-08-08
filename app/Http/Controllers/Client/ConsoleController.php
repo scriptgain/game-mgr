@@ -89,11 +89,24 @@ class ConsoleController extends ServerController
         return back()->with('status', 'Command sent.');
     }
 
-    /** Polled by the page when the SSE stream is unavailable. */
-    public function stats(Server $server)
+    /**
+     * Polled by the console when the SSE stream is unavailable.
+     *
+     * With ?tail= it also carries the log backlog, because in that mode the
+     * panel is the only path to the node the browser has. The browser appends
+     * only the part it has not already got, so the tail can be re-sent freely.
+     */
+    public function stats(Request $request, Server $server)
     {
         $this->guard($server, 'control.console');
 
-        return response()->json(NodeClient::for($server->node)->stats($server));
+        $client = NodeClient::for($server->node);
+        $payload = $client->stats($server);
+
+        if ($tail = (int) $request->query('tail')) {
+            $payload['lines'] = $client->logs($server, min(500, max(1, $tail)));
+        }
+
+        return response()->json($payload);
     }
 }
