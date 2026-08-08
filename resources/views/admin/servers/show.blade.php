@@ -179,7 +179,14 @@
                         <p class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
                             <x-icon name="network" class="w-4 h-4 text-slate-400" /> Connect Address
                         </p>
-                        <x-copy-field :value="$server->address()" />
+                        @if ($server->connectAddress())
+                            <div class="space-y-2">
+                                <x-copy-field :value="$server->connectAddress()" />
+                                <x-copy-field :value="$server->address()" />
+                            </div>
+                        @else
+                            <x-copy-field :value="$server->address()" />
+                        @endif
                     </div>
 
                     <div class="min-w-0">
@@ -411,6 +418,29 @@
                                 @endif
                             </dd>
                         </div>
+                        @if ($minecraft = $server->minecraft())
+                            {{-- What this server will actually download at its
+                                 next start, without opening the Startup form. --}}
+                            <div class="min-w-0">
+                                <dt class="text-slate-500">Server Software</dt>
+                                <dd class="text-slate-900 [overflow-wrap:anywhere]">
+                                    {{ \Illuminate\Support\Str::headline(mb_strtolower($minecraft['type'])) }} {{ $minecraft['version'] }}
+                                    <span class="block text-xs text-slate-400">
+                                        @if ($minecraft['build'])
+                                            Pinned to build {{ $minecraft['build'] }}
+                                        @else
+                                            Newest build at each start
+                                        @endif
+                                    </span>
+                                </dd>
+                            </div>
+                        @endif
+                        @if ($server->connectName())
+                            <div class="min-w-0">
+                                <dt class="text-slate-500">Connection Name</dt>
+                                <dd class="font-mono text-xs text-slate-900 [overflow-wrap:anywhere]">{{ $server->connectAddress() }}</dd>
+                            </div>
+                        @endif
                         <div class="min-w-0">
                             <dt class="text-slate-500">Primary Allocation</dt>
                             <dd class="font-mono text-xs text-slate-900 [overflow-wrap:anywhere]">{{ $server->address() }}</dd>

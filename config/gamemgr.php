@@ -24,4 +24,24 @@ return [
     'require_2fa' => false,
     'force_password_days' => 0,
     'allow_client_server_create' => false,
+
+    // MCJars, the catalogue of published Minecraft server builds, used to fill
+    // the type and version pickers on templates that declare a `mcjars`
+    // document. See App\Services\Minecraft\McJars.
+    //
+    // The timeout is short on purpose. This is a nicety on a form: a page that
+    // hangs for ten seconds because a third party is slow is worse than one
+    // that quietly shows the free text box it always used to.
+    'mcjars' => [
+        'enabled' => env('GAMEMGR_MCJARS', true),
+        'base' => env('GAMEMGR_MCJARS_URL', 'https://mcjars.app'),
+        'timeout' => (float) env('GAMEMGR_MCJARS_TIMEOUT', 4),
+        // Seconds a fresh answer is served for. Builds move fastest, because
+        // Paper publishes most days; the list of types barely moves at all.
+        'ttl' => [
+            'types' => 21600,
+            'versions' => 10800,
+            'builds' => 1800,
+        ],
+    ],
 ];

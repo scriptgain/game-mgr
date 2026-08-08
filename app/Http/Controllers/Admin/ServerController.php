@@ -15,6 +15,7 @@ use App\Models\Template;
 use App\Models\TemplateVariable;
 use App\Models\User;
 use App\Services\AllocationPlanner;
+use App\Services\Minecraft\McJars;
 use App\Services\NodeClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,7 +59,7 @@ class ServerController extends Controller
         ]);
     }
 
-    public function create(Request $request)
+    public function create(Request $request, McJars $mcjars)
     {
         $server = new Server([
             'memory' => config('gamemgr.default_memory', 2048),
@@ -97,7 +98,43 @@ class ServerController extends Controller
             // Everything the wizard needs client side, as one JSON island. The
             // view stays markup and the behaviour stays in public/js.
             'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints, $locations, $server),
+            // The MCJars picker, for the templates that declare one. Keyed by
+            // template id because step five renders every template's settings
+            // and hides all but the chosen one.
+            'minecraft' => $this->minecraftPickers($templates, $mcjars, (array) old('variables', [])),
         ]);
+    }
+
+    /**
+     * The Minecraft type and version picker for each template that carries an
+     * `mcjars` document, keyed by template id.
+     *
+     * Templates without one are simply absent, which is what makes the Palworld
+     * settings step look exactly as it always did. The catalogue lookups behind
+     * this are cached hard and fail to null, so a slow or missing MCJars costs
+     * the page a dropdown and nothing else.
+     *
+     * @param  array<int|string, string>  $values  posted values, so a rejected
+     *                                             POST reopens on what was chosen
+     */
+    private function minecraftPickers($templates, McJars $mcjars, array $values = []): array
+    {
+        $out = [];
+
+        foreach ($templates as $template) {
+            $picker = $template->mcjarsPicker();
+
+            if (! $picker) {
+                continue;
+            }
+
+            $out[$template->id] = [
+                'picker' => $picker,
+                'payload' => $picker->payload($mcjars, $values),
+            ];
+        }
+
+        return $out;
     }
 
     public function store(Request $request, AllocationPlanner $planner)

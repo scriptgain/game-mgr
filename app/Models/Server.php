@@ -45,6 +45,10 @@ class Server extends Model
         // Set by the Config tab when a save lands, so the "restart before this
         // is real" banner can go away by itself once the server restarts.
         'config_dirty_at',
+
+        // The connection name, denormalised. Assigned by the model itself at
+        // creation, not by any controller, so every creation path gets one.
+        'dns_label', 'connect_name',
     ];
 
     protected function casts(): array
@@ -84,6 +88,21 @@ class Server extends Model
         static::creating(function (Server $s) {
             $s->uuid ??= (string) Str::uuid();
             $s->uuid_short ??= substr(str_replace('-', '', $s->uuid), 0, 8);
+
+            // A connection name costs two queries and no network call, because
+            // the node's wildcard already answers for it. Doing it here rather
+            // than in a controller means the admin form, the client form, the
+            // API and any seeder all get one, and none of them can forget.
+            (new \App\Services\Dns\WildcardManager)->nameServer($s);
+        });
+
+        // A server that moves to another node moves to another name: the
+        // wildcard that answers for it belongs to the node it is on. Phase 1
+        // accepts that and shows the new name rather than pretending otherwise.
+        static::updating(function (Server $s) {
+            if ($s->isDirty('node_id')) {
+                (new \App\Services\Dns\WildcardManager)->nameServer($s);
+            }
         });
     }
 
@@ -276,9 +295,45 @@ class Server extends Model
 
     // ------------------------------------------------------------ addresses
 
+    /**
+     * The direct address, and the default everywhere.
+     *
+     * This is deliberately untouched by the domains feature. It depends on no
+     * DNS, no certificate and no third party, so if every name in the panel
+     * stops resolving, every server is still reachable exactly as it was. A
+     * name is an additional address, never a replacement for this one.
+     */
     public function address(): string
     {
         return $this->allocation?->address() ?? 'Not Allocated';
+    }
+
+    /**
+     * The name a player can type instead, or null when there isn't one.
+     *
+     * Read straight off the column: no DNS lookup, no string rebuilt out of
+     * three relations. Gated on the feature being on, so turning domains off
+     * puts every screen back exactly as it was without touching a row.
+     */
+    public function connectName(): ?string
+    {
+        if (! \App\Services\Dns\DnsConfig::active()) {
+            return null;
+        }
+
+        return filled($this->connect_name) ? $this->connect_name : null;
+    }
+
+    /** The name with the port on it, which is what a player actually types. */
+    public function connectAddress(): ?string
+    {
+        $name = $this->connectName();
+
+        if ($name === null || ! $this->allocation) {
+            return null;
+        }
+
+        return $name.':'.$this->allocation->port;
     }
 
     /** SFTP login the client area shows. */

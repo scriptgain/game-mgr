@@ -78,7 +78,17 @@
                  information, one header and one set of padding instead of two,
                  which is most of what made this column scroll. --}}
             <x-card title="Connect" icon="link">
-                <x-copy-field :value="$server->address()" label="Address" />
+                {{-- Two addresses, never one. The name is easier to hand out,
+                     the direct address depends on nothing and always works, so
+                     both are here and neither replaces the other. --}}
+                @if ($server->connectAddress())
+                    <div class="space-y-3">
+                        <x-copy-field :value="$server->connectAddress()" label="Connect" />
+                        <x-copy-field :value="$server->address()" label="Direct" />
+                    </div>
+                @else
+                    <x-copy-field :value="$server->address()" label="Address" />
+                @endif
                 <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2">
                         <p class="text-slate-500">Runtime</p>

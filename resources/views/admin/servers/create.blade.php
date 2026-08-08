@@ -849,7 +849,13 @@
 
                                 $editable = $template->variables
                                     ->filter(fn ($v) => $v->user_editable && ! in_array($v->id, $owned, true));
-                                $locked = $template->variables
+                                // NOT $locked. _variable.blade.php reads a
+                                // $locked flag to decide whether to render a
+                                // setting read only, and @include shares the
+                                // including scope, so a collection called
+                                // $locked here made every control on this step
+                                // a padlock and a value.
+                                $lockedVars = $template->variables
                                     ->reject(fn ($v) => $v->user_editable || in_array($v->id, $owned, true));
                             @endphp
                             {{-- Every template's inputs are in the DOM, and every
@@ -875,7 +881,7 @@
                                         @endforeach
                                     </div>
 
-                                    @if ($locked->isNotEmpty())
+                                    @if ($lockedVars->isNotEmpty())
                                         {{-- Open state lives in the wizard, not here: a failed submit
                                              has to be able to reveal whatever it could not focus. --}}
                                         <div class="section-divider mt-6 pt-5">
@@ -884,14 +890,14 @@
                                                 <x-icon name="chevron-down" class="w-4 h-4 transition-transform"
                                                         ::class="showLocked && 'rotate-180'" />
                                                 <span x-text="showLocked ? 'Hide Template Defaults' : 'Show Template Defaults'">Show Template Defaults</span>
-                                                <x-badge>{{ $locked->count() }}</x-badge>
+                                                <x-badge>{{ $lockedVars->count() }}</x-badge>
                                             </button>
                                             <p class="mt-1.5 text-sm text-slate-500">
                                                 Settings the template keeps to itself. The owner never sees them, and they are
                                                 usually right as they are.
                                             </p>
                                             <div x-show="showLocked" x-cloak class="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-                                                @foreach ($locked as $variable)
+                                                @foreach ($lockedVars as $variable)
                                                     @include('admin.servers._variable', ['variable' => $variable, 'owner' => $template->id])
                                                 @endforeach
                                             </div>

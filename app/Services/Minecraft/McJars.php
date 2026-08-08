@@ -73,6 +73,11 @@ class McJars
     /** How long the last good answer is kept to serve when the API is down. */
     private const STALE = 604800;
 
+    /** Page size and the ceiling on how many pages one list may cost. */
+    private const PER_PAGE = 200;
+
+    private const MAX_PAGES = 6;
+
     public function __construct(
         private readonly string $base = '',
         private readonly float $timeout = 0,
@@ -150,19 +155,19 @@ class McJars
             return null;
         }
 
-        $body = $this->get(
+        $rows = $this->paged(
             'versions:'.$type,
             '/api/v3/builds/types/'.rawurlencode($type).'/versions',
-            ['per_page' => 200],
+            'versions',
         );
 
-        if ($body === null) {
+        if ($rows === null) {
             return null;
         }
 
         $out = [];
 
-        foreach ((array) ($body['versions']['data'] ?? []) as $row) {
+        foreach ($rows as $row) {
             if (! is_array($row) || ! isset($row['id']) || ! is_scalar($row['id'])) {
                 continue;
             }
@@ -270,6 +275,61 @@ class McJars
     }
 
     // ----------------------------------------------------------------- inside
+
+    /**
+     * Every page of a paginated v3 list, newest first, up to a hard cap.
+     *
+     * One page is not enough and the difference matters. Paper has 66 versions
+     * and Purpur 40, so a single request covers them, but Fabric has 491, Quilt
+     * 430 and Vanilla 838, and stopping at the first page would quietly hide
+     * every Minecraft version older than the last couple of years from anyone
+     * running a modded server. The cap is there so a type that grows a third
+     * time cannot turn one page render into thirty requests.
+     *
+     * The whole assembled list is cached under one key, so the pages are only
+     * ever walked on a cold cache.
+     */
+    private function paged(string $key, string $path, string $envelope): ?array
+    {
+        $cached = Cache::get(self::PREFIX.$key);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $rows = [];
+
+        for ($page = 1; $page <= self::MAX_PAGES; $page++) {
+            $body = $this->get($key.':p'.$page, $path, ['per_page' => self::PER_PAGE, 'page' => $page]);
+
+            if ($body === null) {
+                // A first page that never arrived is no answer at all. A later
+                // page that fails leaves a short list, which is still a usable
+                // one, so it is kept rather than thrown away.
+                return $page === 1 ? null : $this->remember($key, $rows);
+            }
+
+            $data = (array) ($body[$envelope]['data'] ?? []);
+            $rows = array_merge($rows, $data);
+
+            $total = (int) ($body[$envelope]['total'] ?? count($rows));
+
+            if (count($data) < self::PER_PAGE || count($rows) >= $total) {
+                break;
+            }
+        }
+
+        return $this->remember($key, $rows);
+    }
+
+    /** Cache an assembled list under both the fresh and the stale key. */
+    private function remember(string $key, array $rows): array
+    {
+        Cache::put(self::PREFIX.$key, $rows, $this->ttl($key));
+        Cache::put(self::PREFIX.'stale:'.$key, $rows, self::STALE);
+
+        return $rows;
+    }
 
     /**
      * One cached GET.

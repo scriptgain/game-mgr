@@ -28,8 +28,17 @@
                     </div>
 
                     <dl class="mt-4 space-y-3">
+                        @if ($server->connectAddress())
+                            {{-- Wraps rather than truncates. This is the address
+                                 the owner hands to their players, so an ellipsis
+                                 in the middle of it makes the row pointless. --}}
+                            <div class="flex items-start justify-between gap-3 text-sm">
+                                <dt class="shrink-0 text-slate-500">Connect</dt>
+                                <dd class="min-w-0 text-right font-mono text-xs text-slate-900 [overflow-wrap:anywhere]">{{ $server->connectAddress() }}</dd>
+                            </div>
+                        @endif
                         <div class="flex items-center justify-between text-sm">
-                            <dt class="text-slate-500">Address</dt>
+                            <dt class="text-slate-500">{{ $server->connectAddress() ? 'Direct' : 'Address' }}</dt>
                             <dd class="font-mono text-xs text-slate-700 truncate max-w-[60%]">{{ $server->address() }}</dd>
                         </div>
                         <div class="flex items-center justify-between text-sm">

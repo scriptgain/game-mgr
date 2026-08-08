@@ -2101,17 +2101,24 @@ document.addEventListener('alpine:init', () => {
         },
 
         /**
-         * The build dropdown's options: "newest", then whatever MCJars listed,
-         * with the value currently held spliced in when the list does not
-         * contain it. That happens for a build older than the page MCJars
-         * returns, and before the list has been fetched at all, and in both
-         * cases an option that is missing is a value silently discarded.
+         * The build dropdown's options after the static "newest" one: whatever
+         * MCJars listed, with the value currently held spliced in front when
+         * the list does not contain it.
+         *
+         * That happens before the list has been fetched at all, and for a build
+         * older than the page MCJars returns, and in both cases an option that
+         * is missing is a value silently discarded the moment somebody saves.
+         *
+         * The empty "newest" choice is deliberately NOT in here. An option
+         * whose value is bound to an empty string keeps no value attribute at
+         * all, and an option without one answers with its own text, so that
+         * entry would have posted the literal string "Newest Build".
          */
         buildChoices() {
-            const rows = [{ value: '', label: 'Newest Build', experimental: false }].concat(this.buildList);
+            const rows = this.buildList.slice();
 
             if (this.build && ! rows.some((row) => String(row.value) === String(this.build))) {
-                rows.splice(1, 0, { value: this.build, label: 'Build ' + this.build, experimental: false });
+                rows.unshift({ value: this.build, label: 'Build ' + this.build, experimental: false });
             }
 
             return rows;
@@ -2155,10 +2162,6 @@ document.addEventListener('alpine:init', () => {
             if (! t || ! t.build_variable) return;
 
             this.buildValues[t.build_variable] = value === undefined || value === null ? '' : String(value);
-        },
-
-        buildKnown(value) {
-            return this.buildList.some((row) => String(row.value) === String(value));
         },
 
         // ---------------------------------------------------------- versions

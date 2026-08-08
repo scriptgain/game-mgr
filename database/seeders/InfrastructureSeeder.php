@@ -46,6 +46,7 @@ class InfrastructureSeeder extends Seeder
         $nodes = [
             [
                 'name' => 'phx-docker-01',
+                'dns_label' => 'phx1',
                 'location_id' => $phoenix->id,
                 'description' => 'General purpose Docker node. Runs the containerised templates.',
                 'connection_mode' => 'direct',
@@ -71,6 +72,7 @@ class InfrastructureSeeder extends Seeder
             ],
             [
                 'name' => 'phx-steam-01',
+                'dns_label' => 'phx2',
                 'location_id' => $phoenix->id,
                 'description' => 'Bare metal. Runs SteamCMD templates natively, no container.',
                 'connection_mode' => 'direct',
@@ -98,6 +100,7 @@ class InfrastructureSeeder extends Seeder
             ],
             [
                 'name' => 'fra-lgsm-01',
+                'dns_label' => 'fra1',
                 'location_id' => $frankfurt->id,
                 'description' => 'LinuxGSM node. Inherits the LinuxGSM catalogue of 130+ games.',
                 'connection_mode' => 'direct',
@@ -122,6 +125,7 @@ class InfrastructureSeeder extends Seeder
             ],
             [
                 'name' => 'home-nuc-01',
+                'dns_label' => 'home1',
                 'location_id' => $homelab->id,
                 'description' => 'A NUC on a domestic line with no port forwarding. Reverse mode is the only way this box is reachable at all, which is exactly the case Pterodactyl cannot cover.',
                 'connection_mode' => 'reverse',
@@ -146,6 +150,7 @@ class InfrastructureSeeder extends Seeder
             ],
             [
                 'name' => 'fra-docker-02',
+                'dns_label' => 'fra2',
                 'location_id' => $frankfurt->id,
                 'description' => 'Draining ahead of a kernel upgrade. New placements are blocked.',
                 'connection_mode' => 'direct',

@@ -41,7 +41,14 @@
                     @if ($page->show_address)
                         <div class="px-6 py-4 flex items-center justify-between gap-4">
                             <dt class="text-sm text-slate-500">Connect To</dt>
-                            <dd class="font-mono text-sm text-slate-900 truncate">{{ $server->address() }}</dd>
+                            <dd class="min-w-0 text-right">
+                                @if ($server->connectAddress())
+                                    <span class="block font-mono text-sm text-slate-900 truncate">{{ $server->connectAddress() }}</span>
+                                    <span class="block font-mono text-xs text-slate-500 truncate">{{ $server->address() }}</span>
+                                @else
+                                    <span class="block font-mono text-sm text-slate-900 truncate">{{ $server->address() }}</span>
+                                @endif
+                            </dd>
                         </div>
                     @endif
                     @if ($page->show_players)

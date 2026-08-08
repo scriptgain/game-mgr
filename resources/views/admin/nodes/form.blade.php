@@ -8,7 +8,7 @@
         'runtimes' => 3,
         'memory' => 4, 'memory_overallocate' => 4, 'disk' => 4, 'disk_overallocate' => 4,
         'cpu' => 4, 'cpu_overallocate' => 4, 'upload_size' => 4,
-        'public' => 5, 'maintenance_mode' => 5, 'daemon_base' => 5,
+        'public' => 5, 'maintenance_mode' => 5, 'daemon_base' => 5, 'dns_label' => 5,
     ];
     $firstBadStep = 1;
     foreach ($stepOf as $field => $step) {
@@ -117,6 +117,7 @@
         'isPublic' => (bool) old('public', $node->public ?? true),
         'maintenance' => (bool) old('maintenance_mode', $node->maintenance_mode),
         'daemonBase' => (string) old('daemon_base', $node->daemon_base ?: '/var/lib/gamemgr/volumes'),
+        'dnsLabel' => (string) old('dns_label', $node->dns_label),
     ];
 @endphp
 
@@ -515,6 +516,27 @@
                             <div class="rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200 px-4 py-3">
                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Each Server Gets</p>
                                 <p class="mt-1 font-mono text-sm text-slate-800 [overflow-wrap:anywhere]" x-text="volumePath()"></p>
+                            </div>
+
+                            {{-- The middle label of every connection name here.
+                                 Optional on purpose: a node without one hands
+                                 out no names and its servers keep the direct
+                                 address they already have. --}}
+                            <x-field label="DNS Label"
+                                     hint="One label, no dots, such as lax1. Leave it blank and this node hands out no names."
+                                     :error="$errors->first('dns_label')">
+                                <x-input name="dns_label" x-model="dnsLabel"
+                                         value="{{ old('dns_label', $node->dns_label) }}"
+                                         placeholder="lax1" class="font-mono text-sm" spellcheck="false" autocomplete="off" />
+                            </x-field>
+
+                            <div class="rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200 px-4 py-3">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Players Will Be Able To Type</p>
+                                <p class="mt-1 font-mono text-sm text-slate-800 [overflow-wrap:anywhere]"
+                                   x-text="dnsLabel ? 'alpha.' + dnsLabel + '.{{ \App\Services\Dns\DnsConfig::zone() ?: 'zone-not-set' }}:8211' : 'No label, so servers here show their address only'"></p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    The direct address is shown alongside it everywhere and never replaced.
+                                </p>
                             </div>
                         </div>
                         <x-slot:footer>

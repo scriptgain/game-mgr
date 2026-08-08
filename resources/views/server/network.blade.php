@@ -24,6 +24,22 @@
         </div>
     @endif
 
+    {{-- Only when there is a name to show. With the feature off this page looks
+         exactly as it did before it existed. --}}
+    @if ($server->connectAddress())
+        <x-card title="How Players Connect" icon="globe" class="mb-6"
+                subtitle="Two addresses for the same server. The name is easier to hand out; the address below it works with no DNS at all.">
+            <div class="grid gap-4 sm:grid-cols-2">
+                <x-copy-field label="Connect" :value="$server->connectAddress()" />
+                <x-copy-field label="Direct" :value="$server->address()" />
+            </div>
+            <p class="mt-3 text-xs text-slate-500">
+                The name follows the node this server is on. Moving it to another node gives it a new name, and the
+                direct address keeps working throughout.
+            </p>
+        </x-card>
+    @endif
+
     <x-card title="Network" icon="network"
             subtitle="{{ $allocations->count() }} of {{ $server->allocation_limit ?: 'unlimited' }} allocations used. The primary address is the one players connect to."
             flush>

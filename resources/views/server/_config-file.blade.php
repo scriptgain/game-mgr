@@ -12,7 +12,7 @@
 @endphp
 
 @if (! $info['supported'])
-    <x-card :title="$file->label">
+    <x-card :title="$file->label" icon="file">
         <x-empty-state icon="warning" title="Unsupported Format"
                        :description="'This template declares '.$file->path.' as a format this panel has no parser for. Edit it in the file manager instead.'" />
     </x-card>
@@ -21,7 +21,7 @@
     {{-- The normal case before a first boot. An empty form here would create a
          file holding nothing but the handful of keys the panel knows about,
          which most games read as a config they cannot use. --}}
-    <x-card :title="$file->label" :subtitle="$file->path">
+    <x-card :title="$file->label" icon="file" :subtitle="$file->path">
         <x-empty-state icon="file" title="Not Written Yet"
                        description="{{ $file->label }} does not exist on this server yet. Games write their configuration the first time they start, so start the server once and this form fills itself in from the file the game wrote.">
             <x-slot:action>
@@ -33,14 +33,14 @@
     </x-card>
 
 @elseif ($sections === [])
-    <x-card :title="$file->label" :subtitle="$file->path">
+    <x-card :title="$file->label" icon="file" :subtitle="$file->path">
         <x-empty-state icon="lock" title="Nothing To Configure"
                        description="This template exposes no settings in this file that you are allowed to see." />
     </x-card>
 
 @else
     @foreach ($sections as $section => $settings)
-        <x-card :title="$section === '' ? $file->label : $section"
+        <x-card :title="$section === '' ? $file->label : $section" icon="sliders"
                 :subtitle="$section === '' ? $file->path : null">
             <div class="grid gap-5 sm:grid-cols-2">
                 @foreach ($settings as $setting)

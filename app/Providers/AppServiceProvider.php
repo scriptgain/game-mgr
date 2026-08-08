@@ -78,6 +78,17 @@ class AppServiceProvider extends ServiceProvider
                 'node.offline_after' => (int) ($s['node_offline_after'] ?? config('node.offline_after', 120)),
             ]);
 
+            // Connection names. The API token is deliberately NOT overlaid: it
+            // is decrypted on demand by DnsConfig, so the plaintext never sits
+            // in the config array waiting for a dump or a stack trace.
+            config([
+                'domains.enabled' => ($s['domains_enabled'] ?? null) === null
+                    ? (bool) config('domains.enabled', false)
+                    : $s['domains_enabled'] === '1',
+                'domains.provider' => $s['domains_provider'] ?? config('domains.provider', 'null'),
+                'domains.zone' => $s['domains_zone'] ?? config('domains.zone', ''),
+            ]);
+
             // A node daemon that is unreachable can be answered with synthetic
             // data instead of an error. Useful for demos, dangerous in
             // production, so it is a deliberate switch rather than a fallback.

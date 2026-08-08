@@ -30,6 +30,11 @@ class Node extends Model
         'fqdn', 'daemon_port', 'sftp_port', 'behind_proxy', 'memory', 'memory_overallocate',
         'disk', 'disk_overallocate', 'cpu', 'cpu_overallocate', 'upload_size', 'runtimes',
         'public', 'maintenance_mode', 'daemon_base',
+
+        // The middle label of every connection name on this node: lax1 in
+        // alpha.lax1.play.scriptgain.com. The wildcard status columns beside it
+        // are written by the DNS sync, never posted, so they are not here.
+        'dns_label',
     ];
 
     protected $hidden = ['daemon_token', 'daemon_secret', 'enroll_token'];
@@ -48,6 +53,7 @@ class Node extends Model
             'last_seen_at' => 'datetime',
             'enrolled_at' => 'datetime',
             'enroll_token_expires_at' => 'datetime',
+            'wildcard_checked_at' => 'datetime',
         ];
     }
 
@@ -182,6 +188,72 @@ class Node extends Model
     public function freeAllocations(): HasMany
     {
         return $this->allocations()->whereNull('server_id');
+    }
+
+    // ------------------------------------------------------------------ dns
+
+    /** The wildcard that answers for every server here, or null if unlabelled. */
+    public function wildcardName(): ?string
+    {
+        return (new \App\Services\Dns\NameAllocator)->wildcardName($this);
+    }
+
+    /**
+     * The IPv4 address the wildcard should point at.
+     *
+     * The node's hostname first, when it is already an address, because that is
+     * the one an operator typed and can see. Otherwise the address most of this
+     * node's allocations sit on, which is what players are connecting to today.
+     * Loopback and unspecified addresses are never a public answer.
+     */
+    public function dnsTargetIp(): ?string
+    {
+        if ($this->isUsableIpv4($this->fqdn)) {
+            return $this->fqdn;
+        }
+
+        $ip = $this->allocations()
+            ->selectRaw('ip, COUNT(*) as total')
+            ->groupBy('ip')
+            ->orderByDesc('total')
+            ->pluck('ip')
+            ->first(fn ($candidate) => $this->isUsableIpv4($candidate));
+
+        return $ip ?: null;
+    }
+
+    /** Plain English for the node page, and the tone of the dot beside it. */
+    public function wildcardStatusLabel(): string
+    {
+        return match ($this->wildcard_status) {
+            \App\Services\Dns\WildcardManager::STATUS_ACTIVE => 'Confirmed',
+            \App\Services\Dns\WildcardManager::STATUS_DRIFT => 'Wrong Record',
+            \App\Services\Dns\WildcardManager::STATUS_FAILED => 'Provider Error',
+            \App\Services\Dns\WildcardManager::STATUS_NO_IP => 'No Address',
+            \App\Services\Dns\WildcardManager::STATUS_UNLABELLED => 'No Label',
+            \App\Services\Dns\WildcardManager::STATUS_DISABLED => 'Turned Off',
+            default => 'Never Checked',
+        };
+    }
+
+    public function wildcardTone(): string
+    {
+        return match ($this->wildcard_status) {
+            \App\Services\Dns\WildcardManager::STATUS_ACTIVE => 'emerald',
+            \App\Services\Dns\WildcardManager::STATUS_DRIFT, \App\Services\Dns\WildcardManager::STATUS_FAILED => 'rose',
+            \App\Services\Dns\WildcardManager::STATUS_NO_IP, \App\Services\Dns\WildcardManager::STATUS_UNLABELLED => 'amber',
+            default => 'slate',
+        };
+    }
+
+    private function isUsableIpv4(?string $candidate): bool
+    {
+        if (! filled($candidate) || ! filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return false;
+        }
+
+        return ! in_array($candidate, ['0.0.0.0', '127.0.0.1'], true)
+            && ! str_starts_with($candidate, '127.');
     }
 
     // ------------------------------------------------------------ transport

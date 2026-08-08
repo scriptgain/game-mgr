@@ -55,8 +55,15 @@
                 <span class="text-slate-700">{{ $server->node?->name }}</span>
                 <x-runtime-badge :runtime="$server->runtime" class="ml-1 align-middle" />
                 </td>
+                {{-- Both addresses, one line each. A connection name is long, so
+                     each line truncates with an ellipsis of its own rather than
+                     being clipped mid-character or wrapping the row to three
+                     lines. The full values are on the server page. --}}
                 <td class="font-mono text-xs text-slate-500">
-                {{ $server->address() }}
+                @if ($server->connectAddress())
+                <span class="block truncate text-slate-700">{{ $server->connectAddress() }}</span>
+                @endif
+                <span class="block truncate">{{ $server->address() }}</span>
                 <span class="block font-sans text-slate-400">{{ \App\Support\Format::mib($server->memory) }} RAM</span>
                 </td>
                 <td><x-status-dot :tone="$server->statusTone()" :label="$server->statusLabel()" /></td>

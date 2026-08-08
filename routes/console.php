@@ -21,6 +21,11 @@ Schedule::command('watchdog:evaluate')->everyMinute()->withoutOverlapping();
 // tab can show "update available" without the user hunting for it.
 Schedule::command('mods:check-updates')->hourly()->withoutOverlapping();
 
+// Reconcile the per-node wildcard DNS records, and the names built on them.
+// Hourly because the request path never blocks on a DNS provider: a failure
+// there is recorded against the node and repaired here.
+Schedule::command('gamemgr:dns-sync')->hourly()->withoutOverlapping();
+
 // Nightly housekeeping: trim metric history, expired backups, old audit rows.
 Schedule::command('gamemgr:housekeeping')->dailyAt('03:30')->withoutOverlapping();
 

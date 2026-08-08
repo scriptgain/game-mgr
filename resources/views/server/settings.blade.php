@@ -67,7 +67,12 @@
         <div class="space-y-6">
             <x-card title="Connection" icon="link">
                 <div class="space-y-4">
-                    <x-copy-field label="Game Address" :value="$server->address()" />
+                    @if ($server->connectAddress())
+                        <x-copy-field label="Connect" :value="$server->connectAddress()" />
+                        <x-copy-field label="Direct" :value="$server->address()" />
+                    @else
+                        <x-copy-field label="Game Address" :value="$server->address()" />
+                    @endif
                     <x-copy-field label="SFTP Host" :value="($server->node?->fqdn ?: 'node').':'.($server->node?->sftp_port ?? 2022)" />
                     <x-copy-field label="SFTP Username" :value="$server->sftpUsername()" />
                     <p class="text-xs text-slate-500">Your SFTP password is your account password.</p>

@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Node;
 use App\Models\NodeMetric;
 use App\Services\AllocationPlanner;
+use App\Services\Dns\WildcardManager;
 use App\Services\NodeClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -44,10 +45,14 @@ class NodeController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, WildcardManager $wildcards)
     {
         $node = Node::create($this->validated($request));
         $this->issueEnrollToken($node);
+
+        // Best effort, and it cannot fail into an error page: the manager
+        // records what happened on the node and the hourly sync repairs it.
+        $wildcards->sync($node);
 
         return redirect()->route('admin.nodes.enroll', $node)
             ->with('status', 'Node created. Run the command below on the machine to enroll it.');
@@ -78,18 +83,31 @@ class NodeController extends Controller
         ]);
     }
 
-    public function update(Request $request, Node $node)
+    public function update(Request $request, Node $node, WildcardManager $wildcards)
     {
+        $previousLabel = $node->dns_label;
         $node->update($this->validated($request, $node));
+
+        // A node's label is the middle of every name on it, so changing it
+        // renames every server here and orphans the old wildcard.
+        if ($previousLabel !== $node->dns_label) {
+            if (filled($previousLabel)) {
+                $wildcards->remove((new Node)->forceFill(['dns_label' => $previousLabel]));
+            }
+            $wildcards->sync($node);
+        }
 
         return redirect()->route('admin.nodes.show', $node)->with('status', 'Node updated.');
     }
 
-    public function destroy(Node $node)
+    public function destroy(Node $node, WildcardManager $wildcards)
     {
         if ($node->servers()->exists()) {
             return back()->with('error', 'That node still hosts servers. Move or delete them first.');
         }
+
+        // Before the row goes, or there is nothing left to build the name from.
+        $wildcards->remove($node);
 
         $node->delete();
 
@@ -270,6 +288,26 @@ class NodeController extends Controller
         return back()->with('status', 'Daemon answered. Running version '.($system['version'] ?? 'unknown').'.');
     }
 
+    // ------------------------------------------------------------------ dns
+
+    /**
+     * Put this node's wildcard record back, now.
+     *
+     * The sync never throws, so this button cannot fail into an error page: it
+     * either confirms the record or comes back with the reason it could not,
+     * which is the same message the Wildcard row shows.
+     */
+    public function syncWildcard(Node $node, WildcardManager $wildcards)
+    {
+        $status = $wildcards->sync($node);
+
+        if ($status === WildcardManager::STATUS_ACTIVE) {
+            return back()->with('status', 'Wildcard record confirmed: '.$node->wildcardName().' points at '.$node->dnsTargetIp().'.');
+        }
+
+        return back()->with('error', $node->wildcard_error ?: 'The wildcard record is not in place. See the Wildcard row for details.');
+    }
+
     // ------------------------------------------------------------ internals
 
     private function validated(Request $request, ?Node $node = null): array
@@ -281,6 +319,13 @@ class NodeController extends Controller
             'connection_mode' => ['required', 'in:direct,reverse'],
             'scheme' => ['required', 'in:http,https'],
             'fqdn' => ['nullable', 'string', 'max:255'],
+            // One DNS label, no dots: it is the middle piece of
+            // alpha.lax1.play.example.com, not a hostname of its own. Unique
+            // across nodes, or two nodes would answer for the same names.
+            'dns_label' => [
+                'nullable', 'string', 'max:63', 'regex:/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/',
+                \Illuminate\Validation\Rule::unique('nodes', 'dns_label')->ignore($node?->id),
+            ],
             'daemon_port' => ['required', 'integer', 'between:1,65535'],
             'sftp_port' => ['required', 'integer', 'between:1,65535'],
             'memory' => ['required', 'integer', 'min:0'],
@@ -299,6 +344,8 @@ class NodeController extends Controller
             'public' => ['nullable', 'boolean'],
             'maintenance_mode' => ['nullable', 'boolean'],
             'behind_proxy' => ['nullable', 'boolean'],
+        ], [
+            'dns_label.regex' => 'A DNS label is lowercase letters, numbers and hyphens, with no dots. For example lax1.',
         ]);
 
         // A direct-mode node has to be dialable, so it needs an address. A

@@ -29,6 +29,66 @@
                 </dl>
             </x-card>
 
+            {{-- One record per node, and whether it is really there. The claim
+                 this row makes is "the provider confirmed it", not "we sent it",
+                 which is why it carries a checked-at time and the exact error. --}}
+            <x-card title="Wildcard Name" icon="globe"
+                    subtitle="One record answers for every server on this node, so nothing is created when a server is.">
+                <x-slot:actions>
+                    @if ($node->dns_label && \App\Services\Dns\DnsConfig::active())
+                        <form method="POST" action="{{ route('admin.nodes.wildcard', $node) }}">
+                            @csrf<x-button type="submit" variant="secondary" size="sm" icon="sync">Recreate</x-button>
+                        </form>
+                    @endif
+                </x-slot:actions>
+
+                @if (! \App\Services\Dns\DnsConfig::active())
+                    <x-alert type="info" title="Connection Names Are Off">
+                        Servers on this node show their direct address only, which is exactly how the panel behaves
+                        without this feature. Turn names on in
+                        <a href="{{ route('settings.domains.edit') }}" class="font-medium underline">Settings, Domains</a>.
+                    </x-alert>
+                @elseif (! $node->dns_label)
+                    <x-alert type="warn" title="This Node Has No Label">
+                        A name is built as server.label.zone, so this node needs a label such as lax1 before anything on
+                        it can have one. Set it in
+                        <a href="{{ route('admin.nodes.edit', $node) }}" class="font-medium underline">Configuration</a>.
+                    </x-alert>
+                @else
+                    <div class="space-y-4">
+                        <x-copy-field label="Record" :value="$node->wildcardName().'  A  '.($node->dnsTargetIp() ?: 'no address known')" />
+
+                        <dl class="grid gap-3 sm:grid-cols-3 text-sm">
+                            <div class="min-w-0">
+                                <dt class="text-slate-500">Record State</dt>
+                                <dd class="mt-0.5"><x-status-dot :tone="$node->wildcardTone()" :label="$node->wildcardStatusLabel()" /></dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-slate-500">Last Checked</dt>
+                                <dd class="mt-0.5 text-slate-900">{{ $node->wildcard_checked_at?->diffForHumans() ?? 'never' }}</dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-slate-500">Proxying</dt>
+                                <dd class="mt-0.5 text-slate-900">Never. Grey cloud only.</dd>
+                            </div>
+                        </dl>
+
+                        @if ($node->wildcard_error)
+                            <x-alert type="danger" title="The Record Is Not Confirmed">
+                                {{ $node->wildcard_error }}
+                                <span class="mt-1 block">Servers here are still reachable on their direct address. The hourly
+                                sync will try again, or press Recreate.</span>
+                            </x-alert>
+                        @endif
+
+                        <p class="text-xs text-slate-500">
+                            Game traffic is raw UDP and TCP and cannot pass through a CDN proxy, so this record is always
+                            written unproxied and is reported as wrong if it is found proxied.
+                        </p>
+                    </div>
+                @endif
+            </x-card>
+
             <x-card title="Servers On This Node" icon="server" flush>
                 @if ($servers->isEmpty())
                     <x-empty-state icon="server" title="Nothing Placed Here Yet"
