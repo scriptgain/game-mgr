@@ -37,7 +37,13 @@
          which is what loads Alpine. A file loaded after it attaches its
          alpine:init listener once the event has already fired, and everything
          it registers silently never exists. --}}
-    <script defer src="{{ asset('js/gamemgr.js') }}"></script>
+    {{-- The filemtime is not decoration. This file is served with an ETag and
+         no Cache-Control, so a browser is free to reuse its copy without ever
+         revalidating, and a deploy that changes the behaviour changes nothing
+         the browser can see. A stale copy of this file is what kept the tab
+         strip flashing on a panel that had already been fixed. The URL now
+         changes whenever the file does. --}}
+    <script defer src="{{ asset('js/gamemgr.js') }}?v={{ \App\Support\Asset::version('js/gamemgr.js') }}"></script>
     <x-tailwind-cdn />
     <x-accent-style />
 </head>
