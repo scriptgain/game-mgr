@@ -28,6 +28,13 @@
      x-on:open-modal.window="if ($event.detail === '{{ $name }}') open = true"
      x-on:close-modal.window="if ($event.detail === '{{ $name }}') open = false"
      x-on:keydown.escape.window="open = false">
+{{-- The spinner used by confirm buttons. Plain CSS in the component that
+     always ships with them, because a Tailwind animate-spin would depend on the
+     class being visible to whatever built the stylesheet. --}}
+<style>
+    @keyframes gm-spin-kf { to { transform: rotate(360deg); } }
+    .gm-spin { animation: gm-spin-kf .7s linear infinite; }
+</style>
 <template x-teleport="body">
 <div x-show="open" x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center p-4">
