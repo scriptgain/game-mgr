@@ -60,7 +60,12 @@ class NodeApiController extends Controller
         $node->forceFill([
             'runtimes' => $reported !== [] ? $reported : $node->runtimes,
             'daemon_token_id' => Str::random(16),
+            // The hash authenticates the daemon when it calls in. The encrypted
+            // plaintext is what the panel presents when it calls out: without
+            // it the panel has no credential for this node at all and every
+            // authenticated request is refused by a node that is working fine.
             'daemon_token' => hash('sha256', $plain),
+            'daemon_secret' => $plain,
             'enrol_token' => null,
             'enrol_token_expires_at' => null,
             'enrolled_at' => now(),

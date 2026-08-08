@@ -32,12 +32,16 @@ class Node extends Model
         'public', 'maintenance_mode', 'daemon_base',
     ];
 
-    protected $hidden = ['daemon_token', 'enrol_token'];
+    protected $hidden = ['daemon_token', 'daemon_secret', 'enrol_token'];
 
     protected function casts(): array
     {
         return [
             'runtimes' => 'array',
+            // The plaintext the panel presents when it calls this node.
+            // Encrypted at rest: a database leak must not hand over live
+            // control of every node.
+            'daemon_secret' => 'encrypted',
             'public' => 'boolean',
             'behind_proxy' => 'boolean',
             'maintenance_mode' => 'boolean',

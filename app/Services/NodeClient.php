@@ -237,11 +237,21 @@ class NodeClient
     }
 
     /**
-     * The dev stack passes the token straight through the env. A real install
-     * stores the hash and hands the plaintext to the daemon once, at enrolment.
+     * The credential this panel presents when it calls the node.
+     *
+     * An enrolled node has its own, stored encrypted at enrolment. The env
+     * fallback exists only for the dev stack, where the daemon is handed a
+     * fixed token and never enrols. Falling back on a real install is what made
+     * a healthy node report "did not respond": the panel was presenting the dev
+     * token to a daemon holding a 64 character one, so only the unauthenticated
+     * health check ever succeeded.
      */
     private function daemonToken(): string
     {
+        if ($secret = $this->node->daemon_secret) {
+            return (string) $secret;
+        }
+
         return (string) (config('node.dev_token') ?: env('NODE_TOKEN', 'gamemgr-dev-node-token'));
     }
 
