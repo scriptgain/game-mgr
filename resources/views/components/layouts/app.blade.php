@@ -188,9 +188,7 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     @if ($isAdmin)
-                        <x-button href="{{ route('admin.servers.create') }}" icon="plus" size="sm">
-                            <span class="hidden sm:inline">New Server</span><span class="sm:hidden">New</span>
-                        </x-button>
+                        <x-create-menu />
                     @endif
                 </div>
             </div>

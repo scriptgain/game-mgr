@@ -104,7 +104,7 @@
                                 <td class="tabular">{{ $node->servers_count }}</td>
                                 <td class="vx-cell-wrap">
                                     <x-meter :value="$node->memoryAllocated()" :max="$node->memoryCapacity()">
-                                        {{ $node->memoryPressure() }}%
+                                        {{ \App\Support\Format::mib($node->memoryAllocated()) }} of {{ \App\Support\Format::mib($node->memoryCapacity()) }}
                                     </x-meter>
                                 </td>
                                 <td><x-status-dot :tone="$node->statusTone()" :label="$node->statusLabel()" :pulse="$node->isOnline()" /></td>

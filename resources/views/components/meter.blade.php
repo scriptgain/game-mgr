@@ -13,9 +13,14 @@
     $bar = ['brand' => 'bg-brand-500', 'amber' => 'bg-amber-500', 'rose' => 'bg-rose-500', 'emerald' => 'bg-emerald-500'][$tone];
 @endphp
 <div {{ $attributes->merge(['class' => 'space-y-1.5']) }}>
-    @if ($label)
-        <div class="flex items-baseline justify-between gap-3 text-sm">
-            <span class="font-medium text-slate-700">{{ $label }}</span>
+    {{-- The value line renders for a slot as well as for a label. Keying it on
+         the label alone meant every caller that passed only a slot, which is
+         how the dashboard shows memory pressure, silently rendered no text at
+         all: a node with nothing on it then drew a 0% bar under no number and
+         the column looked empty rather than idle. --}}
+    @if ($label || ! $slot->isEmpty())
+        <div class="flex items-baseline gap-3 text-sm {{ $label ? 'justify-between' : '' }}">
+            @if ($label)<span class="font-medium text-slate-700">{{ $label }}</span>@endif
             <span class="tabular text-slate-500">{{ $slot->isEmpty() ? $pct.'%' : $slot }}{{ $suffix }}</span>
         </div>
     @endif
