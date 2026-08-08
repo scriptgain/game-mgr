@@ -118,6 +118,19 @@ func (d *Driver) Start(ctx context.Context, s runtime.Server) error {
 		return err
 	}
 
+	// The throttle has to be applied after the container exists, because it is
+	// written into the cgroup the container was given. Best effort on purpose:
+	// a node where this cannot be written behaves exactly as it did before, and
+	// a server must never fail to start over it.
+	if s.MemoryMiB > 0 {
+		if info, err := d.api.Inspect(ctx, container(s)); err == nil && info.State.Pid > 0 {
+			if path, err := softLimit(info.State.Pid, s.MemoryMiB); err != nil {
+				log.Printf("server %s: could not set a memory throttle (%s): %v; the hard limit still applies",
+					s.UUID, path, err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -343,7 +356,13 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 	}
 
 	if s.MemoryMiB > 0 {
-		host.Memory = s.MemoryMiB * 1024 * 1024
+		limit := s.MemoryMiB * 1024 * 1024
+		// A quarter of headroom above the promised figure, matching the native
+		// runtimes. Docker's Memory is memory.max, a hard kill, and it is the
+		// runaway guard rather than the everyday ceiling. The everyday ceiling
+		// is memory.high, which Docker has no field for and which softLimit
+		// writes into the container's own cgroup once it is running.
+		host.Memory = limit + limit/4
 		// Swap set equal to memory means no swap: Docker reads MemorySwap as
 		// the combined total, so leaving it unset grants unlimited swap and a
 		// server quietly blows past the limit the panel promised.

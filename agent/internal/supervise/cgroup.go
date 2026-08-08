@@ -110,11 +110,30 @@ func (m *cgroupManager) apply(session string, pid int, memoryMiB int64, cpuPerce
 	}
 
 	if memoryMiB > 0 {
+		limit := memoryMiB * 1024 * 1024
+
+		// memory.high FIRST, and this is the whole point. high is a throttle:
+		// at this figure the kernel reclaims hard and the process is slowed
+		// down. max is a cliff: crossing it is an immediate kill.
+		//
+		// Setting only max, which is what this did, means over-allocation is a
+		// promise the kernel will collect on violently. A node that has sold
+		// more memory than it owns is fine right up to the moment two servers
+		// are busy together, and then one dies mid save with no warning. With
+		// high at the promised figure and max above it, the same server gets
+		// slow instead, which is recoverable and visible on the metrics.
+		_ = os.WriteFile(filepath.Join(dir, "memory.high"),
+			[]byte(strconv.FormatInt(limit, 10)), 0o644)
+
+		// The cliff stays, moved up. It is a runaway guard now rather than the
+		// normal way a busy server is treated: something that blows a quarter
+		// past its limit despite being throttled is leaking, not busy.
 		_ = os.WriteFile(filepath.Join(dir, "memory.max"),
-			[]byte(strconv.FormatInt(memoryMiB*1024*1024, 10)), 0o644)
-		// Swap capped to zero alongside it. Leaving it alone means a server at
-		// its memory limit starts swapping instead of being stopped, which
-		// looks like the node has died rather than one server misbehaving.
+			[]byte(strconv.FormatInt(limit+limit/4, 10)), 0o644)
+
+		// Swap still capped to zero. Reclaim under memory.high pushes cold
+		// pages out; letting a game swap instead trades a slow server for a
+		// node that feels broken to everyone on it.
 		_ = os.WriteFile(filepath.Join(dir, "memory.swap.max"), []byte("0"), 0o644)
 	}
 

@@ -367,6 +367,10 @@ type Inspect struct {
 		OOMKilled  bool   `json:"OOMKilled"`
 		StartedAt  string `json:"StartedAt"`
 		FinishedAt string `json:"FinishedAt"`
+		// The host pid of the container's init process. Docker exposes no
+		// memory.high knob, so the only way to set one is to find the
+		// container's own cgroup, and this is what leads there.
+		Pid int `json:"Pid"`
 	} `json:"State"`
 	Config struct {
 		Image string `json:"Image"`
