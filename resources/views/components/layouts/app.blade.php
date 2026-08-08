@@ -18,6 +18,21 @@
     <link rel="icon" type="image/svg+xml" href="{{ route('favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="64x64" href="{{ route('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ route('favicon.apple') }}">
+    {{-- A PLAIN stylesheet, deliberately, and deliberately first.
+
+         app.css is inlined further down as <style type="text/tailwindcss">,
+         which the browser does not apply as CSS: the Tailwind browser compiler
+         has to download, parse and inject it. Until that finishes there is no
+         [x-cloak] rule at all, so every cloaked element renders visible and
+         then vanishes when Alpine boots. On a server page that is sixteen
+         elements, including the whole overflow menu, which is why tabs
+         appeared and disappeared on every page load.
+
+         Kept minimal on purpose: only the rules that must apply before any
+         script has run belong here. --}}
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
     {{-- JS that registers Alpine components must load BEFORE x-tailwind-cdn,
          which is what loads Alpine. A file loaded after it attaches its
          alpine:init listener once the event has already fired, and everything

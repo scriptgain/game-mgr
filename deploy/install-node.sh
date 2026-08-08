@@ -487,7 +487,14 @@ User=root
 Restart=always
 RestartSec=5
 TimeoutStopSec=30
-KillMode=mixed
+# process, NOT mixed or control-group. The whole point of holding native
+# servers in tmux is that they belong to tmux and not to us, so restarting or
+# upgrading this daemon is a non-event and the games keep running. mixed sends
+# SIGKILL to everything left in the cgroup, and tmux and every game server on
+# the node are in this unit's cgroup, so a routine daemon upgrade killed every
+# running game. Verified on a live node: a Palworld server with a player on it
+# died during a daemon update.
+KillMode=process
 LimitNOFILE=65535
 StandardOutput=journal
 StandardError=journal
