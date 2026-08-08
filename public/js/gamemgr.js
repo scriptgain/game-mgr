@@ -2065,6 +2065,56 @@ document.addEventListener('alpine:init', () => {
             this.$watch('type', () => this.onTypeChange());
             this.$watch('version', () => this.onVersionChange());
             this.$watch('build', (value) => this.writeBuild(value));
+
+            // The version and build options are built by x-for and x-if, which
+            // run after x-model has already tried to apply its value, so both
+            // selects would otherwise open blank or showing the first option
+            // while the hidden input posted something else entirely.
+            this.$nextTick(() => this.syncSelects());
+        },
+
+        /**
+         * Push the state back onto the selects once their options exist.
+         *
+         * Twice, and the second pass is the one that matters. x-for rebuilds
+         * the whole option list on Alpine's own scheduler, which runs after
+         * this microtask, and a select whose options are replaced loses its
+         * value. Without the second pass a server pinned to Purpur build 2497
+         * opened its form showing 2497 and then flipped to "Newest Build" the
+         * instant the build list arrived, while the hidden input still posted
+         * 2497. The frame callback runs after that rebuild and before paint, so
+         * nothing flickers and the control agrees with what will be saved.
+         */
+        syncSelects() {
+            const apply = () => {
+                const set = (prefix, value) => {
+                    const el = this.$el.querySelector('select[id^="' + prefix + '"]');
+                    if (el && el.value !== value) el.value = value;
+                };
+
+                set('mc-version-', this.version);
+                set('mc-build-', this.build);
+            };
+
+            apply();
+            requestAnimationFrame(apply);
+        },
+
+        /**
+         * The build dropdown's options: "newest", then whatever MCJars listed,
+         * with the value currently held spliced in when the list does not
+         * contain it. That happens for a build older than the page MCJars
+         * returns, and before the list has been fetched at all, and in both
+         * cases an option that is missing is a value silently discarded.
+         */
+        buildChoices() {
+            const rows = [{ value: '', label: 'Newest Build', experimental: false }].concat(this.buildList);
+
+            if (this.build && ! rows.some((row) => String(row.value) === String(this.build))) {
+                rows.splice(1, 0, { value: this.build, label: 'Build ' + this.build, experimental: false });
+            }
+
+            return rows;
         },
 
         // ----------------------------------------------------------- lookups
@@ -2122,19 +2172,21 @@ document.addEventListener('alpine:init', () => {
         },
 
         visibleVersions() {
-            if (this.snapshots) return this.versions;
+            const base = this.snapshots ? this.versions : this.versions.filter((row) => row.channel === 'RELEASE');
 
-            const releases = this.versions.filter((row) => row.channel === 'RELEASE');
+            // Never hide what is actually selected. Two things land here: a
+            // pinned snapshot while the toggle is off, and a value MCJars has
+            // no opinion about at all. "LATEST" is the second kind, and it is
+            // the default half these templates ship with, so a picker that
+            // could not show it would silently pin every new server to whatever
+            // version happened to be newest the day it was created.
+            if (this.version && ! base.some((row) => row.id === this.version)) {
+                const known = this.versions.find((row) => row.id === this.version);
 
-            // Never hide what is actually selected. A pinned snapshot with the
-            // toggle off would otherwise leave the select showing the wrong
-            // version while the hidden input posted the right one.
-            if (this.version && ! releases.some((row) => row.id === this.version)) {
-                const pinned = this.versions.find((row) => row.id === this.version);
-                if (pinned) return [pinned].concat(releases);
+                return [known || { id: this.version, channel: 'RELEASE', java: null }].concat(base);
             }
 
-            return releases;
+            return base;
         },
 
         versionIsSnapshot(id) {
@@ -2192,11 +2244,18 @@ document.addEventListener('alpine:init', () => {
         // ----------------------------------------------------------- changes
 
         async onTypeChange() {
+            // Was the version on screen one this type's list actually offered?
+            // Only then may it be replaced. A sentinel the image understands,
+            // "LATEST", or anything an operator typed by hand is theirs, and
+            // moving it because they looked at a different type is not a
+            // convenience, it is the panel changing an answer behind them.
+            const wasListed = this.versions.some((row) => row.id === this.version);
+
             this.build = this.currentBuildValue();
             this.buildList = [];
             this.buildsLoadedFor = '';
 
-            await this.loadVersions();
+            await this.loadVersions(wasListed);
 
             if (this.hasBuild()) this.loadBuilds();
         },
@@ -2208,14 +2267,14 @@ document.addEventListener('alpine:init', () => {
             if (this.hasBuild()) this.loadBuilds();
         },
 
-        async loadVersions() {
+        async loadVersions(reconcile = false) {
             const type = this.type;
             if (! type) return;
 
             if (this.versionCache[type]) {
                 this.versions = this.versionCache[type];
                 this.versionsFailed = false;
-                this.reconcileVersion();
+                if (reconcile) this.reconcileVersion();
 
                 return;
             }
@@ -2230,7 +2289,8 @@ document.addEventListener('alpine:init', () => {
             this.versionsFailed = rows === null;
             this.versions = rows || [];
             if (rows) this.versionCache[type] = rows;
-            this.reconcileVersion();
+            if (reconcile) this.reconcileVersion();
+            this.$nextTick(() => this.syncSelects());
         },
 
         async loadBuilds() {
@@ -2247,6 +2307,7 @@ document.addEventListener('alpine:init', () => {
 
             this.buildList = rows || [];
             this.buildsLoadedFor = key;
+            this.$nextTick(() => this.syncSelects());
         },
 
         /* A version that no longer exists for the newly chosen type has to

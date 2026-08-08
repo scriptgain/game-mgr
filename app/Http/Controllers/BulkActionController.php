@@ -24,6 +24,7 @@ use App\Models\WatchdogRule;
 use App\Models\World;
 use App\Models\Webhook;
 use App\Models\AuditLog;
+use App\Services\Mods\ModInstaller;
 use App\Services\NodeClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -254,6 +255,21 @@ class BulkActionController extends Controller
         }
         if ($resource === 'worlds' && $row->is_active) {
             return $row->name.' is the active world';
+        }
+
+        // Mods are files on a node, not rows. Flipping `enabled` here without
+        // renaming the jar would leave the panel saying "disabled" while the
+        // server carries on loading it, which is the exact lie the Mods tab
+        // exists to stop, so the batch goes through the same installer the
+        // single-item buttons do.
+        if ($resource === 'mods' && in_array($action, ['enable', 'disable', 'delete'], true)) {
+            $installer = app(ModInstaller::class);
+
+            $result = $action === 'delete'
+                ? $installer->remove($server, $row)
+                : $installer->setEnabled($server, $row, $action === 'enable');
+
+            return $result['ok'] === true ? true : (string) ($result['error'] ?? $row->name.' could not be changed');
         }
 
         match ($action) {

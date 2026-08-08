@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Client;
 
 use App\Models\Mod;
 use App\Models\Server;
+use App\Services\Mods\ModInstaller;
+use App\Services\Mods\ModTarget;
+use App\Services\Mods\Modrinth;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 /**
  * Mods and plugins.
@@ -14,24 +16,67 @@ use Illuminate\Support\Str;
  * download it, drag it into /plugins, restart, hope. Here it is a managed list
  * with a source, a version, and a visible answer to "is there an update".
  *
- * Catalogue search is stubbed against a local fixture for now; the Modrinth and
- * CurseForge calls land with the real runtime drivers. The screen, the schema
- * and the install flow are all real.
+ * The catalogue is Modrinth, live, through App\Services\Mods\Modrinth. Search
+ * is narrowed to the loader and Minecraft version this server actually runs,
+ * install downloads the file and verifies the checksum Modrinth published
+ * before it reaches the node, disable renames to .disabled rather than
+ * deleting, and remove deletes both the file and the row.
+ *
+ * CurseForge and SpigotMC are still declared on templates and still listed as
+ * sources, but neither has a client yet: CurseForge needs an API key per
+ * install and SpigotMC has no official API at all. The browse screen says so
+ * rather than pretending to search them.
+ *
+ * DEGRADING. Modrinth is a third party and will one day be slow, rate limiting
+ * or down. None of that may break this page. Every catalogue call answers null
+ * instead of throwing, the installed list renders from the database and never
+ * from the network, and an unavailable catalogue becomes a note at the top of
+ * the screen. Nothing in this controller can 500 because Modrinth had a bad
+ * afternoon.
  */
 class ModController extends ServerController
 {
-    public function index(Server $server)
+    public function __construct(
+        private readonly Modrinth $modrinth,
+        private readonly ModInstaller $installer,
+    ) {}
+
+    public function index(Request $request, Server $server)
     {
         $this->guard($server, 'mod.read');
+
+        $server->load('node', 'template.game', 'template.variables');
+        $target = ModTarget::for($server);
+
+        // Checking every installed mod against the API is a handful of requests
+        // and belongs behind a deliberate click, not on every page load. It is
+        // a GET because it changes nothing a customer owns: it only refreshes
+        // what the panel believes the newest version is.
+        if ($request->boolean('refresh')) {
+            $this->guard($server, 'mod.update');
+
+            $waiting = $this->installer->refresh($server, $target);
+
+            return redirect()->route('server.mods', $server)->with(
+                'status',
+                $this->modrinth->degraded()
+                    ? 'Modrinth did not answer, so the version list was left as it was.'
+                    : ($waiting === 0
+                        ? 'Every mod is on the newest version this server can run.'
+                        : $waiting.' '.str('mod')->plural($waiting).' can be updated.'),
+            );
+        }
 
         $mods = $server->mods()->orderBy('name')->get();
 
         return view('server.mods', [
             'title' => $server->name.' Mods',
-            'server' => $server->load('node', 'template.game'),
+            'server' => $server,
             'mods' => $mods,
             'updatable' => $mods->filter->hasUpdate(),
-            'sources' => $server->template?->mod_sources ?? [],
+            'sources' => $target->sources,
+            'target' => $target,
+            'catalogue' => $this->catalogueState($target),
         ]);
     }
 
@@ -39,16 +84,32 @@ class ModController extends ServerController
     {
         $this->guard($server, 'mod.read');
 
-        $sources = $server->template?->mod_sources ?? [];
+        $server->load('node', 'template.game', 'template.variables');
+        $target = ModTarget::for($server);
         $query = trim((string) $request->query('q'));
+
+        // Read before the search runs, not after. A search that fails trips the
+        // "Modrinth is down" marker, and reading the state afterwards would
+        // replace the specific "that search did not answer" screen with the
+        // general banner on the very request that learned it.
+        $catalogue = $this->catalogueState($target);
+
+        // null and [] mean different things and the view shows different
+        // screens for them: null is "Modrinth did not answer", [] is "Modrinth
+        // answered and there is nothing".
+        $results = $query === '' || ! $catalogue['ok']
+            ? []
+            : $this->modrinth->search($query, $target);
 
         return view('server.mod-browse', [
             'title' => 'Browse Mods',
-            'server' => $server->load('node', 'template.game'),
-            'sources' => $sources,
+            'server' => $server,
+            'sources' => $target->sources,
+            'target' => $target,
             'query' => $query,
-            'results' => $query === '' ? [] : $this->search($sources, $query),
-            'installed' => $server->mods()->pluck('slug')->all(),
+            'results' => $results,
+            'catalogue' => $catalogue,
+            'installed' => $server->mods()->pluck('remote_id')->filter()->all(),
         ]);
     }
 
@@ -57,35 +118,24 @@ class ModController extends ServerController
         $this->guard($server, 'mod.install');
 
         $data = $request->validate([
-            'source' => ['required', 'in:modrinth,curseforge,spigot,workshop,manual'],
-            'name' => ['required', 'string', 'max:160'],
-            'remote_id' => ['nullable', 'string', 'max:120'],
-            'version' => ['nullable', 'string', 'max:60'],
-            'author' => ['nullable', 'string', 'max:120'],
-            'summary' => ['nullable', 'string', 'max:500'],
+            // A Modrinth project id or slug. Nothing else is accepted: the name,
+            // author and summary all come back from the API, so a forged form
+            // cannot invent a mod that is not really there.
+            'project' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9!@$()`.+,_"\-]+$/'],
+        ], [
+            'project.regex' => 'That is not a Modrinth project id.',
         ]);
 
-        $slug = Str::slug($data['name']);
+        $server->load('node', 'template.game', 'template.variables');
+        $result = $this->installer->install($server, ModTarget::for($server), $data['project']);
 
-        if ($server->mods()->where('slug', $slug)->exists()) {
-            return back()->with('error', $data['name'].' is already installed.');
+        if (! $result['ok']) {
+            return back()->with('error', $result['error']);
         }
 
-        Mod::create($data + [
-            'server_id' => $server->id,
-            'slug' => $slug,
-            'version' => $data['version'] ?: '1.0.0',
-            'latest_version' => $data['version'] ?: '1.0.0',
-            'path' => '/plugins/'.Str::studly($data['name']).'.jar',
-            'enabled' => true,
-            'installed_at' => now(),
-            'checked_at' => now(),
-        ]);
+        $this->log($server, 'mod.install', 'Installed '.$result['mod']->name.' '.$result['mod']->version.' to '.$result['mod']->path);
 
-        $this->log($server, 'mod.install', 'Installed '.$data['name']);
-
-        return redirect()->route('server.mods', $server)
-            ->with('status', $data['name'].' installed. Restart the server to load it.');
+        return redirect()->route('server.mods', $server)->with('status', $result['message']);
     }
 
     public function update(Server $server, Mod $mod)
@@ -93,26 +143,41 @@ class ModController extends ServerController
         $this->guard($server, 'mod.update');
         abort_unless($mod->server_id === $server->id, 404);
 
-        if (! $mod->hasUpdate()) {
-            return back()->with('status', $mod->name.' is already on the newest version.');
+        $server->load('node', 'template.game', 'template.variables');
+        $from = $mod->version;
+        $result = $this->installer->update($server, ModTarget::for($server), $mod);
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['error']);
         }
 
-        $from = $mod->version;
-        $mod->update(['version' => $mod->latest_version, 'installed_at' => now()]);
-        $this->log($server, 'mod.update', 'Updated '.$mod->name.' from '.$from.' to '.$mod->version);
+        if ($mod->fresh()?->version !== $from) {
+            $this->log($server, 'mod.update', 'Updated '.$mod->name.' from '.$from.' to '.$mod->version);
+        }
 
-        return back()->with('status', $mod->name.' updated to '.$mod->version.'. Restart the server to load it.');
+        return back()->with('status', $result['message']);
     }
 
-    public function toggle(Server $server, Mod $mod)
+    public function toggle(Request $request, Server $server, Mod $mod)
     {
         $this->guard($server, 'mod.update');
         abort_unless($mod->server_id === $server->id, 404);
 
-        $mod->update(['enabled' => ! $mod->enabled]);
-        $this->log($server, 'mod.toggle', ($mod->enabled ? 'Enabled ' : 'Disabled ').$mod->name);
+        // The switch posts its state. A switch that is off posts nothing at
+        // all, which is exactly what boolean() reads as false, so the request
+        // says what the customer chose rather than what the panel assumed.
+        $enabled = $request->has('enabled') ? $request->boolean('enabled') : ! $mod->enabled;
 
-        return back()->with('status', $mod->name.($mod->enabled ? ' enabled.' : ' disabled.'));
+        $server->load('node');
+        $result = $this->installer->setEnabled($server, $mod, $enabled);
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['error']);
+        }
+
+        $this->log($server, 'mod.toggle', ($enabled ? 'Enabled ' : 'Disabled ').$mod->name);
+
+        return back()->with('status', $result['message']);
     }
 
     public function destroy(Server $server, Mod $mod)
@@ -120,43 +185,68 @@ class ModController extends ServerController
         $this->guard($server, 'mod.delete');
         abort_unless($mod->server_id === $server->id, 404);
 
+        $server->load('node');
         $name = $mod->name;
-        $mod->delete();
+        $result = $this->installer->remove($server, $mod);
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['error']);
+        }
+
         $this->log($server, 'mod.delete', 'Removed '.$name);
 
-        return back()->with('status', $name.' removed.');
+        return back()->with('status', $result['message']);
     }
 
+    // ---------------------------------------------------------------- inside
+
     /**
-     * Stand-in catalogue. Returns plausible results filtered by the query so the
-     * browse screen and the install flow are exercisable end to end before the
-     * real API clients exist.
+     * What the screen should say about the catalogue before anyone searches.
+     *
+     * Four honest answers, and the difference between them matters to whoever
+     * is looking at it: this template has no Modrinth, we cannot tell what this
+     * server runs, Modrinth is not answering, or everything is fine.
+     *
+     * @return array{ok:bool,note:?string,tone:string,title:?string}
      */
-    private function search(array $sources, string $query): array
+    private function catalogueState(ModTarget $target): array
     {
-        $catalogue = [
-            ['modrinth', 'EssentialsX', 'EssentialsTeam', '2.21.0', 'The command set every server ends up wanting: homes, warps, kits, economy.'],
-            ['modrinth', 'LuckPerms', 'Luck', '5.4.145', 'Permissions, done properly. Web editor, groups, contexts, the lot.'],
-            ['modrinth', 'Chunky', 'pop4959', '1.4.36', 'Pre-generates chunks so players do not lag the server generating them.'],
-            ['modrinth', 'ViaVersion', 'ViaVersion', '5.1.1', 'Lets newer clients join an older server.'],
-            ['modrinth', 'Geyser', 'GeyserMC', '2.4.2', 'Bedrock players can join a Java server.'],
-            ['spigot', 'CoreProtect', 'Intelli', '22.4', 'Block logging and rollback. The first thing you install after being griefed.'],
-            ['spigot', 'Vault', 'Kainzo', '1.7.3', 'The permissions and economy bridge half of Spigot depends on.'],
-            ['curseforge', 'WorldEdit', 'EngineHub', '7.3.6', 'In-game map editing at scale.'],
-            ['curseforge', 'JEI', 'mezz', '19.21.0', 'Recipe lookup for modded play.'],
-            ['workshop', 'Structures Plus', 'orionsun', '1.4.9', 'Quality of life building overhaul.'],
-            ['workshop', 'Awesome SpyGlass', 'ghazlawl', '3.1.0', 'Detailed creature stats at a glance.'],
-        ];
+        if (! $target->usesModrinth()) {
+            return [
+                'ok' => false,
+                'tone' => 'info',
+                'title' => 'No Searchable Catalogue',
+                'note' => 'This template does not list Modrinth as a mod source. Installed mods are still managed here, but there is nothing to search.',
+            ];
+        }
 
-        $needle = Str::lower($query);
+        if (! $this->modrinth->enabled()) {
+            return [
+                'ok' => false,
+                'tone' => 'info',
+                'title' => 'Catalogue Switched Off',
+                'note' => 'The Modrinth catalogue is switched off on this panel, so mods have to be uploaded through the file manager.',
+            ];
+        }
 
-        return array_values(array_filter(array_map(
-            fn ($row) => [
-                'source' => $row[0], 'name' => $row[1], 'author' => $row[2],
-                'version' => $row[3], 'summary' => $row[4], 'slug' => Str::slug($row[1]),
-            ],
-            $catalogue,
-        ), fn ($m) => ($sources === [] || in_array($m['source'], $sources, true))
-            && (str_contains(Str::lower($m['name']), $needle) || str_contains(Str::lower($m['summary']), $needle))));
+        if ($target->loader === null) {
+            return [
+                'ok' => false,
+                'tone' => 'warn',
+                'title' => 'Mod Loader Unknown',
+                'note' => 'GameMGR cannot tell which mod loader this server runs, so it will not offer files it cannot place. Set the server type on the Startup tab and this screen starts working.',
+            ];
+        }
+
+        if ($this->modrinth->degraded()) {
+            return [
+                'ok' => false,
+                'tone' => 'warn',
+                'title' => 'Catalogue Unavailable',
+                'note' => 'Modrinth is not answering right now, so the catalogue cannot be searched. Everything already installed is listed below and still works.',
+            ];
+        }
+
+        return ['ok' => true, 'tone' => 'info', 'title' => null, 'note' => null];
     }
 }
