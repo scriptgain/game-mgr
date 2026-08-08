@@ -434,36 +434,69 @@ document.addEventListener('alpine:init', () => {
      * and hidden here, every field stays in the DOM, and the controller sees the
      * same payload it always did.
      *
-     * The server remains the authority on what is valid. Everything checked here
-     * is a courtesy so nobody reaches the review step to be told step two was
-     * wrong; when the POST does come back with errors the controller tells us
-     * which step to open on.
+     * Markup lives in Blade, including every card, every node and every
+     * template variable input. This file owns state and arithmetic only: which
+     * step is open, what has been chosen, and whether the chosen size will
+     * actually fit on a machine. Answering "will it fit" here, live, is the
+     * point: nobody should press Create Server to find out.
+     *
+     * The server remains the authority on what is valid. Everything checked
+     * here is a courtesy; when the POST does come back with errors the
+     * controller tells us which step to open on.
      *
      * Reads its data from a <script type="application/json"> island rather than
      * a giant x-data attribute, which keeps the Blade file readable and the
      * escaping simple.
      */
     Alpine.data('serverWizard', (dataId) => ({
-        data: { users: [], templates: [], blueprints: [], nodes: [], selected: {}, variable_errors: {}, step: 1 },
-        steps: [
-            { n: 1, label: 'What To Run' },
-            { n: 2, label: 'Where It Runs' },
-            { n: 3, label: 'Owner And Name' },
-            { n: 4, label: 'Resources' },
-            { n: 5, label: 'Variables' },
-            { n: 6, label: 'Review' },
-        ],
+        data: {
+            users: [], templates: [], blueprints: [], nodes: [], locations: [],
+            selected: {}, values: {}, step: 1,
+        },
+
+        total: 6,
         step: 1,
         furthest: 1,
-        placement: 'auto',
+
+        // step one: what to run
         templateId: '',
         blueprintId: '',
+        query: '',
+        showAdvanced: false,
+        image: '',
+        startup: '',
+
+        // step two: where it runs
+        placement: 'auto',
+        locationId: '',
         nodeId: '',
         allocationId: '',
-        vars: {},
-        seeded: {},
-        showAdvanced: false,
-        review: [],
+
+        // step three: who it belongs to
+        name: '',
+        description: '',
+        ownerId: '',
+
+        // step four: how big it is
+        res: {
+            memory: 2048, disk: 10240, cpu: 200, swap: 0, io: 500,
+            database_limit: 2, allocation_limit: 3, backup_limit: 5,
+        },
+        showFineTuning: false,
+
+        // step five: the template's own locked settings
+        showLocked: false,
+
+        // step six: the flattened summary, rebuilt on arrival
+        sum: {},
+
+        /* Sizes people actually pick. A linear slider from 512 MiB to 64 GiB
+         * spends most of its travel on values nobody wants; these stops put the
+         * common sizes an even distance apart. The number box beside each
+         * slider still accepts anything the server will. */
+        memStops: [512, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 10240, 12288, 16384, 20480, 24576, 32768, 40960, 49152, 65536],
+        diskStops: [2048, 5120, 10240, 20480, 30720, 40960, 51200, 81920, 102400, 153600, 204800, 307200, 409600],
+        cpuStops: [25, 50, 100, 150, 200, 300, 400, 600, 800, 1000, 1200, 1600, 2400, 3200],
 
         init() {
             const island = document.getElementById(dataId);
@@ -472,29 +505,49 @@ document.addEventListener('alpine:init', () => {
             }
 
             const chosen = this.data.selected || {};
+            const values = this.data.values || {};
+
+            // Counted rather than declared: the step labels live in Blade, and
+            // two lists of six that must agree is one list too many.
+            this.total = document.querySelectorAll('[data-step]').length || 6;
             this.step = this.data.step || 1;
             this.furthest = this.step;
-            this.seeded = chosen.variables || {};
 
             this.templateId = String(chosen.template_id || (this.data.templates[0] || {}).id || '');
             this.nodeId = chosen.node_id ? String(chosen.node_id) : '';
             this.allocationId = chosen.allocation_id ? String(chosen.allocation_id) : '';
+            this.locationId = chosen.location_id ? String(chosen.location_id) : '';
+            this.ownerId = chosen.owner_id ? String(chosen.owner_id) : '';
             // A node in the posted data means the operator placed it by hand.
             this.placement = this.nodeId ? 'manual' : 'auto';
-            this.showAdvanced = !!(this.val('image') || this.val('startup'));
 
-            this.syncVariables();
+            this.name = values.name || '';
+            this.description = values.description || '';
+            this.image = values.image || '';
+            this.startup = values.startup || '';
 
-            // The node and port options are built by x-for, which runs after
-            // x-model has already tried to apply its value, so the select would
-            // otherwise come back empty when a rejected POST is redisplayed.
+            Object.keys(this.res).forEach((key) => {
+                if (values[key] !== undefined && values[key] !== null) this.res[key] = Number(values[key]);
+            });
+
+            // A rejected POST must not hide the message it came back with, so a
+            // disclosure whose contents failed reopens with them.
+            const failed = this.data.errors || [];
+            this.showAdvanced = !!(this.image || this.startup)
+                || failed.indexOf('image') > -1 || failed.indexOf('startup') > -1;
+            this.showFineTuning = this.res.swap !== 0 || this.res.io !== 500
+                || failed.indexOf('swap') > -1 || failed.indexOf('io') > -1;
+            this.showLocked = !!this.data.open_locked;
+
+            // The port options are built by x-for, which runs after x-model has
+            // already tried to apply its value, so the select would otherwise
+            // come back empty when a rejected POST is redisplayed.
             this.$nextTick(() => {
-                if (this.nodeId) this.set('node_id', this.nodeId);
                 if (this.allocationId) this.set('allocation_id', this.allocationId);
             });
 
             // Watchers are registered after seeding on purpose: reopening on a
-            // failed step must not wipe what the operator already typed.
+            // failed step must not wipe what the operator already chose.
             this.$watch('templateId', () => this.onTemplateChange());
             this.$watch('nodeId', () => { this.allocationId = ''; });
             this.$watch('placement', (mode) => {
@@ -504,11 +557,11 @@ document.addEventListener('alpine:init', () => {
                     this.nodeId = '';
                     this.allocationId = '';
                 } else {
-                    this.set('location_id', '');
+                    this.locationId = '';
                 }
             });
 
-            if (this.step === this.steps.length) this.buildReview();
+            if (this.step === this.total) this.buildSummary();
         },
 
         // ------------------------------------------------------------ lookups
@@ -517,12 +570,16 @@ document.addEventListener('alpine:init', () => {
             return this.data.templates.find((t) => String(t.id) === String(this.templateId)) || null;
         },
 
+        /** Can a node with these runtimes run the chosen template? */
+        canRun(runtimes) {
+            const t = this.template;
+
+            return !t || (runtimes || []).indexOf(t.runtime) > -1;
+        },
+
         /** Only nodes that can actually run this template's runtime. */
         get nodeChoices() {
-            const t = this.template;
-            if (!t) return this.data.nodes;
-
-            return this.data.nodes.filter((n) => (n.runtimes || []).indexOf(t.runtime) > -1);
+            return this.data.nodes.filter((n) => this.canRun(n.runtimes));
         },
 
         get hiddenNodeCount() {
@@ -530,7 +587,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         get node() {
-            return this.data.nodes.find((n) => String(n.id) === String(this.nodeId)) || null;
+            return this.nodeById(this.nodeId);
+        },
+
+        /** Blade renders one card per node, so the card looks its own data up. */
+        nodeById(id) {
+            return this.data.nodes.find((n) => String(n.id) === String(id)) || null;
         },
 
         get allocationChoices() {
@@ -541,11 +603,237 @@ document.addEventListener('alpine:init', () => {
             return this.template ? (this.template.variables || []) : [];
         },
 
-        variableError(id) {
-            return (this.data.variable_errors || {})[String(id)] || '';
+        get owner() {
+            return this.data.users.find((u) => String(u.id) === String(this.ownerId)) || null;
         },
 
-        // ------------------------------------------------------------- fields
+        get location() {
+            return this.data.locations.find((l) => String(l.id) === String(this.locationId)) || null;
+        },
+
+        // ------------------------------------------------------- game picking
+
+        templateHay(t) {
+            return [t.game, t.name, t.runtime_label, t.description].join(' ').toLowerCase();
+        },
+
+        matchesTemplate(id) {
+            const q = this.query.trim().toLowerCase();
+            if (!q) return true;
+            const t = this.data.templates.find((x) => String(x.id) === String(id));
+
+            return !!t && this.templateHay(t).indexOf(q) > -1;
+        },
+
+        /** Hide a game's heading once every template under it is filtered out. */
+        gameHasMatch(ids) {
+            return (ids || []).some((id) => this.matchesTemplate(id));
+        },
+
+        get matchCount() {
+            return this.data.templates.filter((t) => this.matchesTemplate(t.id)).length;
+        },
+
+        // --------------------------------------------------------- blueprints
+
+        /** Saved sizes for the chosen template, smallest first. */
+        get blueprintChoices() {
+            return this.data.blueprints
+                .filter((b) => String(b.template_id) === String(this.templateId))
+                .slice()
+                .sort((a, b) => Number((a.limits || {}).memory || 0) - Number((b.limits || {}).memory || 0));
+        },
+
+        blueprintById(id) {
+            return this.data.blueprints.find((b) => String(b.id) === String(id)) || null;
+        },
+
+        blueprintNodeCount(id) {
+            const b = this.blueprintById(id);
+            if (!b) return 0;
+            const limits = b.limits || {};
+
+            return this.nodesThatFit(Number(limits.memory || 0), Number(limits.disk || 0)).length;
+        },
+
+        /** Blade renders one card per blueprint, so the card asks about itself. */
+        blueprintFitLabel(id) {
+            const count = this.blueprintNodeCount(id);
+            if (count === 0) return 'No machine has room for this';
+
+            return 'Fits on ' + count + ' of ' + this.nodeChoices.length + ' machines';
+        },
+
+        /**
+         * The smallest saved size that will actually fit somewhere. Cheapest
+         * thing that works beats biggest thing available: over-provisioning is
+         * how a host runs out of node before it runs out of customers.
+         */
+        get recommendedBlueprintId() {
+            const fits = this.blueprintChoices.filter((b) => this.blueprintNodeCount(b.id) > 0);
+
+            return fits.length ? String(fits[0].id) : '';
+        },
+
+        applyBlueprint(id) {
+            const b = this.data.blueprints.find((x) => String(x.id) === String(id));
+            if (!b) return;
+
+            this.blueprintId = String(b.id);
+            if (b.template_id) this.templateId = String(b.template_id);
+
+            const limits = b.limits || {};
+            const features = b.features || {};
+            [['memory', limits.memory], ['disk', limits.disk], ['cpu', limits.cpu],
+                ['swap', limits.swap], ['io', limits.io],
+                ['database_limit', features.databases], ['allocation_limit', features.allocations],
+                ['backup_limit', features.backups]].forEach(([key, value]) => {
+                if (value !== undefined && value !== null) this.res[key] = Number(value);
+            });
+
+            // The template swap reveals a different block of variable inputs, so
+            // blueprint environment values are applied once that has settled.
+            this.$nextTick(() => {
+                const env = b.environment || {};
+                Object.keys(env).forEach((key) => this.setVariable(this.templateId, key, String(env[key])));
+            });
+        },
+
+        clearBlueprint() {
+            this.blueprintId = '';
+        },
+
+        // ----------------------------------------------------------- capacity
+
+        pct(used, capacity) {
+            if (!capacity || capacity <= 0) return 0;
+
+            return Math.max(0, Math.min(100, Math.round((used / capacity) * 1000) / 10));
+        },
+
+        /** Would a server of this size fit on this node right now? */
+        fitsOn(n, memory, disk) {
+            if (n.maintenance) return false;
+
+            return (n.memory_used + memory) <= n.memory_capacity
+                && (n.disk_used + disk) <= n.disk_capacity;
+        },
+
+        /** Mirrors the controller's auto placement: public, awake, right runtime, has room. */
+        nodesThatFit(memory, disk) {
+            return this.nodeChoices.filter((n) => n.public
+                && this.fitsOn(n, memory, disk)
+                && (!this.locationId || String(n.location_id) === String(this.locationId)));
+        },
+
+        get autoCandidates() {
+            return this.nodesThatFit(this.res.memory, this.res.disk);
+        },
+
+        /** The node auto placement would land on: emptiest one with room. */
+        get autoPick() {
+            const candidates = this.autoCandidates.slice()
+                .sort((a, b) => this.pct(a.memory_used, a.memory_capacity) - this.pct(b.memory_used, b.memory_capacity));
+
+            return candidates.length ? candidates[0] : null;
+        },
+
+        /** ok, maintenance, runtime, memory or disk: why this node will not do. */
+        verdict(n) {
+            if (n.maintenance) return 'maintenance';
+            if (!this.canRun(n.runtimes)) return 'runtime';
+            if (n.memory_used + this.res.memory > n.memory_capacity) return 'memory';
+            if (n.disk_used + this.res.disk > n.disk_capacity) return 'disk';
+
+            return 'ok';
+        },
+
+        verdictLabel(n) {
+            return {
+                ok: 'Room For It',
+                maintenance: 'In Maintenance',
+                runtime: 'Wrong Runtime',
+                memory: 'Not Enough Memory',
+                disk: 'Not Enough Disk',
+            }[this.verdict(n)] || '';
+        },
+
+        fits(n) {
+            return this.verdict(n) === 'ok';
+        },
+
+        /** Percent of a node already promised to other servers. */
+        usedPct(n, kind) {
+            return kind === 'disk'
+                ? this.pct(n.disk_used, n.disk_capacity)
+                : this.pct(n.memory_used, n.memory_capacity);
+        },
+
+        /** Percent this server would add on top, clipped at what is left. */
+        askPct(n, kind) {
+            const used = kind === 'disk' ? n.disk_used : n.memory_used;
+            const capacity = kind === 'disk' ? n.disk_capacity : n.memory_capacity;
+            const ask = kind === 'disk' ? this.res.disk : this.res.memory;
+
+            return this.pct(Math.max(0, Math.min(capacity - used, ask)), capacity);
+        },
+
+        /** How much of the ask does not fit, as a percent of the whole node. */
+        overPct(n, kind) {
+            const used = kind === 'disk' ? n.disk_used : n.memory_used;
+            const capacity = kind === 'disk' ? n.disk_capacity : n.memory_capacity;
+            const ask = kind === 'disk' ? this.res.disk : this.res.memory;
+
+            return this.pct(Math.max(0, used + ask - capacity), capacity);
+        },
+
+        /**
+         * How much of the machine is left once this server has its share, or
+         * how far past the end it goes. Never runs through mib() alone: a
+         * negative number there reads as "Unlimited", which is the opposite of
+         * what an over-allocation means.
+         */
+        freeLabel(n, kind) {
+            const left = this.freeAfter(n, kind);
+
+            return left < 0
+                ? this.mib(Math.abs(left)) + ' too much'
+                : this.mib(left) + ' left after';
+        },
+
+        freeAfter(n, kind) {
+            const used = kind === 'disk' ? n.disk_used : n.memory_used;
+            const capacity = kind === 'disk' ? n.disk_capacity : n.memory_capacity;
+            const ask = kind === 'disk' ? this.res.disk : this.res.memory;
+
+            return capacity - used - ask;
+        },
+
+        // ------------------------------------------------------------ sliders
+
+        /** The nearest stop to a typed value, so the slider never lies about it. */
+        stopIndex(stops, value) {
+            let best = 0;
+            let distance = Infinity;
+            stops.forEach((stop, i) => {
+                const d = Math.abs(stop - Number(value));
+                if (d < distance) { distance = d; best = i; }
+            });
+
+            return best;
+        },
+
+        setStop(key, stops, index) {
+            const i = Math.max(0, Math.min(stops.length - 1, Number(index)));
+            this.res[key] = stops[i];
+        },
+
+        nudge(key, delta, min, max) {
+            const next = Number(this.res[key] || 0) + delta;
+            this.res[key] = Math.max(min, Math.min(max, next));
+        },
+
+        // ------------------------------------------------------------ fields
 
         /** The live form control with this name, or null. */
         field(name) {
@@ -562,16 +850,59 @@ document.addEventListener('alpine:init', () => {
 
         set(name, value) {
             const el = this.field(name);
-            if (el && value !== undefined && value !== null && value !== '') el.value = value;
-            else if (el && value === '') el.value = '';
+            if (el) el.value = value === undefined || value === null ? '' : value;
         },
 
-        /** The visible text of the chosen option, for the review step. */
-        optionText(name) {
-            const el = this.field(name);
-            if (!el || el.selectedIndex < 0) return '';
+        onOff(name) {
+            return this.val(name) === '0' || this.val(name) === '' ? 'Off' : 'On';
+        },
 
-            return el.options[el.selectedIndex].textContent.trim();
+        /**
+         * Template variable inputs are rendered by Blade, one hidden block per
+         * template, so their values are read straight off the form. A radio
+         * group answers with whichever option is checked.
+         */
+        variableValue(id) {
+            const el = this.field('variables[' + id + ']');
+
+            return el ? String(el.value || '') : '';
+        },
+
+        /** Used when a blueprint carries environment values of its own. */
+        setVariable(templateId, env, value) {
+            const form = this.$refs.form;
+            if (!form) return;
+
+            const scope = form.querySelector('[data-vars="' + templateId + '"]');
+            if (!scope) return;
+
+            scope.querySelectorAll('[data-env="' + env + '"]').forEach((el) => {
+                if (el.type === 'radio') {
+                    el.checked = el.value === value;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                } else {
+                    el.value = value;
+                    // x-model listens for input, so a silent assignment would
+                    // leave the switch showing the old state.
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+        },
+
+        /** A password nobody has to invent. alpha_dash safe, so every rule passes. */
+        generateSecret(name) {
+            const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const bytes = new Uint32Array(20);
+            (window.crypto || window.msCrypto).getRandomValues(bytes);
+            let out = '';
+            for (let i = 0; i < bytes.length; i++) out += alphabet[bytes[i] % alphabet.length];
+
+            const el = this.field(name);
+            if (el) {
+                el.value = out;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.focus();
+            }
         },
 
         // ------------------------------------------------------------ changes
@@ -581,51 +912,9 @@ document.addEventListener('alpine:init', () => {
             if (this.nodeId && !this.nodeChoices.some((n) => String(n.id) === String(this.nodeId))) {
                 this.nodeId = '';
             }
-            this.syncVariables();
-        },
-
-        /**
-         * Reset the variable values to the chosen template's defaults, keeping
-         * anything a rejected POST sent back.
-         *
-         * Laravel turns an empty posted string into null on the way in, so a
-         * field the operator deliberately cleared comes back as null rather than
-         * "". Stringifying that blindly would write the word "null" into the box.
-         */
-        syncVariables() {
-            const next = {};
-            this.variables.forEach((v) => {
-                const seed = this.seeded[v.id];
-                if (seed === undefined) next[v.id] = v.default;
-                else next[v.id] = seed === null ? '' : String(seed);
-            });
-            this.vars = next;
-        },
-
-        applyBlueprint() {
+            // Nor may a blueprint keep its badge once it no longer applies.
             const b = this.data.blueprints.find((x) => String(x.id) === String(this.blueprintId));
-            if (!b) return;
-
-            if (b.template_id) this.templateId = String(b.template_id);
-
-            const limits = b.limits || {};
-            const features = b.features || {};
-            [['memory', limits.memory], ['disk', limits.disk], ['cpu', limits.cpu],
-                ['swap', limits.swap], ['io', limits.io],
-                ['database_limit', features.databases], ['allocation_limit', features.allocations],
-                ['backup_limit', features.backups]].forEach(([name, value]) => {
-                if (value !== undefined && value !== null) this.set(name, value);
-            });
-
-            // The template swap resets the variables, so blueprint environment
-            // values are applied once that has settled.
-            this.$nextTick(() => {
-                const env = b.environment || {};
-                Object.keys(env).forEach((key) => {
-                    const match = this.variables.find((v) => v.env === key);
-                    if (match) this.vars[match.id] = String(env[key]);
-                });
-            });
+            if (b && String(b.template_id) !== String(this.templateId)) this.blueprintId = '';
         },
 
         // --------------------------------------------------------- navigation
@@ -669,16 +958,16 @@ document.addEventListener('alpine:init', () => {
 
             this.step = n;
             if (n > this.furthest) this.furthest = n;
-            if (n === this.steps.length) this.buildReview();
+            if (n === this.total) this.buildSummary();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         },
 
-        next() { this.go(Math.min(this.step + 1, this.steps.length)); },
+        next() { this.go(Math.min(this.step + 1, this.total)); },
         back() { this.go(Math.max(this.step - 1, 1)); },
 
         /** Enter anywhere but the last step advances rather than submits. */
         onEnter(event) {
-            if (this.step >= this.steps.length) return;
+            if (this.step >= this.total) return;
             if (event.target && event.target.tagName === 'TEXTAREA') return;
             event.preventDefault();
             this.next();
@@ -694,6 +983,13 @@ document.addEventListener('alpine:init', () => {
             if (!form || form.checkValidity()) return;
 
             event.preventDefault();
+
+            // A control inside a closed disclosure cannot be focused, and
+            // reportValidity on it shows nothing at all. Open everything first.
+            this.showAdvanced = true;
+            this.showFineTuning = true;
+            this.showLocked = true;
+
             const bad = form.querySelector(':invalid');
             if (!bad) return;
 
@@ -702,86 +998,312 @@ document.addEventListener('alpine:init', () => {
             this.$nextTick(() => { bad.focus(); bad.reportValidity(); });
         },
 
-        // ------------------------------------------------------------- review
+        // ------------------------------------------------------------ summary
 
         mib(value) {
             const n = parseInt(value, 10);
             if (isNaN(n)) return '0 MiB';
             if (n < 0) return 'Unlimited';
+            if (n === 0) return 'None';
 
             return n >= 1024 ? (Math.round((n / 1024) * 10) / 10) + ' GiB' : n + ' MiB';
         },
 
-        onOff(name) {
-            return this.val(name) === '0' || this.val(name) === '' ? 'Off' : 'On';
+        cores(value) {
+            const n = parseInt(value, 10);
+            if (isNaN(n) || n <= 0) return 'Unlimited';
+
+            return (Math.round((n / 100) * 100) / 100) + (n === 100 ? ' Core' : ' Cores');
         },
 
-        buildReview() {
+        /** One line per step for the rail, so progress reads as decisions made. */
+        stepSummary(n) {
+            const t = this.template;
+
+            if (n === 1) return t ? (t.game ? t.game + ' : ' + t.name : t.name) : 'Nothing chosen';
+            if (n === 2) {
+                if (this.placement === 'manual') return this.node ? this.node.name : 'No machine chosen';
+
+                return this.location ? 'Automatic, ' + this.location.name : 'Automatic';
+            }
+            if (n === 3) return this.name || 'Unnamed';
+            if (n === 4) return this.mib(this.res.memory) + ', ' + this.mib(this.res.disk) + ', ' + this.cores(this.res.cpu);
+            if (n === 5) {
+                const count = this.variables.length;
+
+                return count ? count + (count === 1 ? ' setting' : ' settings') : 'Nothing to set';
+            }
+
+            return '';
+        },
+
+        buildSummary() {
             const t = this.template;
             const alloc = this.allocationChoices.find((a) => String(a.id) === String(this.allocationId));
             const manual = this.placement === 'manual';
+            const pick = this.autoPick;
 
-            const groups = [
-                {
-                    step: 1,
-                    title: 'What To Run',
-                    rows: [
-                        ['Template', t ? ((t.game ? t.game + ' : ' : '') + t.name) : 'Not chosen'],
-                        ['Runtime', t ? t.runtime_label : ''],
-                        ['Docker Image', this.val('image') || (t && t.default_image ? t.default_image + ' (template default)' : 'Template default')],
-                        ['Startup Command', this.val('startup') || 'Template default'],
-                    ],
-                },
-                {
-                    step: 2,
-                    title: 'Where It Runs',
-                    rows: manual
-                        ? [
-                            ['Placement', 'Chosen By Hand'],
-                            ['Node', this.node ? this.node.name + (this.node.location ? ' (' + this.node.location + ')' : '') : 'Not chosen'],
-                            ['Port', alloc ? alloc.label : 'First free port on the node'],
-                        ]
-                        : [
-                            ['Placement', 'Automatic'],
-                            ['Preferred Location', this.val('location_id') ? this.optionText('location_id') : 'Anywhere'],
-                            ['Node', 'Picked at create time, emptiest node with room'],
-                        ],
-                },
-                {
-                    step: 3,
-                    title: 'Owner And Name',
-                    rows: [
-                        ['Name', this.val('name')],
-                        ['Description', this.val('description') || 'None'],
-                        ['Owner', this.optionText('owner_id')],
-                    ],
-                },
-                {
-                    step: 4,
-                    title: 'Resources',
-                    rows: [
-                        ['Memory', this.mib(this.val('memory'))],
-                        ['Disk', this.mib(this.val('disk'))],
-                        ['CPU', this.val('cpu') + '%'],
-                        ['Swap', this.mib(this.val('swap'))],
-                        ['Block IO Weight', this.val('io')],
-                        ['Databases', this.val('database_limit')],
-                        ['Extra Ports', this.val('allocation_limit')],
-                        ['Backups', this.val('backup_limit')],
-                        ['Restart After A Crash', this.onOff('auto_restart')],
-                        ['Update Game Files Automatically', this.onOff('auto_update')],
-                    ],
-                },
-                {
-                    step: 5,
-                    title: 'Startup Variables',
-                    rows: this.variables.length
-                        ? this.variables.map((v) => [v.name, this.vars[v.id] === '' ? 'Empty' : this.vars[v.id]])
-                        : [['Variables', 'This template exposes none']],
-                },
-            ];
+            this.sum = {
+                game: t ? (t.game || '') : '',
+                template: t ? t.name : 'Not chosen',
+                runtime: t ? t.runtime_label : '',
+                // Only an override is worth printing. A template's own startup
+                // script runs to twenty lines, and reprinting it here would bury
+                // everything a review is actually for.
+                image: this.image || (t && t.default_image ? t.default_image : 'Template default'),
+                startup: this.startup || 'Template default',
 
-            this.review = groups;
+                placement: manual ? 'Chosen By Hand' : 'Automatic',
+                node: manual
+                    ? (this.node ? this.node.name : 'Not chosen')
+                    : (pick ? pick.name + ' (picked at create time)' : 'No machine has room'),
+                nodeLocation: manual
+                    ? (this.node && this.node.location ? this.node.location : 'No location')
+                    : (this.location ? this.location.name : 'Anywhere'),
+                port: manual
+                    ? (alloc ? alloc.label : 'First free port on the machine')
+                    : 'First free port on the machine',
+                fits: manual ? (this.node ? this.fits(this.node) : true) : !!pick,
+
+                name: this.name,
+                description: this.description || 'None',
+                owner: this.owner ? this.owner.name : '',
+                ownerEmail: this.owner ? this.owner.email : '',
+
+                memory: this.mib(this.res.memory),
+                disk: this.mib(this.res.disk),
+                cpu: this.cores(this.res.cpu) + ' (' + this.res.cpu + '%)',
+                swap: this.mib(this.res.swap),
+                io: String(this.res.io),
+                databases: String(this.res.database_limit),
+                ports: String(this.res.allocation_limit),
+                backups: String(this.res.backup_limit),
+                autoRestart: this.onOff('auto_restart'),
+                autoUpdate: this.onOff('auto_update'),
+
+                variables: this.variables.map((v) => ({
+                    name: v.name,
+                    env: v.env,
+                    value: this.variableValue(v.id) === '' ? 'Empty' : this.variableValue(v.id),
+                })),
+            };
+        },
+    }));
+
+    /* ------------------------------------------------------------- node form
+     * Adding a node is two acts. Act one is this form, which describes a
+     * machine. Act two happens on the machine itself, where one command turns
+     * a row in the database into something that actually answers. The wizard
+     * carries every field so the last step can hand over to act two knowing
+     * what it just created, rather than the panel silently redirecting.
+     *
+     * It also holds the capacity numbers, which is the whole reason for
+     * holding them: "65536" and "20" mean nothing, "64 GiB on the machine,
+     * promised out as 76.8 GiB" is the sentence an operator needs to read
+     * before pressing save.
+     *
+     * Every value is seeded from PHP (old() first, then the model), because
+     * x-model writes state into the field on init: an unseeded binding would
+     * quietly blank a field the moment somebody opened an existing node.
+     */
+    Alpine.data('nodeWizard', (seed) => ({
+        last: 6,
+        step: seed.step,
+        editing: seed.editing,
+        // Create walks forward and later steps stay locked. Edit unlocks the
+        // lot, because changing one port must not cost five screens.
+        furthest: seed.editing ? 6 : seed.step,
+
+        locations: seed.locations,
+
+        name: seed.name,
+        description: seed.description,
+        locationId: seed.locationId,
+
+        mode: seed.mode,
+        scheme: seed.scheme,
+        fqdn: seed.fqdn,
+        daemonPort: seed.daemonPort,
+        sftpPort: seed.sftpPort,
+        behindProxy: seed.behindProxy,
+
+        runtimes: seed.runtimes,
+        runtimeNames: seed.runtimeNames,
+
+        memory: seed.memory,
+        memoryOver: seed.memoryOver,
+        disk: seed.disk,
+        diskOver: seed.diskOver,
+        cpu: seed.cpu,
+        cpuOver: seed.cpuOver,
+        uploadSize: seed.uploadSize,
+
+        isPublic: seed.isPublic,
+        maintenance: seed.maintenance,
+        daemonBase: seed.daemonBase,
+
+        // -------------------------------------------------------- navigation
+
+        unlocked(n) {
+            return this.editing || n <= this.furthest;
+        },
+
+        go(n) {
+            if (! this.unlocked(n)) return;
+            this.step = n;
+            if (n > this.furthest) this.furthest = n;
+            window.scrollTo({ top: 0, behavior: this.reduced() ? 'auto' : 'smooth' });
+        },
+
+        /* Forward only once the browser is happy with what is on screen. The
+         * server stays the authority; this saves a round trip on the obvious
+         * misses, and it can use reportValidity safely because every field it
+         * inspects is visible in the open step. */
+        next() {
+            if (this.step >= this.last) return;
+            if (! this.checkStep()) return;
+            // Unlock first, then move: go() refuses anything past furthest, and
+            // next() is the only thing that is allowed to push furthest along.
+            this.furthest = Math.max(this.furthest, this.step + 1);
+            this.go(this.step + 1);
+        },
+
+        back() {
+            if (this.step > 1) this.go(this.step - 1);
+        },
+
+        checkStep() {
+            const panel = this.$refs['step' + this.step];
+            if (! panel) return true;
+            for (const el of panel.querySelectorAll('input, select, textarea')) {
+                if (el.type === 'hidden' || el.disabled || el.offsetParent === null) continue;
+                if (! el.checkValidity()) { el.reportValidity(); return false; }
+            }
+            return true;
+        },
+
+        reduced() {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        },
+
+        progress() {
+            return { width: Math.round(this.step / this.last * 100) + '%' };
+        },
+
+        // -------------------------------------------------------- connection
+
+        daemonUrl() {
+            if (this.mode === 'reverse') return 'Outbound only, no address needed';
+            return this.scheme + '://' + (this.fqdn || 'hostname.not.set') + ':' + (this.daemonPort || '?');
+        },
+
+        // ---------------------------------------------------------- runtimes
+
+        runtimeList() {
+            return Object.keys(this.runtimes).filter((k) => this.runtimes[k]);
+        },
+
+        runtimeSummary() {
+            const on = this.runtimeList().map((k) => this.runtimeNames[k] || k);
+            if (on.length === 0) return 'Nothing. This node could not run a single game.';
+            if (on.length === 1) return on[0] + ' only.';
+            return on.slice(0, -1).join(', ') + ' and ' + on[on.length - 1] + '.';
+        },
+
+        // ---------------------------------------------------------- capacity
+        /* kind is 'mib' for memory and disk, 'cpu' for the core percentage. */
+
+        num(v) {
+            const n = Number(v);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        },
+
+        tidy(v) {
+            return (Math.round(v * 10) / 10).toLocaleString('en-US');
+        },
+
+        fmt(kind, v) {
+            const n = this.num(v);
+            if (kind === 'cpu') {
+                const cores = n / 100;
+                return this.tidy(cores) + ' ' + (cores === 1 ? 'core' : 'cores');
+            }
+            if (n >= 1048576) return this.tidy(n / 1048576) + ' TiB';
+            if (n >= 1024) return this.tidy(n / 1024) + ' GiB';
+            return this.tidy(n) + ' MiB';
+        },
+
+        promised(base, pct) {
+            return this.num(base) * (1 + this.num(pct) / 100);
+        },
+
+        /* Two segments in one track: what the machine has, then what it has
+         * been told to pretend it has. Widths are arithmetic, so they are a
+         * bound style rather than a utility class, the same way x-meter does
+         * it. Colour never comes from here. */
+        barBase(pct) {
+            return { width: (100 / (100 + this.num(pct)) * 100) + '%' };
+        },
+
+        barOver(pct) {
+            return { width: (this.num(pct) / (100 + this.num(pct)) * 100) + '%' };
+        },
+
+        overTone(pct) {
+            const n = this.num(pct);
+            if (n === 0) return 'safe';
+            return n >= 100 ? 'risk' : 'watch';
+        },
+
+        overChip(pct) {
+            return {
+                safe: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+                watch: 'bg-amber-50 text-amber-700 ring-amber-200',
+                risk: 'bg-rose-50 text-rose-700 ring-rose-200',
+            }[this.overTone(pct)];
+        },
+
+        overBar(pct) {
+            return this.overTone(pct) === 'risk' ? 'bg-rose-500' : 'bg-amber-400';
+        },
+
+        capacityHeadline(kind, base, pct) {
+            return this.fmt(kind, this.promised(base, pct));
+        },
+
+        capacityLine(kind, base, pct) {
+            const over = this.num(pct);
+            if (this.num(base) === 0) return 'Nothing set yet, so nothing can be placed here.';
+
+            const physical = this.fmt(kind, base);
+            const unit = kind === 'cpu' ? 'cycle' : 'byte';
+            if (over === 0) return physical + ' on the machine, and not a ' + unit + ' more promised than that.';
+
+            const extra = this.fmt(kind, this.promised(base, pct) - this.num(base));
+            const tail = over >= 100
+                ? ' Every server here would have to sit idle at once for that to hold.'
+                : '';
+            return physical + ' on the machine, promised out as ' + this.fmt(kind, this.promised(base, pct))
+                + '. That is ' + extra + ' it does not have.' + tail;
+        },
+
+        // --------------------------------------------------------- placement
+
+        volumePath() {
+            return (this.daemonBase || '/var/lib/gamemgr/volumes').replace(/\/+$/, '') + '/<server-uuid>';
+        },
+
+        // ------------------------------------------------------------ review
+
+        locationLabel() {
+            const hit = this.locations.find((l) => String(l.id) === String(this.locationId));
+            return hit ? hit.label : 'Not set';
+        },
+
+        placementSummary() {
+            const bits = [this.isPublic ? 'Open to automatic placement' : 'Hand picked only'];
+            if (this.maintenance) bits.push('in maintenance mode');
+            return bits.join(', ') + '.';
         },
     }));
 });
@@ -814,3 +1336,221 @@ document.addEventListener('alpine:init', () => {
     if (document.readyState !== 'loading') apply();
     else document.addEventListener('DOMContentLoaded', function () { apply(); });
 })();
+
+/* Registered from a second alpine:init listener rather than inside the block
+ * above. Alpine fires the event once and every listener runs, so appending
+ * here works exactly as well as extending that block, and this file can grow
+ * from the bottom without anyone reformatting what is already in it.
+ */
+document.addEventListener('alpine:init', () => {
+
+    /* ------------------------------------------------- blueprint designer
+     * A blueprint is a product decision wearing a form's clothes: "the
+     * Palworld Test size, 8 GiB, enough to prove an install and connect a few
+     * players". Eight number boxes cannot say that, so this component does
+     * three things the boxes could not:
+     *
+     *   - reads every raw MiB back as GiB and every CPU percent as cores,
+     *   - draws the card the operator will later pick, live, from the same
+     *     values that are about to be posted,
+     *   - ranks the draft against the other blueprints on the same template,
+     *     because the real question is never "how many MiB", it is "is this
+     *     our small one or our big one".
+     *
+     * The inputs keep their names, so the controller sees the payload it has
+     * always seen whether this ever runs or not.
+     */
+    Alpine.data('blueprintDesigner', (dataId) => ({
+        data: { templates: [], siblings: [], values: {} },
+
+        name: '',
+        description: '',
+        templateId: '',
+        res: {
+            memory: 2048, disk: 10240, cpu: 200, swap: 0, io: 500,
+            databases: 1, allocations: 2, backups: 5,
+        },
+
+        // Two of swap's three useful values are magic numbers, so it is chosen
+        // by intent here and only ever typed when the intent is "a fixed amount".
+        swapMode: 'off',
+        showFineTuning: false,
+
+        /* Sizes people actually pick. A linear slider from 512 MiB to 64 GiB
+         * spends most of its travel on values nobody wants; these stops put the
+         * common sizes an even distance apart, and the number box beside each
+         * slider still accepts anything the server will. */
+        memStops: [0, 512, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 10240, 12288, 16384, 20480, 24576, 32768, 40960, 49152, 65536],
+        diskStops: [0, 2048, 5120, 10240, 20480, 30720, 40960, 51200, 81920, 102400, 153600, 204800, 307200, 409600],
+        cpuStops: [0, 25, 50, 100, 150, 200, 300, 400, 600, 800, 1000, 1200, 1600, 2400, 3200],
+
+        memPresets: [2048, 4096, 8192, 16384, 32768],
+        diskPresets: [10240, 25600, 51200, 102400],
+        cpuPresets: [100, 200, 400, 800],
+        ioPresets: [
+            { value: 250, label: 'Yields' },
+            { value: 500, label: 'Normal' },
+            { value: 750, label: 'Wins' },
+        ],
+
+        init() {
+            const island = document.getElementById(dataId);
+            if (island) {
+                try { this.data = JSON.parse(island.textContent); } catch (e) { /* keep the empty shape */ }
+            }
+
+            const values = this.data.values || {};
+            this.name = values.name || '';
+            this.description = values.description || '';
+            this.templateId = String(values.template_id || (this.data.templates[0] || {}).id || '');
+
+            Object.keys(this.res).forEach((key) => {
+                if (values[key] !== undefined && values[key] !== null) this.res[key] = Number(values[key]);
+            });
+
+            this.swapMode = this.res.swap < 0 ? 'unlimited' : (this.res.swap === 0 ? 'off' : 'custom');
+            // Opened only when there is something in it worth seeing, and always
+            // when it is hiding a rejected field: an error nobody can see is an
+            // error nobody can fix.
+            const tuning = document.getElementById('bp-fine-tuning');
+            this.showFineTuning = this.res.swap !== 0 || this.res.io !== 500
+                || !!(tuning && tuning.querySelector('.text-rose-600'));
+        },
+
+        // ----------------------------------------------------------- lookups
+
+        get template() {
+            return this.data.templates.find((t) => String(t.id) === String(this.templateId)) || null;
+        },
+
+        get templateLabel() {
+            const t = this.template;
+            if (! t) return 'No Template';
+
+            return t.game ? t.game + ' : ' + t.name : t.name;
+        },
+
+        /** Other blueprints built on the same template. */
+        get siblings() {
+            return (this.data.siblings || []).filter((b) => String(b.template_id) === String(this.templateId));
+        },
+
+        get siblingLabel() {
+            const n = this.siblings.length;
+            if (n === 0) return 'First Size For This Template';
+
+            return n === 1 ? '1 Other Size' : n + ' Other Sizes';
+        },
+
+        /** The draft slotted in among its siblings, smallest first. */
+        get ladder() {
+            const rows = this.siblings.map((b) => ({
+                key: 'blueprint-' + b.id, name: b.name, memory: b.memory, draft: false,
+            }));
+
+            rows.push({ key: 'draft', name: this.name || 'This Blueprint', memory: Number(this.res.memory) || 0, draft: true });
+            rows.sort((a, b) => a.memory - b.memory);
+
+            const max = Math.max(1, ...rows.map((r) => r.memory));
+
+            return rows.map((r) => ({
+                key: r.key,
+                name: r.name,
+                draft: r.draft,
+                label: this.size(r.memory),
+                // A floor of 2 percent so a 0 MiB row is still a row.
+                pct: Math.max(2, Math.round(r.memory / max * 100)),
+            }));
+        },
+
+        /** An existing blueprint with this exact shape, which makes the draft pointless. */
+        get twin() {
+            return this.siblings.find((b) => b.memory === Number(this.res.memory)
+                && b.disk === Number(this.res.disk)
+                && b.cpu === Number(this.res.cpu)) || null;
+        },
+
+        get nameTaken() {
+            const wanted = String(this.name || '').trim().toLowerCase();
+            if (! wanted) return false;
+
+            return (this.data.siblings || []).some((b) => String(b.name).trim().toLowerCase() === wanted);
+        },
+
+        get ioNote() {
+            const io = Number(this.res.io) || 0;
+            if (io === 500) return 'The normal share. Every server on the node competes for disk time equally.';
+
+            return io < 500
+                ? 'Below normal. This server yields disk time to the others when the node is busy.'
+                : 'Above normal. This server wins disk time from the others when the node is busy.';
+        },
+
+        get swapText() {
+            const n = Number(this.res.swap);
+            if (n < 0) return 'Unlimited';
+            if (n === 0) return 'Off';
+
+            return this.size(n);
+        },
+
+        // -------------------------------------------------------- formatting
+
+        /** MiB as the number a person would say. 0 is no cap, not nothing. */
+        size(value) {
+            const n = parseInt(value, 10);
+            if (isNaN(n)) return '0 MiB';
+            if (n < 0) return 'Unlimited';
+            if (n === 0) return 'No Limit';
+
+            return n >= 1024 ? (Math.round((n / 1024) * 10) / 10) + ' GiB' : n + ' MiB';
+        },
+
+        /** CPU percent as cores. 100 is one full core, and 0 is no quota at all. */
+        cores(value) {
+            const n = parseInt(value, 10);
+            if (isNaN(n) || n <= 0) return 'No Limit';
+
+            return (Math.round((n / 100) * 100) / 100) + (n === 100 ? ' Core' : ' Cores');
+        },
+
+        plural(count, one, many) {
+            const n = Number(count) || 0;
+
+            return n + ' ' + (n === 1 ? one : many);
+        },
+
+        // ------------------------------------------------------------ inputs
+
+        clamp(value, min, max) {
+            const n = Number(value);
+
+            return isNaN(n) ? min : Math.max(min, Math.min(max, Math.round(n)));
+        },
+
+        /** Nearest slider stop to a value the number box may have typed freehand. */
+        stopIndex(stops, value) {
+            const n = Number(value) || 0;
+            let best = 0;
+            let closest = Infinity;
+
+            stops.forEach((stop, i) => {
+                const gap = Math.abs(stop - n);
+                if (gap < closest) { closest = gap; best = i; }
+            });
+
+            return best;
+        },
+
+        bump(key, by, min, max) {
+            this.res[key] = this.clamp((Number(this.res[key]) || 0) + by, min, max);
+        },
+
+        setSwap(mode) {
+            this.swapMode = mode;
+            if (mode === 'off') this.res.swap = 0;
+            else if (mode === 'unlimited') this.res.swap = -1;
+            else if (Number(this.res.swap) <= 0) this.res.swap = 512;
+        },
+    }));
+});
