@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
@@ -51,7 +52,11 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'role' => ['required', 'in:admin,client'],
+            // The form disables this select for the root admin, deliberately,
+            // and a disabled control posts nothing. Demanding it here made
+            // saving the root admin fail validation on a field the page will
+            // not let anyone change, and the value is forced below anyway.
+            'role' => [Rule::requiredIf(fn () => ! $user->isRootAdmin()), 'in:admin,client'],
             'timezone' => ['required', 'string', 'max:64'],
             'suspended' => ['nullable', 'boolean'],
             'password' => ['nullable', 'confirmed', Password::min(8)],

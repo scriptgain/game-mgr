@@ -54,11 +54,43 @@ class TemplateController extends Controller
 
     public function show(Template $template)
     {
+        $template->load('game', 'variables');
+
         return view('admin.templates.show', [
             'title' => $template->name,
-            'template' => $template->load('game', 'variables'),
+            'template' => $template,
             'servers' => $template->servers()->with('owner', 'node')->orderBy('name')->get(),
+            // Derived here rather than in the view: the show page leads on a
+            // summary strip and these are the three facts that need assembling
+            // from more than one column.
+            'rconSummary' => $template->rcon_supported
+                ? $this->protocolLabel($template->rcon_protocol).$this->offsetLabel($template->rcon_port_offset)
+                : 'Not Supported',
+            'querySummary' => $template->query_protocol
+                ? $this->protocolLabel($template->query_protocol).$this->offsetLabel($template->query_port_offset)
+                : 'Not Supported',
+            'configFilesJson' => $template->config_files
+                ? json_encode($template->config_files, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+                : null,
         ]);
+    }
+
+    /** Protocol keys are stored lowercase; these are how people write them. */
+    private function protocolLabel(?string $protocol): string
+    {
+        return [
+            'source' => 'Source',
+            'minecraft' => 'Minecraft',
+            'battleye' => 'BattlEye',
+            'a2s' => 'A2S',
+            'gamespy' => 'GameSpy',
+        ][$protocol] ?? ($protocol ? ucfirst($protocol) : 'Supported');
+    }
+
+    /** A port offset of zero means "the game port itself", which is worth saying. */
+    private function offsetLabel(?int $offset): string
+    {
+        return $offset ? ', Port +'.$offset : ', Game Port';
     }
 
     public function edit(Template $template)
