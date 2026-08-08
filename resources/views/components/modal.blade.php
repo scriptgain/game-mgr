@@ -13,11 +13,23 @@
 @endphp
 {{-- Accessible modal (replaces native confirm/alert/prompt).
      Open:  $dispatch('open-modal', '{{ $name }}')   Close: $dispatch('close-modal', '{{ $name }}') --}}
+{{-- Teleported to <body>, and that is not tidiness.
+
+     "fixed" is only relative to the viewport while no ancestor establishes a
+     containing block, and transform, filter, backdrop-filter, perspective,
+     will-change and contain all do. A modal declared inside a card that merely
+     animates on hover therefore gets a backdrop scoped to that card: the dark
+     blur stops partway down the page instead of covering it. Same reasoning as
+     the house rule that tooltips live on <body>.
+
+     x-data stays outside the teleport so the open/close events still reach it
+     wherever the markup was written. --}}
 <div x-data="{ open: false }"
      x-on:open-modal.window="if ($event.detail === '{{ $name }}') open = true"
      x-on:close-modal.window="if ($event.detail === '{{ $name }}') open = false"
-     x-on:keydown.escape.window="open = false"
-     x-show="open" x-cloak
+     x-on:keydown.escape.window="open = false">
+<template x-teleport="body">
+<div x-show="open" x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div x-show="open" x-transition.opacity.duration.200ms
          class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="open = false"></div>
@@ -54,4 +66,6 @@
             </div>
         @endisset
     </div>
+</div>
+</template>
 </div>
