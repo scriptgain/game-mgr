@@ -3,59 +3,19 @@
 
     <div x-data="gameConsole({
             streamUrl: @js($streamUrl),
+            pollUrl: @js(route('server.stats', $server)),
             backlog: @js($backlog),
             memory: {{ (int) $server->memory }},
             cpuLimit: {{ (int) $server->cpu }},
-            state: @js($server->power_state)
+            state: @js($server->power_state),
+            status: @js($server->status)
          })" class="grid gap-6 lg:grid-cols-4">
 
         <div class="lg:col-span-3 space-y-4">
-            <x-card flush>
-                <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-100">
-                    <div class="flex items-center gap-2 text-sm">
-                        <x-icon name="terminal" class="w-4 h-4 text-slate-400" />
-                        <span class="font-medium text-slate-900">Console</span>
-                        <span class="inline-flex items-center gap-1.5 text-xs"
-                              :class="connected ? 'text-emerald-600' : 'text-slate-400'">
-                            <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-emerald-500' : 'bg-slate-300'"></span>
-                            <span x-text="connected ? 'Live' : 'Reconnecting'"></span>
-                        </span>
-                    </div>
-                    <label class="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                        <input type="checkbox" x-model="autoScroll" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
-                        Follow Output
-                    </label>
-                </div>
-
-                <div x-ref="output" @scroll="onScroll()"
-                     class="console-pane vx-scroll rounded-none ring-0 h-[26rem] overflow-y-auto px-4 py-3 space-y-0.5">
-                    <template x-for="(line, i) in lines" :key="i">
-                        <div class="whitespace-pre-wrap break-words"
-                             :class="{
-                                'text-rose-300': line.includes('ERROR') || line.includes('/SEVERE'),
-                                'text-amber-300': line.includes('WARN'),
-                                'text-brand-300': line.startsWith('[gamemgr]'),
-                             }"
-                             x-text="line"></div>
-                    </template>
-                    <div x-show="!lines.length" class="text-slate-500">Waiting for output from the node.</div>
-                </div>
-
-                @can('check', [$server, 'control.command'])
-                    <form method="POST" action="{{ route('server.command', $server) }}"
-                          @submit="remember()"
-                          class="flex items-center gap-2 px-4 py-3 border-t border-slate-100">
-                        @csrf
-                        <span class="text-slate-400 font-mono text-sm select-none">&gt;</span>
-                        <input type="text" name="command" x-model="command" autocomplete="off"
-                               @keydown.arrow-up.prevent="recall(1)" @keydown.arrow-down.prevent="recall(-1)"
-                               placeholder="Type a command and press Enter"
-                               :disabled="stats.state !== 'running'"
-                               class="flex-1 min-w-0 rounded-lg border-0 bg-slate-50 px-3 py-2 text-sm font-mono text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-brand-500 disabled:opacity-60">
-                        <x-button type="submit" size="sm" ::disabled="stats.state !== 'running'">Send</x-button>
-                    </form>
-                @endcan
-            </x-card>
+            {{-- Above the console: while a server is installing there is no game
+                 output to read, and the install is the only thing happening. --}}
+            <x-install-progress :server="$server" />
+            <x-live-console :server="$server" />
         </div>
 
         <div class="space-y-4">

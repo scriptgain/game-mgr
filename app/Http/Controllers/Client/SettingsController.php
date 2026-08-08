@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Jobs\InstallServer;
 use App\Models\Server;
 use App\Models\StatusPage;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class SettingsController extends ServerController
 
         $server->update(['status' => 'installing', 'installed_at' => null]);
         $this->log($server, 'server.reinstall', 'Started a reinstall');
+
+        InstallServer::dispatch($server->id);
 
         return back()->with('status', 'Reinstall started. Server files are replaced; your world and configuration are kept.');
     }

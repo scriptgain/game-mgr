@@ -197,6 +197,93 @@ class NodeClient
         return (bool) ($res['ok'] ?? false);
     }
 
+    /**
+     * Run the install on the node, streaming its output back line by line.
+     *
+     * This is the call that did not exist. Creating a server set status to
+     * "installing" and stopped there, so the daemon was never told to fetch
+     * anything and a server could sit at "installing" indefinitely with no
+     * files, no error and nothing in the node's log. The endpoint was there the
+     * whole time; nothing called it.
+     *
+     * The response is Server Sent Events for the lifetime of the install, which
+     * for a large SteamCMD app is minutes to hours. It therefore gets its own
+     * client with no read timeout rather than the ten second one every other
+     * call uses, and it must only ever be run from a queued job.
+     *
+     * $onLine receives (event, data) per event. Returns false if the daemon
+     * refused the request or the stream ended in an error event.
+     */
+    public function install(Server $server, callable $onLine, int $maxSeconds = 21600): bool
+    {
+        try {
+            $response = Http::withToken($this->daemonToken())
+                ->withoutVerifying()
+                ->withOptions([
+                    'stream' => true,
+                    // Connect timeout only. A read timeout here would kill the
+                    // install at the first quiet moment, and SteamCMD is quiet
+                    // for long stretches while it verifies.
+                    'connect_timeout' => 10,
+                    'read_timeout' => $maxSeconds,
+                    'timeout' => $maxSeconds,
+                ])
+                ->withHeaders(['Accept' => 'text/event-stream'])
+                ->post($this->node->daemonUrl("/api/servers/{$server->uuid}/install"), [
+                    'server' => $server->daemonPayload(),
+                ]);
+
+            if (! $response->successful()) {
+                $onLine('error', 'The node refused the install: HTTP '.$response->status());
+
+                return false;
+            }
+
+            $body = $response->toPsrResponse()->getBody();
+            $buffer = '';
+            $event = 'message';
+            $failed = false;
+            $deadline = time() + $maxSeconds;
+
+            while (! $body->eof()) {
+                if (time() > $deadline) {
+                    $onLine('error', 'The install ran past '.$maxSeconds.' seconds and was abandoned.');
+
+                    return false;
+                }
+
+                $buffer .= $body->read(8192);
+
+                while (($break = strpos($buffer, "\n")) !== false) {
+                    $line = rtrim(substr($buffer, 0, $break), "\r");
+                    $buffer = substr($buffer, $break + 1);
+
+                    if ($line === '') {
+                        $event = 'message';
+                        continue;
+                    }
+                    if (str_starts_with($line, 'event: ')) {
+                        $event = substr($line, 7);
+                        continue;
+                    }
+                    if (str_starts_with($line, 'data: ')) {
+                        $data = substr($line, 6);
+                        if ($event === 'error') {
+                            $failed = true;
+                        }
+                        $onLine($event, $data);
+                    }
+                }
+            }
+
+            return ! $failed;
+        } catch (\Throwable $e) {
+            $onLine('error', 'Lost contact with the node: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
     // ------------------------------------------------------------- internals
 
     private function http()

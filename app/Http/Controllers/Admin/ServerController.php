@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\InstallServer;
 use App\Models\Allocation;
 use App\Models\AuditLog;
 use App\Models\Blueprint;
@@ -13,6 +14,7 @@ use App\Models\ServerVariable;
 use App\Models\Template;
 use App\Models\TemplateVariable;
 use App\Models\User;
+use App\Services\NodeClient;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -152,16 +154,108 @@ class ServerController extends Controller
 
         AuditLog::record('server.create', 'Created server "'.$server->name.'"', $server, $server->id);
 
+        // Without this the row sits at "installing" forever: the daemon is
+        // never told to fetch anything and no game files ever arrive.
+        InstallServer::dispatch($server->id);
+
         return redirect()->route('admin.servers.show', $server)
             ->with('status', 'Server created. It will install on '.$node->name.'.');
     }
 
     public function show(Server $server)
     {
+        $server->load([
+            'owner', 'node.location', 'template.game', 'allocation', 'allocations',
+            'subusers.user', 'backups', 'databases', 'variables.variable', 'schedules',
+        ]);
+
+        $client = $server->node ? NodeClient::for($server->node) : null;
+
+        // The admin page drives the same node endpoints the client console
+        // does. An operator looking at a stuck install should not have to hop
+        // into the customer view to read the reason.
+        $backlog = $client ? $client->logs($server, 200) : [];
+
+        // Mid install there is no game process to read logs from, so the useful
+        // output is the install transcript the queue job is recording. Null
+        // here whenever the install columns are not present yet.
+        if (in_array($server->status, ['installing', 'install_failed'], true) && filled($server->install_log)) {
+            $backlog = preg_split("/\r?\n/", trim((string) $server->install_log)) ?: [];
+        }
+
+        // Only paid for when it is the question on the screen. A server that is
+        // mid install, or has failed one, is waiting on the node, so "is the
+        // node answering at all" is the first thing to establish.
+        $nodeReachable = null;
+        if ($client && in_array($server->status, ['installing', 'install_failed'], true)) {
+            $nodeReachable = $client->ping();
+        }
+
         return view('admin.servers.show', [
             'title' => $server->name,
-            'server' => $server->load(['owner', 'node.location', 'template.game', 'allocation', 'subusers.user', 'backups', 'databases']),
+            'server' => $server,
+            'backlog' => $backlog,
+            'streamUrl' => $client?->streamUrl($server),
+            'nodeReachable' => $nodeReachable,
+            'memoryFloor' => $this->memoryFloor($server),
+            'clientLinks' => $this->clientLinks($server),
         ]);
+    }
+
+    /**
+     * The smallest memory figure anyone published for this template, as a
+     * blueprint, plus which blueprint it came from.
+     *
+     * Templates carry no recommended_memory column, so the only statement of
+     * "this game needs at least X" that exists in the data is the set of
+     * blueprints built on the template. That is a weaker source than a column
+     * would be, but it is real: a Palworld server created without picking a
+     * blueprint gets the panel default of 2 GiB, the cgroup writes that as a
+     * hard memory.max with swap off, and the world load is OOM killed. Saying
+     * so on the page is worth more than saying nothing until it dies.
+     */
+    private function memoryFloor(Server $server): ?array
+    {
+        if (! $server->template_id) {
+            return null;
+        }
+
+        $floor = Blueprint::where('template_id', $server->template_id)->get()
+            ->map(fn (Blueprint $b) => ['name' => $b->name, 'memory' => (int) ($b->limits['memory'] ?? 0)])
+            ->filter(fn (array $b) => $b['memory'] > 0)
+            ->sortBy('memory')
+            ->first();
+
+        if (! $floor || (int) $server->memory >= $floor['memory']) {
+            return null;
+        }
+
+        return $floor;
+    }
+
+    /**
+     * One click from the admin page to the real tools, which all live in the
+     * client area. Entries the server cannot use are dropped rather than shown
+     * as links to an empty tab.
+     */
+    private function clientLinks(Server $server): array
+    {
+        $template = $server->template;
+
+        return array_values(array_filter([
+            ['label' => 'Console', 'route' => 'server.console', 'icon' => 'terminal', 'show' => true],
+            ['label' => 'Files', 'route' => 'server.files', 'icon' => 'folder', 'show' => true],
+            ['label' => 'Backups', 'route' => 'server.backups', 'icon' => 'archive', 'show' => $server->backup_limit > 0],
+            ['label' => 'Databases', 'route' => 'server.databases', 'icon' => 'database', 'show' => $server->database_limit > 0],
+            ['label' => 'Schedules', 'route' => 'server.schedules', 'icon' => 'clock', 'show' => true],
+            ['label' => 'Players', 'route' => 'server.players', 'icon' => 'user-group', 'show' => (bool) ($template?->rcon_supported || $template?->query_protocol)],
+            ['label' => 'Mods', 'route' => 'server.mods', 'icon' => 'puzzle', 'show' => (bool) $template?->supportsMods()],
+            ['label' => 'Worlds', 'route' => 'server.worlds', 'icon' => 'map', 'show' => true],
+            ['label' => 'Network', 'route' => 'server.network', 'icon' => 'network', 'show' => true],
+            ['label' => 'Metrics', 'route' => 'server.metrics', 'icon' => 'chart', 'show' => true],
+            ['label' => 'Startup', 'route' => 'server.startup', 'icon' => 'bolt', 'show' => true],
+            ['label' => 'Activity', 'route' => 'server.activity', 'icon' => 'book', 'show' => true],
+        ], fn (array $link) => $link['show']));
     }
 
     public function edit(Server $server)
@@ -240,6 +334,8 @@ class ServerController extends Controller
     {
         $server->update(['status' => 'installing', 'installed_at' => null, 'stopped_intentionally' => false]);
         AuditLog::record('server.reinstall', 'Queued a reinstall of "'.$server->name.'"', $server, $server->id);
+
+        InstallServer::dispatch($server->id);
 
         return back()->with('status', 'Reinstall queued. Server files are replaced, the data directory is kept.');
     }

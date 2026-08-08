@@ -44,6 +44,7 @@ class Server extends Model
             'stopped_intentionally' => 'boolean',
             'auto_update' => 'boolean',
             'installed_at' => 'datetime',
+            'install_started_at' => 'datetime',
             'last_started_at' => 'datetime',
             'last_crashed_at' => 'datetime',
             'cached_at' => 'datetime',
