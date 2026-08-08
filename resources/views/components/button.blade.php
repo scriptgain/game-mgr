@@ -12,6 +12,11 @@
         'secondary' => 'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50',
         'ghost' => 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
         'danger' => 'bg-rose-600 text-white hover:bg-rose-700 shadow-sm',
+        // An action that is destructive but not the page's main verb. Filled
+        // rose next to a primary button reads as the thing to press; this reads
+        // as the thing to be careful with. The ring is always there and only
+        // its colour changes on hover, so nothing shifts.
+        'danger-soft' => 'bg-white text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 hover:ring-rose-400',
     ];
     $sizes = [
         'sm' => 'px-3 py-1.5 text-sm',

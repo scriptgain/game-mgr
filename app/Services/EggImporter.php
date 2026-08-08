@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Game;
 use App\Models\Template;
+use App\Models\TemplatePort;
 use App\Models\TemplateVariable;
 use Illuminate\Support\Str;
 
@@ -72,8 +73,9 @@ class EggImporter
         ]);
 
         $this->importVariables($template, $egg);
+        $this->importPorts($template, $egg);
 
-        return $template->fresh('variables');
+        return $template->fresh('variables', 'ports');
     }
 
     /** Convenience wrapper for a raw JSON string. */
@@ -320,6 +322,170 @@ class EggImporter
                 'sort' => $sort++,
             ]);
         }
+    }
+
+    /**
+     * What this game listens on, dug out of an egg that never says.
+     *
+     * The Pterodactyl format has no port declaration at all. That is not an
+     * oversight in the format, it is the thing the format got wrong: the panel
+     * hands a server whatever port was free and the egg's startup command reads
+     * it back out of SERVER_PORT, so nothing anywhere ever knows that this game
+     * is supposed to be on 8211. Every egg that cares about a second port,
+     * though, has to expose it as a variable, because there is no other way for
+     * the startup command to reach it. So the variables are where the truth is:
+     * SERVER_PORT, QUERY_PORT and RCON_PORT, with their defaults.
+     *
+     * A handful of forks added a top level "ports" key. Read it when it is
+     * there, since a declaration beats an inference.
+     */
+    private function importPorts(Template $template, array $egg): void
+    {
+        $rows = $this->declaredPorts($egg) ?: $this->inferredPorts($template);
+
+        if (! $rows) {
+            $this->warnings[] = 'The egg never says which ports this game uses, so no port set was imported. '
+                .'Add one on the template before creating a server, or it will be given whatever port happens to be free.';
+
+            return;
+        }
+
+        $sort = 0;
+        foreach ($rows as $row) {
+            $template->ports()->create($row + ['sort' => $sort++]);
+        }
+
+        $template->load('ports');
+        $template->syncPortColumns();
+    }
+
+    /** A top level "ports" key, as some egg dialects carry. */
+    private function declaredPorts(array $egg): array
+    {
+        $declared = data_get($egg, 'ports');
+        if (! is_array($declared) || $declared === []) {
+            return [];
+        }
+
+        $rows = [];
+        $sawGame = false;
+
+        foreach ($declared as $key => $entry) {
+            // Both ["game" => 8211] and [["role" => "game", "port" => 8211]].
+            $role = is_array($entry) ? (string) data_get($entry, 'role', $key) : (string) $key;
+            $port = is_array($entry) ? (int) data_get($entry, 'port', 0) : (int) $entry;
+            $role = $this->normaliseRole($role);
+
+            if ($port < 1 || $port > 65535 || $role === '') {
+                continue;
+            }
+            if ($role === 'game') {
+                $sawGame = true;
+            }
+
+            $rows[$role] = [
+                'role' => $role,
+                'label' => TemplatePort::ROLES[$role] ?? Str::headline($role).' Port',
+                'protocol' => is_array($entry)
+                    ? $this->normaliseProtocol((string) data_get($entry, 'protocol', ''), $role)
+                    : $this->protocolFor($role),
+                'source' => 'fixed',
+                'port' => $port,
+                'required' => $role !== 'sftp',
+            ];
+        }
+
+        return $sawGame ? array_values($rows) : [];
+    }
+
+    /**
+     * Read the port set off the egg's own variables.
+     *
+     * Only defaults that are actually a port number count. An egg whose
+     * SERVER_PORT default is the empty string is telling us it expects the
+     * panel to choose, which is precisely the case we cannot infer anything
+     * from and must not invent a canonical port for.
+     */
+    private function inferredPorts(Template $template): array
+    {
+        $ports = [];
+
+        foreach ($template->variables()->get() as $var) {
+            $env = mb_strtoupper((string) $var->env_variable);
+            if (! preg_match('/(^|_)PORT$/', $env)) {
+                continue;
+            }
+
+            $value = trim((string) $var->default_value);
+            if (! ctype_digit($value)) {
+                continue;
+            }
+
+            $port = (int) $value;
+            if ($port < 1 || $port > 65535) {
+                continue;
+            }
+
+            $role = $this->normaliseRole($env);
+            $ports[$role] ??= [
+                'role' => $role,
+                'label' => TemplatePort::ROLES[$role] ?? Str::headline(str_replace('_', ' ', $env)),
+                'protocol' => $this->protocolFor($role),
+                'source' => 'fixed',
+                'port' => $port,
+                // Only the game port stops a create. Anything else an egg
+                // happens to mention is a best effort, because an egg that says
+                // "STATS_PORT" is not saying the game is broken without it.
+                'required' => in_array($role, ['game', 'query', 'rcon'], true),
+            ];
+        }
+
+        if (! isset($ports['game'])) {
+            return [];
+        }
+
+        // Game first, then the rest in ascending port order, which is how they
+        // read on every page that lists them.
+        $game = $ports['game'];
+        unset($ports['game']);
+        usort($ports, fn (array $a, array $b) => $a['port'] <=> $b['port']);
+
+        return array_merge([$game], $ports);
+    }
+
+    /** SERVER_PORT, GAME_PORT and a bare PORT all mean the same listener. */
+    private function normaliseRole(string $env): string
+    {
+        $key = mb_strtolower(preg_replace('/(^|_)PORT$/', '', mb_strtoupper($env)) ?: '');
+        $key = trim($key, '_');
+
+        return match ($key) {
+            '', 'server', 'game', 'main' => 'game',
+            'query', 'a2s', 'steam_query' => 'query',
+            'rcon', 'remote' => 'rcon',
+            'sftp', 'ftp' => 'sftp',
+            default => Str::slug($key, '_'),
+        };
+    }
+
+    private function protocolFor(string $role): string
+    {
+        return match ($role) {
+            // Every query protocol in use is UDP, and RCON is TCP everywhere
+            // except BattlEye. The game port itself stays "both": an egg that
+            // never said cannot be narrowed without guessing, and guessing wrong
+            // means a game that will not accept a connection.
+            'query' => 'udp',
+            'rcon', 'sftp' => 'tcp',
+            default => 'both',
+        };
+    }
+
+    private function normaliseProtocol(string $given, string $role): string
+    {
+        $given = mb_strtolower(trim($given));
+
+        return in_array($given, ['tcp', 'udp', 'both'], true) ? $given : $this->protocolFor($role);
     }
 
     /**

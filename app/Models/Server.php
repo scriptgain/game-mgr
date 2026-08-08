@@ -34,6 +34,10 @@ class Server extends Model
         'power_state', 'stopped_intentionally', 'last_started_at', 'last_crashed_at',
         'cached_cpu', 'cached_memory', 'cached_disk', 'cached_players',
         'cached_max_players', 'cached_at',
+
+        // Set by the Config tab when a save lands, so the "restart before this
+        // is real" banner can go away by itself once the server restarts.
+        'config_dirty_at',
     ];
 
     protected function casts(): array
@@ -48,7 +52,24 @@ class Server extends Model
             'last_started_at' => 'datetime',
             'last_crashed_at' => 'datetime',
             'cached_at' => 'datetime',
+            'config_dirty_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Has config been edited since the game last read it?
+     *
+     * Games read their config files at boot and never again, so a saved change
+     * is not a live change. This is what the Config tab checks before telling
+     * somebody their day/night cycle is running at the speed they just typed.
+     */
+    public function configNeedsRestart(): bool
+    {
+        if ($this->config_dirty_at === null || $this->power_state === 'offline') {
+            return false;
+        }
+
+        return $this->last_started_at === null || $this->config_dirty_at->gt($this->last_started_at);
     }
 
     protected static function booted(): void
@@ -300,7 +321,38 @@ class Server extends Model
         $env['SERVER_IP'] = (string) ($this->allocation?->ip ?? '0.0.0.0');
         $env['SERVER_PORT'] = (string) ($this->allocation?->port ?? 0);
 
+        // The reserved query and RCON ports, when this server actually holds
+        // them. Startup commands used to derive these with shell arithmetic off
+        // SERVER_PORT, which is only right while the set sits on its canonical
+        // numbers. Namespaced with SERVER_ so they cannot collide with the
+        // RCON_PORT and QUERY_PORT template variables some templates expose.
+        foreach ($this->portMap() as $role => $port) {
+            if (in_array($role, ['query', 'rcon'], true)) {
+                $env['SERVER_'.mb_strtoupper($role).'_PORT'] = (string) $port;
+            }
+        }
+
         return $env;
+    }
+
+    /**
+     * Every port this server holds, keyed by role.
+     *
+     * One allocation can carry several roles, because several roles genuinely
+     * land on one number: CS2 takes game, query and RCON all on 27015.
+     *
+     * @return array<string, int>
+     */
+    public function portMap(): array
+    {
+        $map = [];
+        foreach ($this->allocations as $allocation) {
+            foreach ($allocation->roles() as $role) {
+                $map[$role] ??= (int) $allocation->port;
+            }
+        }
+
+        return $map;
     }
 
     /** Everything the node daemon needs to act on this server. */
@@ -320,9 +372,57 @@ class Server extends Model
             'cpu_percent' => (int) $this->cpu,
             'ip' => $this->allocation?->ip ?? '127.0.0.1',
             'port' => (int) ($this->allocation?->port ?? 0),
+            // Every port this server holds, not just the one players type.
+            // The daemon opens exactly these on the firewall, publishes exactly
+            // these on the container, and needs the protocol to do either: a
+            // Minecraft server wants 25565 open on TCP for play and on UDP for
+            // query, and "port 25565" alone cannot say that.
+            'ports' => $this->daemonPorts(),
             'steam_app_id' => (int) ($this->template?->steam_app_id ?? 0),
             'steam_anonymous' => (bool) ($this->template?->steam_anonymous ?? true),
             'lgsm_shortname' => (string) ($this->template?->lgsm_shortname ?? ''),
         ];
+    }
+
+    /**
+     * The port list the daemon acts on, game port first.
+     *
+     * Shape, because the firewall side of the daemon is built against it:
+     *
+     *   [{"port":8211,"protocol":"udp","roles":["game"],"primary":true},
+     *    {"port":25575,"protocol":"tcp","roles":["rcon"],"primary":false}]
+     *
+     * protocol is tcp, udp or both. roles is a list because one port can serve
+     * several. primary marks the address players connect to, and there is
+     * always exactly one of it whenever the server has any allocation at all.
+     *
+     * @return array<int, array{port:int, protocol:string, roles:array<int,string>, primary:bool}>
+     */
+    public function daemonPorts(): array
+    {
+        $primaryId = $this->allocation_id;
+        $rows = $this->allocations->sortBy('port')->values();
+
+        $ports = $rows->map(fn (Allocation $a) => [
+            'port' => (int) $a->port,
+            'protocol' => (string) ($a->protocol ?: 'both'),
+            'roles' => $a->roles() ?: ['extra'],
+            'primary' => $a->id === $primaryId,
+        ])->all();
+
+        // A server whose allocations were never loaded, or that holds only the
+        // primary, still has to report something the daemon can open.
+        if (! $ports && $this->allocation) {
+            $ports = [[
+                'port' => (int) $this->allocation->port,
+                'protocol' => (string) ($this->allocation->protocol ?: 'both'),
+                'roles' => $this->allocation->roles() ?: ['game'],
+                'primary' => true,
+            ]];
+        }
+
+        usort($ports, fn (array $a, array $b) => [! $a['primary'], $a['port']] <=> [! $b['primary'], $b['port']]);
+
+        return $ports;
     }
 }

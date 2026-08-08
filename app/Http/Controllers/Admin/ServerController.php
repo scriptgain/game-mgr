@@ -14,8 +14,10 @@ use App\Models\ServerVariable;
 use App\Models\Template;
 use App\Models\TemplateVariable;
 use App\Models\User;
+use App\Services\AllocationPlanner;
 use App\Services\NodeClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -74,7 +76,7 @@ class ServerController extends Controller
         $nodes = Node::with(['location'])->withCount('servers')->orderBy('name')->get();
         // Grouped by game on the picker, so the order is game first, then
         // template. Sorting here keeps the view a plain foreach.
-        $templates = Template::with(['game', 'variables'])->get()
+        $templates = Template::with(['game', 'variables', 'ports'])->get()
             ->sortBy(fn (Template $t) => mb_strtolower(($t->game?->name ?? 'zzz').' '.$t->name))
             ->values();
         // Smallest first: the size cards read as a ladder, and the recommended
@@ -98,59 +100,76 @@ class ServerController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, AllocationPlanner $planner)
     {
         $data = $this->validated($request);
-        $template = Template::with('variables')->findOrFail($data['template_id']);
+        $template = Template::with(['variables', 'ports'])->findOrFail($data['template_id']);
 
         // Variables are validated against the template's own rules before
         // anything is written, so a bad value cannot leave a half-built server.
         $variableValues = $this->validatedVariables($request, $template);
 
         $node = $this->resolveNode($data, $template);
-        $allocation = $this->resolveAllocation($data, $node, $template);
 
-        $server = Server::create([
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'owner_id' => $data['owner_id'],
-            'node_id' => $node->id,
-            'template_id' => $template->id,
-            'allocation_id' => $allocation?->id,
-            // Copied off the template, never read through it: editing a
-            // template later must not re-point a running server.
-            'runtime' => $template->runtime,
-            // Both are nullable in the rules, so the key is absent entirely when
-            // the request omits it rather than sending it empty. The browser form
-            // always sends both, which is why this only 500s for an API caller.
-            'image' => ($data['image'] ?? null) ?: $template->defaultImage(),
-            'startup' => ($data['startup'] ?? null) ?: $template->startup,
-            'memory' => $data['memory'],
-            'swap' => $data['swap'],
-            'disk' => $data['disk'],
-            'io' => $data['io'],
-            'cpu' => $data['cpu'],
-            'database_limit' => $data['database_limit'],
-            'allocation_limit' => $data['allocation_limit'],
-            'backup_limit' => $data['backup_limit'],
-            'auto_restart' => (bool) ($data['auto_restart'] ?? true),
-            'auto_update' => (bool) ($data['auto_update'] ?? false),
-            'status' => 'installing',
-        ]);
+        // Worked out before anything is written. A port set that cannot be
+        // placed throws here, with the reason, and no server row is left behind
+        // holding a game port and none of the ports that make it usable.
+        $plan = $planner->plan(
+            $node,
+            $template,
+            ! empty($data['allocation_id']) ? Allocation::find($data['allocation_id']) : null,
+        );
 
-        $allocation?->update(['server_id' => $server->id]);
-
-        foreach ($template->variables as $var) {
-            ServerVariable::create([
-                'server_id' => $server->id,
-                'template_variable_id' => $var->id,
-                // The wizard posts a value for every variable it showed. An API
-                // caller that posts none still gets the template defaults.
-                'value' => array_key_exists($var->id, $variableValues)
-                    ? $variableValues[$var->id]
-                    : $var->default_value,
+        $server = DB::transaction(function () use ($data, $node, $template, $plan, $planner, $variableValues) {
+            $server = Server::create([
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'owner_id' => $data['owner_id'],
+                'node_id' => $node->id,
+                'template_id' => $template->id,
+                // Set after the reservation, because which row is primary is an
+                // answer the planner gives: it is the one carrying the game role.
+                'allocation_id' => null,
+                // Copied off the template, never read through it: editing a
+                // template later must not re-point a running server.
+                'runtime' => $template->runtime,
+                // Both are nullable in the rules, so the key is absent entirely when
+                // the request omits it rather than sending it empty. The browser form
+                // always sends both, which is why this only 500s for an API caller.
+                'image' => ($data['image'] ?? null) ?: $template->defaultImage(),
+                'startup' => ($data['startup'] ?? null) ?: $template->startup,
+                'memory' => $data['memory'],
+                'swap' => $data['swap'],
+                'disk' => $data['disk'],
+                'io' => $data['io'],
+                'cpu' => $data['cpu'],
+                'database_limit' => $data['database_limit'],
+                'allocation_limit' => $data['allocation_limit'],
+                'backup_limit' => $data['backup_limit'],
+                'auto_restart' => (bool) ($data['auto_restart'] ?? true),
+                'auto_update' => (bool) ($data['auto_update'] ?? false),
+                'status' => 'installing',
             ]);
-        }
+
+            if ($plan) {
+                $primary = $planner->reserve($server, $plan);
+                $server->update(['allocation_id' => $primary?->id]);
+            }
+
+            foreach ($template->variables as $var) {
+                ServerVariable::create([
+                    'server_id' => $server->id,
+                    'template_variable_id' => $var->id,
+                    // The wizard posts a value for every variable it showed. An API
+                    // caller that posts none still gets the template defaults.
+                    'value' => array_key_exists($var->id, $variableValues)
+                        ? $variableValues[$var->id]
+                        : $var->default_value,
+                ]);
+            }
+
+            return $server;
+        });
 
         AuditLog::record('server.create', 'Created server "'.$server->name.'"', $server, $server->id);
 
@@ -158,8 +177,16 @@ class ServerController extends Controller
         // never told to fetch anything and no game files ever arrive.
         InstallServer::dispatch($server->id);
 
+        $status = 'Server created. It will install on '.$node->name.'.';
+        if ($plan) {
+            $status .= ' '.$plan->flash();
+        }
+
+        // A set that had to move off its canonical port is not a plain success:
+        // the number players type has changed, and saying so once now is
+        // cheaper than a support ticket later.
         return redirect()->route('admin.servers.show', $server)
-            ->with('status', 'Server created. It will install on '.$node->name.'.');
+            ->with($plan && ! $plan->isCanonical() ? 'warning' : 'status', $status);
     }
 
     public function show(Server $server)
@@ -312,8 +339,11 @@ class ServerController extends Controller
         $name = $server->name;
 
         // Free the ports first. Cascade would take the allocation rows with it,
-        // and those belong to the node, not the server.
-        Allocation::where('server_id', $server->id)->update(['server_id' => null]);
+        // and those belong to the node, not the server. The role goes back to
+        // null with them: a free port that still claims to be somebody's RCON
+        // is how the next reservation ends up mislabelled.
+        Allocation::where('server_id', $server->id)
+            ->update(['server_id' => null, 'role' => null, 'protocol' => 'both']);
         $server->delete();
 
         AuditLog::record('server.delete', 'Deleted server "'.$name.'"');
@@ -503,6 +533,16 @@ class ServerController extends Controller
                 'runtime_label' => $t->runtimeLabel(),
                 'default_image' => $t->defaultImage(),
                 'startup' => $t->startup,
+                // What this game actually listens on, so step two can say so
+                // before anything is created rather than after. A template with
+                // a port set never depends on a free port already being in the
+                // pool, which is why the "no free ports" warning has to know.
+                'canonical_port' => $t->canonicalGamePort(),
+                'port_set' => collect($t->portSet())->map(fn (array $p) => [
+                    'port' => $p['port'],
+                    'protocol' => $p['protocol'],
+                    'label' => implode(' And ', $p['labels']),
+                ])->values()->all(),
                 // Names and ids only: the inputs themselves are rendered by
                 // Blade, one hidden block per template, so every control can be
                 // the right shape for the rule it enforces.
@@ -590,33 +630,6 @@ class ServerController extends Controller
         }
 
         return $node;
-    }
-
-    private function resolveAllocation(array $data, Node $node, ?Template $template = null): ?Allocation
-    {
-        if (! empty($data['allocation_id'])) {
-            $allocation = Allocation::find($data['allocation_id']);
-            if ($allocation && $allocation->node_id === $node->id && ! $allocation->isAssigned()) {
-                return $allocation;
-            }
-        }
-
-        $free = $node->allocations()->whereNull('server_id');
-
-        // The game's own port first. Picking the lowest free port on the node
-        // put a Palworld server on 2456, which is Valheim's, purely because the
-        // bootstrap seeds one allocation per catalogue default and 2456 sorts
-        // first. Players then have to be told a port for a game that has a
-        // perfectly good default, and the node installer's firewall rules,
-        // which are written around those defaults, do not cover it.
-        if ($template?->default_port) {
-            $preferred = (clone $free)->where('port', $template->default_port)->first();
-            if ($preferred) {
-                return $preferred;
-            }
-        }
-
-        return $free->orderBy('port')->first();
     }
 
     /**

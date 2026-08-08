@@ -4,6 +4,40 @@
 
     @include('admin.nodes._tabs', ['node' => $node])
 
+    {{-- Addresses before ports, because which address a server lands on is what
+         decides whether its game gets its real port. An address nothing is on
+         is treated as dedicated: there is nobody to collide with, so the
+         canonical port is free and the planner takes it, no exceptions. --}}
+    <x-card title="Addresses" class="mb-6" flush
+            subtitle="A server on an address of its own always gets its game's real port. On a shared address only the first one can, and the rest are shifted and told so.">
+        @if (empty($ips))
+            <x-empty-state icon="network" title="No Addresses Yet"
+                           description="Add an IP and a port range below. Everything else on this page follows from it." />
+        @else
+            <x-table flush>
+                <thead><tr><th>Address</th><th>Alias</th><th>Ports</th><th>In Use</th><th>Servers</th><th>Kind</th></tr></thead>
+                <tbody>
+                    @foreach ($ips as $ip => $info)
+                        <tr>
+                            <td class="font-mono text-slate-900">{{ $ip }}</td>
+                            <td class="text-slate-500">{{ $info['alias'] ?: 'None' }}</td>
+                            <td class="tabular text-slate-500">{{ $info['ports'] }}</td>
+                            <td class="tabular text-slate-500">{{ $info['used'] }}</td>
+                            <td class="tabular text-slate-500">{{ $info['servers'] }}</td>
+                            <td>
+                                @if ($info['dedicated'])
+                                    <x-badge color="success" dot>Dedicated</x-badge>
+                                @else
+                                    <x-badge color="warn">Shared</x-badge>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </x-table>
+        @endif
+    </x-card>
+
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2">
             <x-card title="Ports" flush>
@@ -12,12 +46,19 @@
                                    description="Add a range before placing servers here. A server with no allocation cannot accept players." />
                 @else
                     <x-table flush>
-                        <thead><tr><th>Address</th><th>Port</th><th>Assigned To</th><th class="text-right vx-act-1">Actions</th></tr></thead>
+                        <thead><tr><th>Address</th><th>Port</th><th>Purpose</th><th>Assigned To</th><th class="text-right vx-act-1">Actions</th></tr></thead>
                         <tbody>
                             @foreach ($allocations as $allocation)
                                 <tr>
                                     <td class="font-mono text-slate-900">{{ $allocation->ip }}</td>
                                     <td class="tabular">{{ $allocation->port }}</td>
+                                    <td class="text-slate-500">
+                                        @if ($allocation->isAssigned())
+                                            {{ $allocation->roleLabel() }} <span class="text-slate-400">{{ $allocation->protocolLabel() }}</span>
+                                        @else
+                                            <span class="text-slate-400">Free</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         @if ($allocation->server)
                                             <a href="{{ route('admin.servers.show', $allocation->server) }}" class="text-brand-700 hover:text-brand-800">{{ $allocation->server->name }}</a>

@@ -54,6 +54,10 @@ class Subuser extends Model
             'database.update' => 'Rotate a password',
             'database.delete' => 'Delete a database',
         ],
+        'Configuration' => [
+            'config.read' => 'See the game configuration editor',
+            'config.update' => 'Change game configuration',
+        ],
         'Schedules' => [
             'schedule.read' => 'See schedules',
             'schedule.create' => 'Create a schedule',

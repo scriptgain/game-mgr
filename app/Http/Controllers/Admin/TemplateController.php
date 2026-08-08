@@ -7,6 +7,7 @@ use App\Models\Game;
 use App\Models\Template;
 use App\Models\TemplateVariable;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Templates: how a game gets installed, started and stopped.
@@ -47,14 +48,16 @@ class TemplateController extends Controller
 
     public function store(Request $request)
     {
+        $ports = $this->validatedPorts($request);
         $template = Template::create($this->validated($request));
+        $this->syncPorts($template, $ports);
 
         return redirect()->route('admin.templates.show', $template)->with('status', 'Template created.');
     }
 
     public function show(Template $template)
     {
-        $template->load('game', 'variables');
+        $template->load('game', 'variables', 'ports');
 
         return view('admin.templates.show', [
             'title' => $template->name,
@@ -97,14 +100,16 @@ class TemplateController extends Controller
     {
         return view('admin.templates.form', [
             'title' => 'Edit '.$template->name,
-            'template' => $template,
+            'template' => $template->load('ports'),
             'games' => Game::orderBy('name')->get(),
         ]);
     }
 
     public function update(Request $request, Template $template)
     {
+        $ports = $this->validatedPorts($request);
         $template->update($this->validated($request, $template));
+        $this->syncPorts($template, $ports);
 
         return redirect()->route('admin.templates.show', $template)->with('status', 'Template updated.');
     }
@@ -118,6 +123,122 @@ class TemplateController extends Controller
         $template->delete();
 
         return redirect()->route('admin.templates.index')->with('status', 'Template deleted.');
+    }
+
+    // ---------------------------------------------------------------- ports
+
+    /**
+     * The port set as the form posts it: one row per listener.
+     *
+     * Declaring ports is the point of this screen. The rival panel's egg format
+     * cannot say what a game listens on at all, which is why a server there
+     * gets whatever number was free and everybody downstream, the firewall
+     * included, has to be told after the fact.
+     */
+    private function validatedPorts(Request $request): array
+    {
+        $data = $request->validate([
+            'ports' => ['nullable', 'array', 'max:20'],
+            'ports.*.role' => ['required', 'string', 'max:32', 'regex:/^[a-z][a-z0-9_]*$/'],
+            'ports.*.label' => ['required', 'string', 'max:60'],
+            'ports.*.protocol' => ['required', 'in:tcp,udp,both'],
+            'ports.*.source' => ['required', 'in:fixed,offset'],
+            'ports.*.value' => ['required', 'integer', 'between:-65535,65535'],
+            'ports.*.required' => ['nullable', 'boolean'],
+        ], [], [
+            'ports.*.role' => 'port key',
+            'ports.*.label' => 'port name',
+            'ports.*.value' => 'port number',
+        ]);
+
+        $rows = array_values($data['ports'] ?? []);
+        if (! $rows) {
+            return [];
+        }
+
+        $seen = [];
+        $game = null;
+        $out = [];
+
+        foreach ($rows as $index => $row) {
+            $role = mb_strtolower(trim((string) $row['role']));
+            if (isset($seen[$role])) {
+                throw ValidationException::withMessages([
+                    'ports.'.$index.'.role' => 'Two ports cannot both be called "'.$role.'".',
+                ]);
+            }
+            $seen[$role] = true;
+
+            $fixed = $row['source'] === 'fixed';
+            $value = (int) $row['value'];
+
+            if ($fixed && ($value < 1 || $value > 65535)) {
+                throw ValidationException::withMessages([
+                    'ports.'.$index.'.value' => 'A fixed port has to be between 1 and 65535.',
+                ]);
+            }
+
+            // The game port is what everything else is measured from, so it
+            // cannot be measured from itself.
+            if ($role === 'game') {
+                if (! $fixed) {
+                    throw ValidationException::withMessages([
+                        'ports.'.$index.'.source' => 'The game port is the number everything else is offset from, so it has to be a fixed port.',
+                    ]);
+                }
+                $game = $value;
+            }
+
+            $out[] = [
+                'role' => $role,
+                'label' => trim((string) $row['label']),
+                'protocol' => $row['protocol'],
+                'source' => $fixed ? 'fixed' : 'offset',
+                'port' => $fixed ? $value : null,
+                'port_offset' => $fixed ? null : $value,
+                'required' => (bool) ($row['required'] ?? false),
+            ];
+        }
+
+        if ($game === null) {
+            throw ValidationException::withMessages([
+                'ports.0.role' => 'A port set needs a row called "game". That is the port players connect to, and every offset is measured from it.',
+            ]);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Replace the template's port set with what was posted.
+     *
+     * Rows are matched on role rather than id so a set can be reordered in the
+     * browser without every row being deleted and recreated, which would take
+     * their ids with them.
+     */
+    private function syncPorts(Template $template, array $rows): void
+    {
+        if (! $rows) {
+            // An empty submission on a template that has a set is a deliberate
+            // clear, but the form always posts the rows it rendered, so this is
+            // only reached by an API caller that sent none. Leaving the set
+            // alone is the safer reading of "said nothing".
+            return;
+        }
+
+        $sort = 0;
+        $roles = [];
+        foreach ($rows as $row) {
+            $template->ports()->updateOrCreate(
+                ['role' => $row['role']],
+                $row + ['sort' => $sort++],
+            );
+            $roles[] = $row['role'];
+        }
+
+        $template->ports()->whereNotIn('role', $roles)->delete();
+        $template->load('ports');
+        $template->syncPortColumns();
     }
 
     // ------------------------------------------------------------ variables
@@ -209,13 +330,16 @@ class TemplateController extends Controller
         unset($data['docker_images_raw']);
         $data['docker_images'] = $images ?: null;
 
-        $data['config_stop'] = ['value' => $data['stop_command'] ?: 'stop'];
+        // Both this and done_marker are nullable rules, so a request that omits
+        // them has no key at all rather than an empty one. Reading them directly
+        // 500d every save that did not come from the browser form.
+        $data['config_stop'] = ['value' => ($data['stop_command'] ?? null) ?: 'stop'];
         unset($data['stop_command']);
 
         // Preserve everything else already in config_startup; only the done
         // marker is editable from this form.
         $startup = $template?->config_startup ?? [];
-        $startup['done'] = $data['done_marker'] ?: null;
+        $startup['done'] = ($data['done_marker'] ?? null) ?: null;
         $data['config_startup'] = array_filter($startup, fn ($v) => $v !== null);
         unset($data['done_marker']);
 

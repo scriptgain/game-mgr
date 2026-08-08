@@ -7,6 +7,7 @@ use App\Models\Allocation;
 use App\Models\Location;
 use App\Models\Node;
 use App\Models\NodeMetric;
+use App\Services\AllocationPlanner;
 use App\Services\NodeClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -141,12 +142,16 @@ class NodeController extends Controller
 
     // ---------------------------------------------------------- allocations
 
-    public function allocations(Node $node)
+    public function allocations(Node $node, AllocationPlanner $planner)
     {
         return view('admin.nodes.allocations', [
             'title' => $node->name.' Allocations',
             'node' => $node,
             'allocations' => $node->allocations()->with('server')->orderBy('ip')->orderBy('port')->paginate(config('gamemgr.rows_per_page', 10)),
+            // Which addresses are anybody's and which are one server's alone.
+            // That distinction decides whether a game gets its real port, so it
+            // belongs on the page where addresses are managed.
+            'ips' => $planner->ipInventory($node),
         ]);
     }
 

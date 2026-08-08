@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Game;
 use App\Models\Template;
+use App\Models\TemplatePort;
 use App\Models\TemplateVariable;
 use Illuminate\Database\Seeder;
 
@@ -41,12 +42,15 @@ class CatalogueSeeder extends Seeder
 
             foreach ($templates as $t) {
                 $vars = $t['variables'] ?? [];
-                unset($t['variables']);
+                $ports = $t['ports'] ?? [];
+                unset($t['variables'], $t['ports']);
 
                 $template = Template::updateOrCreate(
                     ['game_id' => $game->id, 'name' => $t['name']],
                     $t + ['game_id' => $game->id],
                 );
+
+                $this->ports($template, $ports);
 
                 $sort = 0;
                 $declared = [];
@@ -68,6 +72,243 @@ class CatalogueSeeder extends Seeder
         }
     }
 
+    /**
+     * The set of listeners a game needs, written down instead of guessed at.
+     *
+     * Every one of these was verifiable from the template's own startup command
+     * or the image it runs, and the numbers here are the ones the games and
+     * their communities actually use. That is the point: a Palworld server is
+     * reached on 8211 because that is what every guide says, and a panel that
+     * hands out something else is making its users explain a port number to
+     * everyone who wants to join.
+     */
+    private function ports(Template $template, array $ports): void
+    {
+        if (! $ports) {
+            return;
+        }
+
+        $sort = 0;
+        $declared = [];
+
+        foreach ($ports as $p) {
+            TemplatePort::updateOrCreate(
+                ['template_id' => $template->id, 'role' => $p['role']],
+                $p + [
+                    'template_id' => $template->id,
+                    'sort' => $sort++,
+                    'required' => true,
+                    'source' => isset($p['port']) ? 'fixed' : 'offset',
+                ],
+            );
+            $declared[] = $p['role'];
+        }
+
+        // Same reason the variables are pruned: a port dropped from a template
+        // that stays in the database is a hole the daemon keeps opening on a
+        // firewall for a listener that is not there.
+        $template->ports()->whereNotIn('role', $declared)->delete();
+
+        // default_port, default_protocol and the two offsets are a mirror of
+        // this set now. BootstrapNode and the template pages still read them.
+        $template->load('ports');
+        $template->syncPortColumns();
+    }
+
+    /**
+     * The Minecraft server.properties settings a customer may edit.
+     *
+     * Key names are the real ones the game writes, which is not always the
+     * obvious one: the whitelist flag in server.properties is "white-list",
+     * not "whitelist", and a form pointed at "whitelist" would append a key
+     * the game ignores and quietly do nothing.
+     *
+     * env matters as much as the key here. itzg/minecraft-server rewrites
+     * server.properties from its environment on every boot, but only for the
+     * properties it was actually given an environment variable for. So a
+     * setting the template also exposes as a variable names it, and the panel
+     * writes both, and the restart that applies the change does not undo it.
+     * Anything with no env below is a property the image leaves alone.
+     */
+    private function minecraftProperties(): array
+    {
+        return [
+            'file' => 'server.properties',
+            'format' => 'properties',
+            'label' => 'Server Properties',
+            'description' => 'The file every Minecraft server reads at startup.',
+            'settings' => [
+                ['key' => 'motd', 'name' => 'MOTD', 'section' => 'Identity', 'env' => 'MOTD',
+                    'default' => 'A GameMGR Server', 'rules' => 'nullable|string|max:120',
+                    'description' => 'The line under the server name in the client list. Section signs for colour codes survive a save.'],
+                ['key' => 'level-name', 'name' => 'World Folder', 'section' => 'Identity',
+                    'default' => 'world', 'rules' => 'required|string|max:60', 'user_editable' => false,
+                    'description' => 'Which folder on disk holds the world. Changing it here would start a brand new world and leave the old one orphaned, so use the Worlds tab instead.'],
+
+                ['key' => 'gamemode', 'name' => 'Game Mode', 'section' => 'Gameplay', 'env' => 'MODE',
+                    'default' => 'survival', 'rules' => 'required|in:survival,creative,adventure,spectator'],
+                ['key' => 'difficulty', 'name' => 'Difficulty', 'section' => 'Gameplay', 'env' => 'DIFFICULTY',
+                    'default' => 'normal', 'rules' => 'required|in:peaceful,easy,normal,hard'],
+                ['key' => 'hardcore', 'name' => 'Hardcore', 'section' => 'Gameplay',
+                    'default' => 'false', 'rules' => 'required|in:true,false',
+                    'description' => 'Death is permanent and the difficulty is forced to hard. There is no undoing this for a player who dies.'],
+                ['key' => 'pvp', 'name' => 'Player Versus Player', 'section' => 'Gameplay',
+                    'default' => 'true', 'rules' => 'required|in:true,false'],
+                ['key' => 'allow-flight', 'name' => 'Allow Flight', 'section' => 'Gameplay',
+                    'default' => 'false', 'rules' => 'required|in:true,false',
+                    'description' => 'Needed by most flight mods and plugins. With it off the server kicks anyone it thinks is flying.'],
+                ['key' => 'enable-command-block', 'name' => 'Command Blocks', 'section' => 'Gameplay',
+                    'default' => 'false', 'rules' => 'required|in:true,false'],
+                ['key' => 'spawn-protection', 'name' => 'Spawn Protection', 'section' => 'Gameplay',
+                    'default' => '16', 'rules' => 'required|integer|between:0,64',
+                    'description' => 'Blocks around spawn that only operators can build in. Zero switches it off.'],
+
+                ['key' => 'max-players', 'name' => 'Max Players', 'section' => 'Performance', 'env' => 'MAX_PLAYERS',
+                    'default' => '20', 'rules' => 'required|integer|between:1,200'],
+                ['key' => 'view-distance', 'name' => 'View Distance', 'section' => 'Performance',
+                    'default' => '10', 'rules' => 'required|integer|between:3,32',
+                    'description' => 'Chunks sent to each player. This is the single biggest lever on memory and CPU: every step up costs roughly the square of it.'],
+                ['key' => 'simulation-distance', 'name' => 'Simulation Distance', 'section' => 'Performance',
+                    'default' => '10', 'rules' => 'required|integer|between:3,32',
+                    'description' => 'Chunks that keep ticking: mobs, crops and redstone. Dropping this below the view distance is the cheapest way to buy back tick time.'],
+
+                ['key' => 'online-mode', 'name' => 'Online Mode', 'section' => 'Access', 'env' => 'ONLINE_MODE',
+                    'default' => 'true', 'rules' => 'required|in:true,false',
+                    'description' => 'Verifies every player against Mojang. Turning it off lets anyone join under any name, including yours.'],
+                ['key' => 'white-list', 'name' => 'Whitelist', 'section' => 'Access',
+                    'default' => 'false', 'rules' => 'required|in:true,false',
+                    'description' => 'Only players on the whitelist may join. Manage the list itself on the Players tab.'],
+                // Hidden from customers on purpose: the Players tab, the kick
+                // and ban buttons and a clean save on shutdown all authenticate
+                // with this, so a customer changing it breaks the panel rather
+                // than their server, and they would have no way to know why.
+                ['key' => 'rcon.password', 'name' => 'RCON Password', 'section' => 'Access', 'env' => 'RCON_PASSWORD',
+                    'default' => '', 'rules' => 'nullable|alpha_dash|max:40', 'user_viewable' => false,
+                    'description' => 'Used by the panel itself. Changing it without telling the panel breaks the Players tab.'],
+            ],
+        ];
+    }
+
+    /**
+     * bukkit.yml, which only Paper and its relatives have. Included mostly
+     * because it is the file people are told to tune when a server lags, and
+     * because half of it is comments that no YAML round trip may eat.
+     */
+    private function bukkitYaml(): array
+    {
+        return [
+            'file' => 'bukkit.yml',
+            'format' => 'yaml',
+            'label' => 'Bukkit Tuning',
+            'description' => 'Spawn caps and save timing. Written by Paper on its first start.',
+            'settings' => [
+                ['key' => 'spawn-limits.monsters', 'name' => 'Monster Cap', 'section' => 'Spawn Limits',
+                    'default' => '70', 'rules' => 'required|integer|between:0,200',
+                    'description' => 'Hostile mobs per player before the server stops spawning more. The usual first thing to lower on a busy server.'],
+                ['key' => 'spawn-limits.animals', 'name' => 'Animal Cap', 'section' => 'Spawn Limits',
+                    'default' => '10', 'rules' => 'required|integer|between:0,100'],
+                ['key' => 'spawn-limits.water-animals', 'name' => 'Water Animal Cap', 'section' => 'Spawn Limits',
+                    'default' => '5', 'rules' => 'required|integer|between:0,100'],
+                ['key' => 'ticks-per.autosave', 'name' => 'Autosave Interval', 'section' => 'Housekeeping',
+                    'default' => '6000', 'rules' => 'required|integer|between:0,72000',
+                    'description' => 'Ticks between world saves. 6000 is five minutes. Zero switches autosaving off, which is only sane if something else is saving for you.'],
+                ['key' => 'settings.allow-end', 'name' => 'Allow the End', 'section' => 'Housekeeping',
+                    'default' => 'true', 'rules' => 'required|in:true,false'],
+            ],
+        ];
+    }
+
+    /**
+     * PalWorldSettings.ini. Every one of these lives inside the single
+     * OptionSettings=(...) tuple, and the key names are the ones from the
+     * game's own DefaultPalWorldSettings.ini rather than the friendlier names
+     * the in-game menu shows.
+     *
+     * Two things this template's startup script forces on every boot, so they
+     * are handled rather than pretended away: the keys it rewrites from the
+     * environment name that variable in env, and PublicPort, which it takes
+     * from the server's allocated port and which therefore nobody may type a
+     * different answer into.
+     */
+    private function palworldSettings(): array
+    {
+        // Reused three times: Palworld writes booleans capitalised and reads
+        // nothing else, and a "true" in that file is a setting it ignores.
+        $bool = 'required|in:True,False';
+
+        return [
+            'file' => 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini',
+            'format' => 'palworld',
+            'label' => 'World Settings',
+            'description' => 'Everything Palworld reads at boot, all of it on one line inside OptionSettings.',
+            'settings' => [
+                ['key' => 'ServerName', 'name' => 'Server Name', 'section' => 'Server', 'env' => 'SERVER_NAME',
+                    'default' => 'A GameMGR Palworld Server', 'rules' => 'required|string|max:64|regex:/^[^,"()]+$/',
+                    'description' => 'Shown in the in-game server browser. Commas, quotes and brackets are refused, because any one of them ends the settings line early and Palworld drops the whole file back to defaults.'],
+                ['key' => 'ServerDescription', 'name' => 'Server Description', 'section' => 'Server', 'env' => 'SERVER_DESCRIPTION',
+                    'default' => 'Hosted with GameMGR', 'rules' => 'nullable|string|max:128|regex:/^[^,"()]*$/',
+                    'description' => 'The blurb under the server name. Same character restrictions as the name.'],
+                ['key' => 'ServerPlayerMaxNum', 'name' => 'Max Players', 'section' => 'Server', 'env' => 'MAX_PLAYERS',
+                    'default' => '32', 'rules' => 'required|integer|between:1,32',
+                    'description' => 'Palworld caps at 32. Each player is roughly another 400 MiB.'],
+                ['key' => 'PublicPort', 'name' => 'Public Port', 'section' => 'Server',
+                    'default' => '8211', 'rules' => 'required|integer|between:1024,65535', 'user_editable' => false,
+                    'description' => 'Taken from this server\'s allocated game port and rewritten on every start, so it is shown here rather than asked for. Change the allocation on the Network tab instead.'],
+                ['key' => 'AdminPassword', 'name' => 'Admin Password', 'section' => 'Server', 'env' => 'ADMIN_PASSWORD',
+                    'default' => '', 'rules' => 'nullable|alpha_dash|max:30',
+                    'description' => 'Needed for in-game admin commands and for RCON. RCON stays switched off until this is set.'],
+                ['key' => 'ServerPassword', 'name' => 'Server Password', 'section' => 'Server', 'env' => 'SERVER_PASSWORD',
+                    'default' => '', 'rules' => 'nullable|alpha_dash|max:30',
+                    'description' => 'Leave blank for an open server. This is what players type to join, not the admin password.'],
+
+                ['key' => 'Difficulty', 'name' => 'Difficulty', 'section' => 'Rules',
+                    'default' => 'None', 'rules' => 'required|in:None,Casual,Normal,Hard',
+                    'description' => 'None means the individual rates below decide everything, which is what you want once you have touched any of them.'],
+                ['key' => 'DeathPenalty', 'name' => 'Death Penalty', 'section' => 'Rules',
+                    'default' => 'All', 'rules' => 'required|in:None,Item,ItemAndEquipment,All',
+                    'description' => 'What a player drops on death. All includes the Pals on their team.'],
+                ['key' => 'bIsPvP', 'name' => 'PvP', 'section' => 'Rules',
+                    'default' => 'False', 'rules' => $bool],
+                ['key' => 'bEnablePlayerToPlayerDamage', 'name' => 'Player Damage', 'section' => 'Rules',
+                    'default' => 'False', 'rules' => $bool,
+                    'description' => 'Whether players can hurt each other at all. PvP needs this on as well.'],
+                ['key' => 'bEnableFriendlyFire', 'name' => 'Friendly Fire', 'section' => 'Rules',
+                    'default' => 'False', 'rules' => $bool],
+                ['key' => 'bEnableInvaderEnemy', 'name' => 'Raids', 'section' => 'Rules',
+                    'default' => 'True', 'rules' => $bool,
+                    'description' => 'Periodic attacks on player bases.'],
+                ['key' => 'bEnableFastTravel', 'name' => 'Fast Travel', 'section' => 'Rules',
+                    'default' => 'True', 'rules' => $bool],
+                ['key' => 'GuildPlayerMaxNum', 'name' => 'Guild Size', 'section' => 'Rules',
+                    'default' => '20', 'rules' => 'required|integer|between:1,100'],
+                ['key' => 'BaseCampMaxNum', 'name' => 'Base Camp Limit', 'section' => 'Rules',
+                    'default' => '128', 'rules' => 'required|integer|between:1,256',
+                    'description' => 'Bases across the whole server. This one costs real memory on a busy world.'],
+
+                ['key' => 'DayTimeSpeedRate', 'name' => 'Day Length', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.1,5',
+                    'description' => 'Higher runs the day faster, so a lower number means longer days.'],
+                ['key' => 'NightTimeSpeedRate', 'name' => 'Night Length', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.1,5',
+                    'description' => 'Raise this to get the nights over with faster, which is the usual first change on a server people play after work.'],
+                ['key' => 'ExpRate', 'name' => 'Experience Rate', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.1,20'],
+                ['key' => 'PalCaptureRate', 'name' => 'Pal Capture Rate', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.5,2'],
+                ['key' => 'PalSpawnNumRate', 'name' => 'Pal Spawn Rate', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.5,3',
+                    'description' => 'How many Pals are alive in the world at once. Raising this is the fastest way to make a server struggle.'],
+                ['key' => 'WorkSpeedRate', 'name' => 'Work Speed', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.1,5'],
+                ['key' => 'CollectionDropRate', 'name' => 'Gathering Rate', 'section' => 'Rates',
+                    'default' => '1', 'rules' => 'required|numeric|between:0.5,3'],
+                ['key' => 'PalEggDefaultHatchingTime', 'name' => 'Egg Hatching Hours', 'section' => 'Rates',
+                    'default' => '72', 'rules' => 'required|numeric|between:0,240',
+                    'description' => 'In-game hours. Zero hatches an egg the moment it is placed.'],
+            ],
+        ];
+    }
+
     private function catalogue(): array
     {
         return [
@@ -83,6 +324,15 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Paper',
                         'default_port' => 25565,
                         'default_protocol' => 'tcp',
+                        // The query listener is the same number as the game port and a
+                        // different protocol: Java play is TCP on 25565, the query protocol
+                        // is UDP on 25565. One allocation, open on both, which is exactly
+                        // what a single port column could never say.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'tcp', 'port' => 25565],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port' => 25575],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'High performance Spigot fork, run from itzg/minecraft-server, which downloads and upgrades Paper itself.',
@@ -109,6 +359,10 @@ class CatalogueSeeder extends Seeder
                         'config_stop' => ['value' => 'stop'],
                         'config_logs' => ['custom' => false, 'location' => 'logs/latest.log'],
                         'config_files' => ['server.properties' => ['parser' => 'properties', 'find' => ['server-ip' => '{{server.build.default.ip}}', 'server-port' => '{{server.build.default.port}}']]],
+                        // config_files is the daemon stamping the allocation
+                        // into the file before boot. config_schema is the Config
+                        // tab: which settings inside that file a customer sees.
+                        'config_schema' => [$this->minecraftProperties(), $this->bukkitYaml()],
                         'features' => ['eula', 'java_version', 'pid_limit'],
                         'rcon_supported' => true,
                         'rcon_protocol' => 'minecraft',
@@ -140,6 +394,13 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Forge',
                         'default_port' => 25565,
                         'default_protocol' => 'tcp',
+                        // Same shape as Paper: TCP play and UDP query on 25565, RCON on the
+                        // conventional 25575.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'tcp', 'port' => 25565],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port' => 25575],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Modded Minecraft on the same itzg/minecraft-server image, which runs the Forge installer for the version pair below.',
@@ -155,6 +416,10 @@ class CatalogueSeeder extends Seeder
                         'config_stop' => ['value' => 'stop'],
                         'config_logs' => ['custom' => false, 'location' => 'logs/latest.log'],
                         'config_files' => ['server.properties' => ['parser' => 'properties', 'find' => ['server-ip' => '{{server.build.default.ip}}', 'server-port' => '{{server.build.default.port}}']]],
+                        // No bukkit.yml here: Forge is not a Bukkit server, and
+                        // offering a tab for a file that will never exist is worse
+                        // than not offering one.
+                        'config_schema' => [$this->minecraftProperties()],
                         'features' => ['eula', 'java_version', 'pid_limit'],
                         'rcon_supported' => true,
                         'rcon_protocol' => 'minecraft',
@@ -186,6 +451,12 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Bedrock',
                         'default_port' => 19132,
                         'default_protocol' => 'udp',
+                        // Bedrock is UDP only and answers its query on the game port. It has
+                        // no RCON at all, which is why the Players tab reads the query.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 19132],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Mojang bedrock_server for console, mobile and Windows 10 players, run from itzg/minecraft-bedrock-server.',
@@ -244,6 +515,16 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Rust Vanilla',
                         'default_port' => 28015,
                         'default_protocol' => 'udp',
+                        // Rust defines RCON and query relative to the game port, so those are
+                        // offsets and follow it if the port is ever changed. Rust+ is a fixed
+                        // number Facepunch chose and is optional: a server without it works,
+                        // it just cannot be paired with the companion app.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 28015],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port_offset' => 1],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 2],
+                            ['role' => 'rustplus', 'label' => 'Rust+ Companion App', 'protocol' => 'tcp', 'port' => 28082, 'required' => false],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 258550, anonymous login. No container, because Rust is happier owning its own network stack.',
@@ -333,6 +614,13 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Rust Oxide',
                         'default_port' => 28015,
                         'default_protocol' => 'udp',
+                        // Identical to vanilla. Oxide changes what runs, not what listens.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 28015],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port_offset' => 1],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 2],
+                            ['role' => 'rustplus', 'label' => 'Rust+ Companion App', 'protocol' => 'tcp', 'port' => 28082, 'required' => false],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Rust with the Oxide/uMod plugin framework, applied over the Steam files on every boot.',
@@ -423,6 +711,13 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Valheim Dedicated',
                         'default_port' => 2456,
                         'default_protocol' => 'udp',
+                        // Valheim genuinely defines its A2S port as the game port plus one, so
+                        // this one is an offset rather than a number: move the game port and
+                        // the query follows it, which is what the game does.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 2456],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 1],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'LinuxGSM vhserver, Steam app 896660, anonymous login. LinuxGSM does the install, the update and the console, so this runtime drives its control script rather than wrapping it in a second supervisor.',
@@ -475,6 +770,13 @@ class CatalogueSeeder extends Seeder
                         'name' => 'ARK ASA',
                         'default_port' => 7777,
                         'default_protocol' => 'udp',
+                        // Survival Ascended dropped the separate query port its predecessor
+                        // had and answers on the game port. RCON is the image's own 27020.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 7777],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port' => 27020],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Docker, because there is no other option: Studio Wildcard never shipped a Linux server for Survival Ascended, and LinuxGSM has no asaserver, only arkserver for the older Survival Evolved.',
@@ -562,6 +864,15 @@ class CatalogueSeeder extends Seeder
                         'name' => 'CS2 Dedicated',
                         'default_port' => 27015,
                         'default_protocol' => 'udp',
+                        // All three on 27015: game and A2S over UDP, Source RCON over TCP.
+                        // That collapses to one allocation open on both protocols, carrying
+                        // all three roles, which is the only shape the unique index on
+                        // (node_id, ip, port) allows and also the truth.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 27015],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port_offset' => 0],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 730, anonymous login. Anti-cheat and container networking do not always agree, so this one skips the container.',
@@ -638,6 +949,15 @@ class CatalogueSeeder extends Seeder
                         'name' => 'Palworld Dedicated',
                         'default_port' => 8211,
                         'default_protocol' => 'udp',
+                        // The set that started all of this. 8211 is the number in every
+                        // Palworld guide, 27015 is the Steam query port the game defaults to,
+                        // and 25575 is its RCON. All three are fixed rather than derived,
+                        // because that is what the game ships with and what a player expects.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 8211],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port' => 27015],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port' => 25575],
+                        ],
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 2394010, anonymous login.',
@@ -731,6 +1051,7 @@ class CatalogueSeeder extends Seeder
                         'rcon_port_offset' => 17364,
                         'query_port_offset' => 18804,
                         'update_command' => 'app_update 2394010 validate',
+                        'config_schema' => [$this->palworldSettings()],
                         'variables' => [
                             ['name' => 'Server Name', 'env_variable' => 'SERVER_NAME', 'default_value' => 'A GameMGR Palworld Server', 'rules' => 'required|string|max:64', 'description' => 'Shown in the in-game server browser. Commas, quotes and brackets are stripped before this reaches PalWorldSettings.ini, because any one of them voids the whole file.', 'user_viewable' => true, 'user_editable' => true],
                             ['name' => 'Server Description', 'env_variable' => 'SERVER_DESCRIPTION', 'default_value' => 'Hosted with GameMGR', 'rules' => 'nullable|string|max:128', 'description' => 'The blurb under the server name in the browser.', 'user_viewable' => true, 'user_editable' => true],

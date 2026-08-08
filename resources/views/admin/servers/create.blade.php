@@ -143,23 +143,29 @@
                                            class="block w-full rounded-lg border-0 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-500">
                                 </div>
 
-                                @foreach ($byGame as $gameName => $group)
-                                    @php $game = $group->first()->game; @endphp
-                                    <div x-show="gameHasMatch({{ Illuminate\Support\Js::from($group->pluck('id')->all()) }})" x-cloak>
+                                {{-- Named gameGroup, not group. A Blade foreach leaves its
+                                     variable behind in the shared scope, and step five
+                                     includes _variable.blade.php, which reads a variable of
+                                     that name as the form field array name. The bare one
+                                     therefore renamed every template setting to a JSON dump
+                                     of this loop, so nothing typed on step five ever posted. --}}
+                                @foreach ($byGame as $gameName => $gameGroup)
+                                    @php $game = $gameGroup->first()->game; @endphp
+                                    <div x-show="gameHasMatch({{ Illuminate\Support\Js::from($gameGroup->pluck('id')->all()) }})" x-cloak>
                                         <div class="flex items-center gap-2.5 pb-2.5">
                                             <span class="gm-art gm-art-{{ $game?->id ?? 0 }} inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white ring-1 ring-inset ring-black/10">
                                                 <x-icon :name="$game?->icon ?: 'controller'" class="w-4 h-4" />
                                             </span>
                                             <h4 class="min-w-0 truncate text-sm font-semibold text-slate-900">{{ $gameName }}</h4>
                                             <span class="shrink-0 text-xs tabular text-slate-400">
-                                                {{ $group->count() }} {{ \Illuminate\Support\Str::plural('Template', $group->count()) }}
+                                                {{ $gameGroup->count() }} {{ \Illuminate\Support\Str::plural('Template', $gameGroup->count()) }}
                                             </span>
                                             <span class="h-px min-w-4 flex-1 bg-slate-200" aria-hidden="true"></span>
                                         </div>
 
                                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
                                              role="radiogroup" aria-label="{{ $gameName }} templates">
-                                            @foreach ($group as $template)
+                                            @foreach ($gameGroup as $template)
                                                 <label x-show="matchesTemplate({{ $template->id }})" x-cloak
                                                        class="gm-pick group relative flex cursor-pointer gap-3 rounded-xl bg-white p-3 ring-1 ring-inset transition"
                                                        :class="templateId === '{{ $template->id }}'
@@ -403,11 +409,12 @@
                                 </p>
 
                                 <div class="sm:max-w-sm" x-show="nodeId" x-cloak>
-                                    <x-field label="Port" hint="Leave it on the default and the first free port is taken."
+                                    <x-field label="Game Port"
+                                             hint="Leave it automatic and the game gets its canonical port, or the nearest free set if something already holds it."
                                              :error="$errors->first('allocation_id')">
                                         <x-select name="allocation_id" x-model="allocationId"
                                                   x-bind:disabled="placement !== 'manual'">
-                                            <option value="">First Free Port On The Machine</option>
+                                            <option value="">Automatic, Canonical Where It Can Be</option>
                                             <template x-for="a in allocationChoices" :key="a.id">
                                                 <option :value="a.id" x-text="a.label + (a.notes ? ' (' + a.notes + ')' : '')"></option>
                                             </template>
@@ -415,11 +422,39 @@
                                     </x-field>
                                 </div>
 
-                                <div x-show="nodeId && allocationChoices.length === 0" x-cloak>
+                                {{-- Only a template with no declared port set actually depends on
+                                     a free row already sitting in the pool. One that has a set
+                                     brings its own numbers and the planner adds them. --}}
+                                <div x-show="nodeId && allocationChoices.length === 0 && !(template && template.port_set.length)" x-cloak>
                                     <x-alert type="warn" title="No Free Ports Left">
-                                        This machine has no unassigned ports. Add allocations to it first, or pick another machine.
+                                        This machine has no unassigned ports, and this template does not declare which ports its
+                                        game needs. Add allocations to the machine first, or pick another one.
                                     </x-alert>
                                 </div>
+                            </div>
+
+                            {{-- Outside both placement branches, because what a game
+                                 listens on is the same whether the machine was picked
+                                 by hand or chosen for you. The whole set is reserved
+                                 together, so showing one port here would be exactly the
+                                 half truth the old allocator told. --}}
+                            <div class="section-divider pt-5" x-show="template && template.port_set.length" x-cloak>
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Ports This Game Needs</p>
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <template x-for="p in (template ? template.port_set : [])" :key="p.port">
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200">
+                                            <span class="tabular" x-text="p.port"></span>
+                                            <span class="text-slate-400" x-text="p.protocol"></span>
+                                            <span x-text="p.label"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                                <p class="mt-2 text-sm text-slate-500">
+                                    All of them are reserved together on one address, or none are. On an address with nothing
+                                    else on it the game gets its real port,
+                                    <span class="tabular font-medium text-slate-700" x-text="template ? template.canonical_port : ''"></span>.
+                                    On a busy address the whole set shifts by the same amount and you are told by how much.
+                                </p>
                             </div>
                         </div>
                     </x-card>

@@ -1,6 +1,29 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
+    {{-- The canonical port rule, made visible. A shifted set is the one thing
+         about this page an owner has to be told rather than left to notice: the
+         number they hand their players is not the number every guide for the
+         game prints, and nothing else on the screen says so. --}}
+    @if ($portShift !== 0)
+        <div class="mb-6">
+            <x-alert type="warn" title="This Server Is Not On {{ $server->template?->name }}'s Usual Port">
+                {{ $canonicalPort }} was already taken on {{ $server->allocation?->ip }} by another server, so this one and
+                every port it uses moved by {{ $portShift > 0 ? '+'.$portShift : $portShift }}. Players connect to
+                <span class="font-mono font-semibold">{{ $server->address() }}</span>, not port {{ $canonicalPort }}.
+                A dedicated address would give this server the real port. Ask an administrator to move it to one.
+            </x-alert>
+        </div>
+    @elseif ($canonicalPort)
+        <div class="mb-6">
+            <x-alert type="success" title="On The Real Port">
+                This server holds {{ $server->template?->name }}'s canonical port {{ $canonicalPort }}, so players can
+                connect with <span class="font-mono font-semibold">{{ $server->address() }}</span> and every guide written
+                for this game applies as written.
+            </x-alert>
+        </div>
+    @endif
+
     <x-card title="Network"
             subtitle="{{ $allocations->count() }} of {{ $server->allocation_limit ?: 'unlimited' }} allocations used. The primary address is the one players connect to."
             flush>
@@ -22,8 +45,8 @@
                 <thead>
                 <tr><th class="w-10"><x-select-toggle all /></th>
                 <th>Address</th>
-                <th>IP</th>
-                <th>Port</th>
+                <th>Purpose</th>
+                <th>Protocol</th>
                 <th>Role</th>
                 <th class="text-right vx-act-2">Actions</th>
                 </tr>
@@ -32,9 +55,16 @@
                 @foreach ($allocations as $allocation)
                 <tr>
                 <td class="w-10"><x-select-toggle :value="$allocation->id" :label="$allocation->address()" /></td>
-                <td class="font-mono text-slate-900">{{ $allocation->address() }}</td>
-                <td class="font-mono text-xs text-slate-500">{{ $allocation->ip }}</td>
-                <td class="tabular text-slate-500">{{ $allocation->port }}</td>
+                {{-- Wraps rather than truncates: a fixed-layout table cut this to
+                     "dedicated.gamemgr.local:82…" and the port is the entire point
+                     of the row, being the number an owner hands their players.
+                     The host is allowed to break anywhere and the port is not, so
+                     a long alias never splits the number in half. --}}
+                <td class="font-mono text-slate-900 vx-cell-wrap">
+                <span class="text-slate-500 [overflow-wrap:anywhere]">{{ $allocation->ip_alias ?: $allocation->ip }}</span><wbr><span class="font-medium">:{{ $allocation->port }}</span>
+                </td>
+                <td class="text-slate-500">{{ $allocation->roleLabel() }}</td>
+                <td><x-badge color="{{ $allocation->protocol === 'both' ? 'info' : 'neutral' }}">{{ $allocation->protocolLabel() }}</x-badge></td>
                 <td>
                 @if ($server->allocation_id === $allocation->id)
                 <x-badge color="success" dot>Primary</x-badge>

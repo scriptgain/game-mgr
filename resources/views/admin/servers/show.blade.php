@@ -1,10 +1,13 @@
 @php
     use App\Support\Format;
 
-    // Lower half of the page. The cockpit (state, console, gauges) stays above
-    // the fold; the reference detail an operator only reads when they are
-    // chasing something specific goes behind tabs rather than into a scroll.
+    // The page is a command deck, not a scroll. Above the tabs sits only what an
+    // operator wants without asking: what state it is in, where players connect,
+    // the power controls, and four live vitals. Everything reference shaped is a
+    // tab, because a fact you read once a month should not push the console off
+    // the screen every day.
     $detailTabs = [
+        ['id' => 'console', 'label' => 'Console', 'icon' => 'terminal'],
         ['id' => 'overview', 'label' => 'Overview', 'icon' => 'info'],
         ['id' => 'limits', 'label' => 'Limits', 'icon' => 'cpu'],
         ['id' => 'startup', 'label' => 'Startup', 'icon' => 'bolt', 'count' => $server->variables->count() ?: null],
@@ -14,11 +17,19 @@
 
     $powerAction = route('server.power', $server);
     $canControl = $server->isControllable();
+
+    // The first frame comes from the model, the frames after it from the node.
+    // Both are stated here so a disabled button is never disabled for one reason
+    // server side and a different one client side.
+    $liveStart = '! controllable() || stats.state === \'running\' || stats.state === \'starting\'';
+    $liveStop = '! controllable() || (stats.state !== \'running\' && stats.state !== \'starting\')';
+    $liveRestart = '! controllable() || stats.state !== \'running\'';
+    $liveKill = '! controllable() || stats.state === \'offline\'';
 @endphp
 
 <x-layouts.app :title="$title">
     {{-- One Alpine scope for the whole page: the header dot, the power buttons,
-         the gauges and the console all read the same live state, so they can
+         the vitals and the console all read the same live state, so they can
          never disagree about whether the server is running. The component is
          the one in public/js/gamemgr.js that the client console uses. --}}
     <div class="space-y-6 min-w-0"
@@ -34,7 +45,7 @@
             status: @js($server->status)
          })">
 
-        {{-- ------------------------------------------------------------ header --}}
+        {{-- ------------------------------------------------------ command deck --}}
         <x-card flush>
             <div class="px-5 sm:px-6 py-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
                 <div class="flex items-start gap-4 min-w-0">
@@ -74,14 +85,26 @@
                             </span>
                         </div>
 
-                        <p class="mt-1 text-sm text-slate-500 [overflow-wrap:anywhere]">
-                            {{ $server->template?->game?->name ?? 'No Game' }}
-                            &middot; {{ $server->template?->name ?? 'No Template' }}
-                            &middot; {{ $server->node?->name ?? 'No Node' }}
+                        <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-500">
+                            <span class="[overflow-wrap:anywhere]">
+                                {{ $server->template?->game?->name ?? 'No Game' }}
+                                &middot; {{ $server->template?->name ?? 'No Template' }}
+                            </span>
+                            {{-- Only earns its place while the row is one line.
+                                 Wrapped onto a phone it is a pipe hanging off
+                                 the end of a sentence. --}}
+                            <span class="hidden text-slate-300 sm:inline" aria-hidden="true">|</span>
+                            <span class="inline-flex items-center gap-1.5 [overflow-wrap:anywhere]">
+                                <x-icon name="server" class="w-3.5 h-3.5 text-slate-400" />
+                                {{ $server->node?->name ?? 'No Node' }}
+                            </span>
                             @if ($server->node?->location)
-                                &middot; {{ $server->node->location->flag }} {{ $server->node->location->name }}
+                                <span class="inline-flex items-center gap-1.5 [overflow-wrap:anywhere]">
+                                    <x-icon name="globe" class="w-3.5 h-3.5 text-slate-400" />
+                                    {{ $server->node->location->flag }} {{ $server->node->location->name }}
+                                </span>
                             @endif
-                        </p>
+                        </div>
 
                         <div class="mt-3 flex flex-wrap items-center gap-2">
                             <x-runtime-badge :runtime="$server->runtime" />
@@ -92,62 +115,124 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0">
+                {{-- Everyday actions read as words. The three that change what a
+                     server IS, rather than what it is doing, are icons behind a
+                     divider: reachable in one click, never the loudest thing on
+                     the page, and every one of them still a modal confirm. --}}
+                {{-- No shrink-0 here. The card clips to its rounded corners, so
+                     a row that refuses to shrink does not overflow visibly, it
+                     disappears: at 360 the delete control was cut in half by
+                     the card edge rather than wrapping onto its own line. --}}
+                <div class="flex flex-wrap items-center gap-2 min-w-0">
                     <x-button href="{{ route('server.console', $server) }}" variant="secondary" size="sm" icon="terminal">Client View</x-button>
                     <x-button href="{{ route('admin.servers.edit', $server) }}" size="sm" icon="edit">Edit</x-button>
+
+                    <span class="mx-1 hidden h-6 w-px bg-slate-200 sm:inline-block" aria-hidden="true"></span>
+
+                    @if ($server->isSuspended())
+                        <form method="POST" action="{{ route('admin.servers.unsuspend', $server) }}">
+                            @csrf<x-button type="submit" variant="secondary" size="sm" icon="check">Unsuspend</x-button>
+                        </form>
+                    @else
+                        <x-confirm-action
+                            name="suspend-server"
+                            :action="route('admin.servers.suspend', $server)"
+                            tone="warn"
+                            title="Suspend {{ $server->name }}?"
+                            message="The server stops and the owner loses every control except reading. Files, backups and databases are untouched."
+                            confirm="Suspend"
+                            confirm-variant="danger">
+                            <x-icon-button icon="ban" title="Suspend Server" />
+                        </x-confirm-action>
+                    @endif
+
+                    <x-confirm-action
+                        name="reinstall-server-admin"
+                        :action="route('admin.servers.reinstall', $server)"
+                        tone="warn"
+                        title="Reinstall {{ $server->name }}?"
+                        message="The install script runs again over this server. Game files are replaced; the data directory is kept."
+                        confirm="Reinstall">
+                        <x-icon-button icon="refresh" title="Reinstall Server" />
+                    </x-confirm-action>
+
+                    <x-confirm-action
+                        name="delete-server"
+                        :action="route('admin.servers.destroy', $server)"
+                        method="DELETE"
+                        tone="danger"
+                        title="Delete {{ $server->name }}?"
+                        message="The server record, its backups and its databases are removed and its ports are freed. There is no undo."
+                        confirm="Delete Server"
+                        confirm-variant="danger">
+                        <x-icon-button icon="trash" title="Delete Server" variant="danger" />
+                    </x-confirm-action>
                 </div>
             </div>
 
-            {{-- Address and power, on one operator strip. --}}
+            {{-- Where players connect, and what an operator does about it. One
+                 strip, two jobs, both with an icon so neither reads as a row of
+                 labels. --}}
             <div class="border-t border-slate-100 bg-slate-50/60 px-5 sm:px-6 py-4">
-                <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
-                    <div class="min-w-0 flex-1 basis-72">
-                        <x-copy-field :value="$server->address()" label="Connect Address" />
+                <div class="flex flex-wrap items-end gap-x-8 gap-y-4">
+                    <div class="min-w-0 flex-1 basis-72 lg:max-w-lg">
+                        <p class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                            <x-icon name="network" class="w-4 h-4 text-slate-400" /> Connect Address
+                        </p>
+                        <x-copy-field :value="$server->address()" />
                     </div>
 
                     <div class="min-w-0">
-                        <p class="mb-1.5 text-sm font-medium text-slate-700">Power</p>
-                        <div class="flex flex-wrap items-center gap-2">
+                        <p class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
+                            <x-icon name="power" class="w-4 h-4 text-slate-400" /> Power
+                        </p>
+                        <div class="flex flex-wrap items-center gap-1.5 rounded-xl bg-white p-1.5 ring-1 ring-slate-200">
                             <form method="POST" action="{{ $powerAction }}">
                                 @csrf<input type="hidden" name="action" value="start">
                                 <x-button type="submit" size="sm" icon="play"
-                                          :disabled="! $canControl || $server->power_state === 'running'"
-                                          ::disabled="! controllable() || stats.state === 'running' || stats.state === 'starting'">Start</x-button>
+                                          :disabled="! $server->canStart()"
+                                          ::disabled="{{ $liveStart }}">Start</x-button>
                             </form>
-                            <form method="POST" action="{{ $powerAction }}">
-                                @csrf<input type="hidden" name="action" value="restart">
-                                <x-button type="submit" variant="secondary" size="sm" icon="refresh"
-                                          :disabled="! $canControl || $server->power_state !== 'running'"
-                                          ::disabled="! controllable() || stats.state !== 'running'">Restart</x-button>
-                            </form>
+
+                            {{-- Restart and Kill both interrupt a live game, so
+                                 both go through a modal confirm. A disabled
+                                 trigger swallows the click, so the modal cannot
+                                 open for a state that would refuse the action. --}}
+                            <x-confirm-action
+                                name="restart-server-admin"
+                                :action="$powerAction"
+                                method="POST"
+                                tone="warn"
+                                title="Restart {{ $server->name }}?"
+                                message="Everyone online is dropped while the game stops and boots again. The world is saved first, so nothing is lost, but a busy server will notice."
+                                confirm="Restart"
+                                :fields="['action' => 'restart']">
+                                <x-button variant="secondary" size="sm" icon="refresh"
+                                          :disabled="! $server->canRestart()"
+                                          ::disabled="{{ $liveRestart }}">Restart</x-button>
+                            </x-confirm-action>
+
                             <form method="POST" action="{{ $powerAction }}">
                                 @csrf<input type="hidden" name="action" value="stop">
                                 <x-button type="submit" variant="secondary" size="sm" icon="stop"
-                                          :disabled="! $canControl || $server->power_state !== 'running'"
-                                          ::disabled="! controllable() || stats.state !== 'running'">Stop</x-button>
+                                          :disabled="! $server->canStop()"
+                                          ::disabled="{{ $liveStop }}">Stop</x-button>
                             </form>
 
-                            @if ($canControl)
-                                {{-- Kill is only offered against something that is
-                                     actually running, and always through the modal
-                                     confirm, never a native one. --}}
-                                <span x-show="stats.state === 'running'" @if ($server->power_state !== 'running') x-cloak @endif>
-                                    <x-confirm-action
-                                        name="kill-server-admin"
-                                        :action="$powerAction"
-                                        method="POST"
-                                        tone="danger"
-                                        title="Kill {{ $server->name }}?"
-                                        message="Kill pulls the plug without letting the game save. Anything since the last autosave is lost. Use Stop unless the server has stopped responding entirely."
-                                        confirm="Kill It"
-                                        confirm-variant="danger"
-                                        :fields="['action' => 'kill']">
-                                        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-rose-700 bg-white ring-1 ring-inset ring-rose-200 hover:bg-rose-50 hover:ring-rose-400 transition">
-                                            <x-icon name="bolt-slash" class="w-4 h-4" /> Kill
-                                        </button>
-                                    </x-confirm-action>
-                                </span>
-                            @endif
+                            <x-confirm-action
+                                name="kill-server-admin"
+                                :action="$powerAction"
+                                method="POST"
+                                tone="danger"
+                                title="Kill {{ $server->name }}?"
+                                message="Kill pulls the plug without letting the game save. Anything since the last autosave is lost. Use Stop unless the server has stopped responding entirely."
+                                confirm="Kill It"
+                                confirm-variant="danger"
+                                :fields="['action' => 'kill']">
+                                <x-button variant="danger-soft" size="sm" icon="bolt-slash"
+                                          :disabled="! $server->canKill()"
+                                          ::disabled="{{ $liveKill }}">Kill</x-button>
+                            </x-confirm-action>
                         </div>
                     </div>
                 </div>
@@ -202,114 +287,93 @@
         @if ($server->isSuspended())
             <x-alert type="warn" title="Suspended">
                 The owner has no controls beyond reading. Files, backups and databases are untouched.
+                Unsuspend from the header when the reason has cleared.
             </x-alert>
         @endif
 
-        {{-- --------------------------------------------------------- the cockpit --}}
-        <div class="grid gap-6 lg:grid-cols-3">
-            <div class="lg:col-span-2 space-y-6 min-w-0">
-                <x-install-progress :server="$server" />
-                <x-live-console :server="$server" height="h-[30rem]" />
+        {{-- ------------------------------------------------------------- vitals
+             Four tiles, not four label and value rows. Each carries its own icon,
+             the live figure it is measuring, and the bar that says how close to
+             the ceiling it is, which is the part a table of numbers never
+             answers at a glance. --}}
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 min-w-0">
+            <div class="min-w-0 rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600 ring-1 ring-brand-200">
+                        <x-icon name="cpu" class="w-4 h-4" />
+                    </span>
+                    <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">CPU</p>
+                </div>
+                <p class="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                    <span class="tabular text-xl sm:text-2xl font-semibold text-slate-900"
+                          x-text="(Math.round(stats.cpu * 10) / 10) + '%'">{{ round((float) $server->cached_cpu, 1) }}%</span>
+                    <span class="text-xs text-slate-400">of {{ (int) $server->cpu }}%</span>
+                </p>
+                <x-meter class="mt-2.5" :value="$server->cached_cpu" :max="max(1, $server->cpu)" live="cpuPercent()" />
             </div>
 
-            <div class="space-y-6 min-w-0">
-                <x-card title="Live Usage"
-                        :subtitle="'From the node while this page is open. Last stored sample '.($server->cached_at?->diffForHumans() ?? 'never taken').'.'">
-                    <div class="space-y-4">
-                        <x-meter label="CPU"
-                                 :value="$server->cached_cpu" :max="max(1, $server->cpu)"
-                                 live="cpuPercent()"
-                                 live-text="(Math.round(stats.cpu * 10) / 10) + '% of {{ (int) $server->cpu }}%'" />
+            <div class="min-w-0 rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600 ring-1 ring-sky-200">
+                        <x-icon name="memory" class="w-4 h-4" />
+                    </span>
+                    <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">Memory</p>
+                </div>
+                <p class="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                    <span class="tabular text-xl sm:text-2xl font-semibold text-slate-900"
+                          x-text="formatMib(stats.memory_mib)">{{ Format::mib($server->cached_memory) }}</span>
+                    <span class="text-xs text-slate-400">of {{ Format::mib($server->memory) }}</span>
+                </p>
+                <x-meter class="mt-2.5" :value="$server->cached_memory" :max="max(1, $server->memory)"
+                         live="memoryPercent()"
+                         live-tone="memoryPercent() >= 90 ? 'bg-rose-500' : (memoryPercent() >= 75 ? 'bg-amber-500' : 'bg-brand-500')" />
+            </div>
 
-                        <x-meter label="Memory"
-                                 :value="$server->cached_memory" :max="max(1, $server->memory)"
-                                 live="memoryPercent()"
-                                 live-text="formatMib(stats.memory_mib) + ' / ' + formatMib({{ (int) $server->memory }})"
-                                 live-tone="memoryPercent() >= 90 ? 'bg-rose-500' : (memoryPercent() >= 75 ? 'bg-amber-500' : 'bg-brand-500')" />
+            <div class="min-w-0 rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200">
+                        <x-icon name="database" class="w-4 h-4" />
+                    </span>
+                    <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">Disk</p>
+                </div>
+                <p class="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                    <span class="tabular text-xl sm:text-2xl font-semibold text-slate-900"
+                          x-text="formatMib(stats.disk_mib || {{ (int) $server->cached_disk }})">{{ Format::mib($server->cached_disk) }}</span>
+                    <span class="text-xs text-slate-400">of {{ Format::mib($server->disk) }}</span>
+                </p>
+                <x-meter class="mt-2.5" :value="$server->cached_disk" :max="max(1, $server->disk)" live="diskPercent()" />
+            </div>
 
-                        <x-meter label="Disk"
-                                 :value="$server->cached_disk" :max="max(1, $server->disk)"
-                                 live="diskPercent()"
-                                 live-text="formatMib(stats.disk_mib || {{ (int) $server->cached_disk }}) + ' / ' + formatMib({{ (int) $server->disk }})" />
-
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
-                            <span class="font-medium text-slate-700">Players</span>
-                            <span class="tabular font-medium text-slate-900">
-                                <span x-text="stats.players ?? 0">{{ (int) $server->cached_players }}</span> /
-                                <span x-text="stats.max_players || 0">{{ (int) $server->cached_max_players }}</span>
-                            </span>
-                        </div>
-                    </div>
-                </x-card>
-
-                <x-card title="Client Tools" subtitle="The real tools live in the client area. These open it as this server.">
-                    <div class="grid grid-cols-2 gap-2">
-                        @foreach ($clientLinks as $link)
-                            <a href="{{ route($link['route'], $server) }}"
-                               class="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm text-slate-700 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900 hover:ring-slate-400">
-                                <x-icon :name="$link['icon']" class="w-4 h-4 shrink-0 text-slate-400" />
-                                <span class="truncate">{{ $link['label'] }}</span>
-                            </a>
-                        @endforeach
-                    </div>
-                </x-card>
-
-                <x-card title="Administration">
-                    <div class="space-y-3">
-                        @if ($server->isSuspended())
-                            <form method="POST" action="{{ route('admin.servers.unsuspend', $server) }}">
-                                @csrf<x-button type="submit" class="w-full" icon="check">Unsuspend</x-button>
-                            </form>
-                        @else
-                            <x-confirm-action
-                                name="suspend-server"
-                                :action="route('admin.servers.suspend', $server)"
-                                tone="warn"
-                                title="Suspend {{ $server->name }}?"
-                                message="The server stops and the owner loses every control except reading. Files, backups and databases are untouched."
-                                confirm="Suspend"
-                                confirm-variant="danger"
-                                class="w-full">
-                                <button type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-amber-800 bg-white ring-1 ring-inset ring-amber-200 hover:bg-amber-50 hover:ring-amber-400 transition">
-                                    <x-icon name="ban" class="w-4 h-4" /> Suspend
-                                </button>
-                            </x-confirm-action>
-                        @endif
-
-                        <x-confirm-action
-                            name="reinstall-server-admin"
-                            :action="route('admin.servers.reinstall', $server)"
-                            tone="warn"
-                            title="Reinstall {{ $server->name }}?"
-                            message="The install script runs again over this server. Game files are replaced; the data directory is kept."
-                            confirm="Reinstall"
-                            class="w-full">
-                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 bg-white ring-1 ring-inset ring-slate-300 hover:bg-slate-50 hover:ring-slate-400 transition">
-                                <x-icon name="refresh" class="w-4 h-4" /> Reinstall
-                            </button>
-                        </x-confirm-action>
-
-                        <x-confirm-action
-                            name="delete-server"
-                            :action="route('admin.servers.destroy', $server)"
-                            method="DELETE"
-                            tone="danger"
-                            title="Delete {{ $server->name }}?"
-                            message="The server record, its backups and its databases are removed and its ports are freed. There is no undo."
-                            confirm="Delete Server"
-                            confirm-variant="danger"
-                            class="w-full">
-                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-rose-700 bg-white ring-1 ring-inset ring-rose-200 hover:bg-rose-50 hover:ring-rose-400 transition">
-                                <x-icon name="trash" class="w-4 h-4" /> Delete Server
-                            </button>
-                        </x-confirm-action>
-                    </div>
-                </x-card>
+            <div class="min-w-0 rounded-xl bg-white p-4 ring-1 ring-slate-200 shadow-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+                        <x-icon name="user-group" class="w-4 h-4" />
+                    </span>
+                    <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">Players</p>
+                </div>
+                <p class="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+                    <span class="tabular text-xl sm:text-2xl font-semibold text-slate-900"
+                          x-text="stats.players ?? 0">{{ (int) $server->cached_players }}</span>
+                    <span class="text-xs text-slate-400">of <span x-text="stats.max_players || 0">{{ (int) $server->cached_max_players }}</span></span>
+                </p>
+                {{-- A slot cap of zero is a real answer (the template exposes no
+                     player count), so the bar sits at empty rather than dividing
+                     by nothing. --}}
+                <x-meter class="mt-2.5" :value="$server->cached_players" :max="max(1, $server->cached_max_players)"
+                         live="stats.max_players ? Math.min(100, Math.round((stats.players / stats.max_players) * 100)) : 0" />
             </div>
         </div>
 
-        {{-- ------------------------------------------------------ reference detail --}}
-        <x-tab-set :tabs="$detailTabs" active="overview" label="Server Detail">
+        {{-- --------------------------------------------------------------- tabs
+             The page's navigation, so it sits where navigation belongs: directly
+             under the deck. Console is the default pane because that is what an
+             operator opens this page to watch. --}}
+        <x-tab-set :tabs="$detailTabs" active="console" label="Server Sections">
+
+            <x-tab-pane id="console">
+                <x-install-progress :server="$server" />
+                <x-live-console :server="$server" height="h-80 sm:h-[26rem] lg:h-[30rem]" />
+            </x-tab-pane>
 
             <x-tab-pane id="overview">
                 <x-card title="Operator Facts">
@@ -390,6 +454,10 @@
                             <dd class="text-slate-900">{{ $server->last_crashed_at?->diffForHumans() ?? 'Never' }}</dd>
                         </div>
                         <div class="min-w-0">
+                            <dt class="text-slate-500">Last Sample</dt>
+                            <dd class="text-slate-900">{{ $server->cached_at?->diffForHumans() ?? 'Never Taken' }}</dd>
+                        </div>
+                        <div class="min-w-0">
                             <dt class="text-slate-500">UUID</dt>
                             <dd class="font-mono text-xs text-slate-500 [overflow-wrap:anywhere]">{{ $server->uuid }}</dd>
                         </div>
@@ -401,6 +469,18 @@
                             <p class="mt-1 text-sm text-slate-800 [overflow-wrap:anywhere]">{{ $server->description }}</p>
                         </div>
                     @endif
+                </x-card>
+
+                <x-card title="Client Tools" subtitle="The real tools live in the client area. These open it as this server.">
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                        @foreach ($clientLinks as $link)
+                            <a href="{{ route($link['route'], $server) }}"
+                               class="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm text-slate-700 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50 hover:text-slate-900 hover:ring-slate-400">
+                                <x-icon :name="$link['icon']" class="w-4 h-4 shrink-0 text-slate-400" />
+                                <span class="truncate">{{ $link['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
                 </x-card>
             </x-tab-pane>
 

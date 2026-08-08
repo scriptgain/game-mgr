@@ -3,6 +3,34 @@
 
     @php
         $imageLines = collect($template->docker_images ?? [])->map(fn ($image, $label) => $label.' = '.$image)->implode("\n");
+
+        // The port set, in the shape the browser edits it: one value per row,
+        // read as a port number or as an offset depending on the source.
+        $portRows = $template->ports->map(fn ($p) => [
+            'role' => $p->role,
+            'label' => $p->label,
+            'protocol' => $p->protocol,
+            'source' => $p->source,
+            'value' => $p->source === 'fixed' ? (int) $p->port : (int) $p->port_offset,
+            'required' => (bool) $p->required,
+        ])->values()->all();
+
+        if (old('ports')) {
+            $portRows = array_values(old('ports'));
+        }
+
+        // A rejected POST brings "required" back as the string "0", which is
+        // truthy in JavaScript and would flip every toggle on.
+        $portRows = collect($portRows)->map(function (array $row) {
+            $row['required'] = filter_var($row['required'] ?? true, FILTER_VALIDATE_BOOL);
+            $row['value'] = (int) ($row['value'] ?? 0);
+
+            return $row;
+        })->values()->all();
+
+        foreach ($portRows as $index => $row) {
+            $portRows[$index]['uid'] = $index;
+        }
     @endphp
 
     <form method="POST" action="{{ $template->exists ? route('admin.templates.update', $template) : route('admin.templates.store') }}"
@@ -110,6 +138,121 @@
                         </x-field>
                     </div>
                 </x-card>
+
+                {{-- The port set. Its own Alpine scope rather than the form's, so
+                     the repeating rows can own an id counter without the runtime
+                     switch above having to know about it. Every control uses
+                     x-bind:name rather than :name, because a colon prefix on a
+                     Blade component is a PHP expression and would be evaluated
+                     server side instead of reaching Alpine. --}}
+                <div x-data="{
+                        rows: @js($portRows),
+                        next: {{ count($portRows) }},
+                        add() {
+                            this.rows.push({ uid: this.next++, role: '', label: '', protocol: 'both', source: 'fixed', value: 27015, required: true });
+                        },
+                        remove(index) { this.rows.splice(index, 1); },
+                        gamePort() {
+                            const game = this.rows.find(r => r.role === 'game');
+                            return game ? Number(game.value) : 0;
+                        },
+                        resolved(row) {
+                            return row.source === 'offset' ? this.gamePort() + Number(row.value) : Number(row.value);
+                        },
+                     }">
+                    <x-card title="Ports"
+                            subtitle="Every listener this game needs. A server reserves all of them together on one address, or it is not created at all.">
+                        <x-slot:actions>
+                            <x-button type="button" variant="secondary" size="sm" icon="plus" x-on:click="add()">Add A Port</x-button>
+                        </x-slot:actions>
+
+                        <div class="space-y-4">
+                            @error('ports')<x-alert type="danger">{{ $message }}</x-alert>@enderror
+                            @foreach ($errors->get('ports.*') as $messages)
+                                <x-alert type="danger">{{ $messages[0] }}</x-alert>
+                            @endforeach
+
+                            <p class="text-sm text-slate-500" x-show="rows.length === 0">
+                                No ports declared. A server built from this template gets whatever port happens to be free,
+                                which is how a Palworld server ends up on Valheim's 2456 and nobody can reach it.
+                                Add a row called <span class="font-mono">game</span> to fix that.
+                            </p>
+
+                            <template x-for="(row, i) in rows" x-bind:key="row.uid">
+                                <div class="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200">
+                                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                        <x-field label="Key" hint="game, query, rcon, sftp, or a word of your own.">
+                                            <x-input x-bind:name="'ports[' + i + '][role]'" x-model="row.role"
+                                                     class="font-mono text-xs" placeholder="game" />
+                                        </x-field>
+                                        <x-field label="Name">
+                                            <x-input x-bind:name="'ports[' + i + '][label]'" x-model="row.label" placeholder="Game Port" />
+                                        </x-field>
+                                        <x-field label="Protocol">
+                                            <x-select x-bind:name="'ports[' + i + '][protocol]'" x-model="row.protocol">
+                                                @foreach (\App\Models\TemplatePort::PROTOCOLS as $value => $label)
+                                                    <option value="{{ $value }}">{{ $label }}</option>
+                                                @endforeach
+                                            </x-select>
+                                        </x-field>
+                                        <x-field label="How It Is Worked Out">
+                                            <x-select x-bind:name="'ports[' + i + '][source]'" x-model="row.source"
+                                                      x-bind:disabled="row.role === 'game'">
+                                                <option value="fixed">A Fixed Port</option>
+                                                <option value="offset">Offset From The Game Port</option>
+                                            </x-select>
+                                        </x-field>
+                                        <x-field label="Number">
+                                            <x-input type="number" x-bind:name="'ports[' + i + '][value]'" x-model="row.value" />
+                                        </x-field>
+                                        <div class="flex flex-wrap items-end gap-4 pb-2">
+                                            <label class="flex cursor-pointer select-none items-center gap-2">
+                                                <input type="hidden" x-bind:name="'ports[' + i + '][required]'" x-bind:value="row.required ? 1 : 0">
+                                                <button type="button" role="switch" x-bind:aria-checked="row.required.toString()"
+                                                        x-on:click="row.required = ! row.required"
+                                                        x-bind:class="row.required ? 'bg-brand-600' : 'bg-slate-300'"
+                                                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 focus-visible:ring-offset-2">
+                                                    <span x-bind:class="row.required ? 'translate-x-6' : 'translate-x-1'"
+                                                          class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"></span>
+                                                </button>
+                                                <span class="text-sm font-medium text-slate-900">Required</span>
+                                            </label>
+                                            <button type="button" x-on:click="remove(i)" x-show="row.role !== 'game'"
+                                                    class="rounded-lg px-2 py-1 text-sm font-medium text-rose-600 ring-1 ring-transparent transition hover:bg-rose-50 hover:ring-rose-200">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p class="mt-3 text-sm text-slate-500">
+                                        <span x-show="row.role === 'game'">
+                                            The port players connect to. On an address with nothing else on it this is what the
+                                            server gets, every time, with no exceptions.
+                                        </span>
+                                        <span x-show="row.role !== 'game' && row.source === 'offset'">
+                                            Resolves to <span class="font-mono text-slate-900" x-text="resolved(row)"></span>,
+                                            and follows the game port if it ever changes.
+                                        </span>
+                                        <span x-show="row.role !== 'game' && row.source === 'fixed'">
+                                            Always <span class="font-mono text-slate-900" x-text="row.value"></span>,
+                                            whatever the game port is.
+                                        </span>
+                                        <span x-show="! row.required">This one is optional: a server is still created if it cannot be had.</span>
+                                    </p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <x-slot:footer>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+                                <span>Canonical set:</span>
+                                <span class="font-mono text-slate-900" x-show="rows.length"
+                                      x-text="rows.map(r => resolved(r) + '/' + r.protocol).join('  ')"></span>
+                                <span x-show="! rows.length">Nothing declared.</span>
+                            </div>
+                        </x-slot:footer>
+                    </x-card>
+                </div>
             </div>
 
             <div class="space-y-6">

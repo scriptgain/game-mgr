@@ -1749,4 +1749,40 @@ document.addEventListener('alpine:init', () => {
             if (button) button.click();
         },
     }));
+
+    /* ---------------------------------------------------------- config editor
+     * The Config tab renders the same controls the server create wizard does,
+     * including the secret field with a Generate button beside it, so it needs
+     * the same generateSecret(). The wizard's version reaches for $refs.form
+     * because it lives inside one; this one walks up from the button, which is
+     * the only difference between them.
+     */
+    Alpine.data('configEditor', (dirty) => ({
+        dirty: !! dirty,
+        touched: false,
+
+        init() {
+            // A game reads its config once, at boot. Typing in this form does
+            // not reach a running server, so the moment somebody starts typing
+            // the page says so rather than waiting for the save to explain it.
+            this.$el.addEventListener('input', () => { this.touched = true; });
+            this.$el.addEventListener('change', () => { this.touched = true; });
+        },
+
+        generateSecret(name) {
+            const el = this.$el.querySelector('[name="' + name + '"]');
+            if (! el) return;
+
+            const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const bytes = new Uint32Array(20);
+            (window.crypto || window.msCrypto).getRandomValues(bytes);
+
+            let out = '';
+            for (let i = 0; i < bytes.length; i++) out += alphabet[bytes[i] % alphabet.length];
+
+            el.value = out;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.focus();
+        },
+    }));
 });

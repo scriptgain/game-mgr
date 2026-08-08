@@ -135,4 +135,67 @@ class EggImporterTest extends TestCase
 
         (new EggImporter)->import(['hello' => 'world']);
     }
+
+    // ---------------------------------------------------------------- ports
+
+    /**
+     * The egg format has no port field, so the ports hide in the variables: an
+     * egg that wants a second listener has no other way to hand the number to
+     * its startup command.
+     */
+    public function test_it_reads_a_port_set_out_of_the_egg_variables(): void
+    {
+        $egg = $this->egg(['variables' => [
+            ['name' => 'Port', 'env_variable' => 'SERVER_PORT', 'default_value' => '25565', 'rules' => 'required|integer'],
+            ['name' => 'RCON', 'env_variable' => 'RCON_PORT', 'default_value' => '25575', 'rules' => 'required|integer'],
+            ['name' => 'Query', 'env_variable' => 'QUERY_PORT', 'default_value' => '25565', 'rules' => 'required|integer'],
+        ]]);
+
+        $template = (new EggImporter)->import($egg);
+        $ports = $template->ports->keyBy('role');
+
+        $this->assertSame(25565, (int) $ports['game']->port);
+        $this->assertSame(25575, (int) $ports['rcon']->port);
+        $this->assertSame('tcp', $ports['rcon']->protocol, 'RCON is TCP unless the game says BattlEye');
+        $this->assertSame('udp', $ports['query']->protocol, 'every query protocol in use is UDP');
+
+        // The legacy columns are a mirror of the set, so nothing that reads
+        // them has to learn about the new table.
+        $this->assertSame(25565, (int) $template->default_port);
+        $this->assertSame(10, (int) $template->rcon_port_offset);
+    }
+
+    /** A declared "ports" key beats anything inferred from the variables. */
+    public function test_a_declared_ports_key_wins(): void
+    {
+        $egg = $this->egg([
+            'ports' => ['game' => 8211, 'rcon' => 25575],
+            'variables' => [
+                ['name' => 'Port', 'env_variable' => 'SERVER_PORT', 'default_value' => '27015', 'rules' => 'required|integer'],
+            ],
+        ]);
+
+        $template = (new EggImporter)->import($egg);
+
+        $this->assertSame(8211, (int) $template->canonicalGamePort());
+        $this->assertCount(2, $template->ports);
+    }
+
+    /**
+     * An egg whose SERVER_PORT default is blank is saying "the panel picks
+     * this", which is exactly the case we must not invent a canonical port for.
+     */
+    public function test_an_egg_that_never_names_a_port_gets_no_port_set(): void
+    {
+        $importer = new EggImporter;
+        $egg = $this->egg(['variables' => [
+            ['name' => 'Port', 'env_variable' => 'SERVER_PORT', 'default_value' => '', 'rules' => 'nullable|integer'],
+        ]]);
+
+        $template = $importer->import($egg);
+
+        $this->assertCount(0, $template->ports);
+        $this->assertNull($template->default_port);
+        $this->assertStringContainsString('never says which ports', implode(' ', $importer->warnings));
+    }
 }

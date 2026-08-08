@@ -258,7 +258,9 @@ class BulkActionController extends Controller
 
         match ($action) {
             'delete' => $row->delete(),
-            'release' => $row->update(['server_id' => null]),
+            // Allocation::release() also clears the role, so a freed port does
+            // not go back to the pool still claiming to be somebody's RCON.
+            'release' => $row instanceof Allocation ? $row->release() : $row->update(['server_id' => null]),
             'lock' => $row->update(['is_locked' => true]),
             'unlock' => $row->update(['is_locked' => false]),
             'enable' => $row->update($resource === 'mods' ? ['enabled' => true] : ['is_active' => true]),

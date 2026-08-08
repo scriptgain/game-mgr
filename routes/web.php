@@ -126,6 +126,11 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::put('/users/{subuser}', [Client\SubuserController::class, 'update'])->name('users.update');
         Route::delete('/users/{subuser}', [Client\SubuserController::class, 'destroy'])->name('users.destroy');
 
+        // The game's own config files, as a form. Only rendered for templates
+        // that declare a config schema; see Template::hasConfigSchema().
+        Route::get('/config', [Client\ConfigController::class, 'index'])->name('config');
+        Route::put('/config', [Client\ConfigController::class, 'update'])->name('config.update');
+
         Route::get('/startup', [Client\StartupController::class, 'index'])->name('startup');
         Route::put('/startup', [Client\StartupController::class, 'update'])->name('startup.update');
 

@@ -16,10 +16,21 @@ class NetworkController extends ServerController
     {
         $this->guard($server, 'allocation.read');
 
+        $server->load('node', 'allocation', 'template.ports');
+
+        // The canonical port this game should be on, and the port it actually
+        // got. When they differ the owner has to be told, because the number
+        // they hand to their players is the second one.
+        $canonical = $server->template?->canonicalGamePort();
+        $actual = $server->allocations->firstWhere('role', 'game')?->port
+            ?? $server->allocation?->port;
+
         return view('server.network', [
             'title' => $server->name.' Network',
-            'server' => $server->load('node', 'allocation'),
+            'server' => $server,
             'allocations' => $server->allocations()->orderBy('port')->get(),
+            'canonicalPort' => $canonical,
+            'portShift' => $canonical && $actual ? (int) $actual - (int) $canonical : 0,
         ]);
     }
 
@@ -37,7 +48,10 @@ class NetworkController extends ServerController
             return back()->with('error', 'The node has no free ports left. An administrator needs to add more.');
         }
 
-        $free->update(['server_id' => $server->id]);
+        // Marked "extra", not left blank. The daemon opens a firewall hole for
+        // every port a server holds, and it should be able to tell the port a
+        // game actually speaks on from a spare somebody claimed by hand.
+        $free->update(['server_id' => $server->id, 'role' => 'extra']);
         $this->log($server, 'allocation.create', 'Added allocation '.$free->address());
 
         return back()->with('status', 'Allocation added: '.$free->address().'.');
@@ -63,7 +77,7 @@ class NetworkController extends ServerController
             return back()->with('error', 'That is the primary address. Make another one primary first.');
         }
 
-        $allocation->update(['server_id' => null]);
+        $allocation->release();
         $this->log($server, 'allocation.delete', 'Released allocation '.$allocation->address());
 
         return back()->with('status', 'Allocation released.');

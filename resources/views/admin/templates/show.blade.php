@@ -88,6 +88,36 @@
 
         {{-- ------------------------------------------------------- overview --}}
         <x-tab-pane id="overview">
+            <x-card title="Ports" class="mb-6" flush
+                    subtitle="What this game listens on. A server built from this template reserves the whole set together on one address, or it is not created.">
+                @if ($template->ports->isEmpty())
+                    <x-empty-state icon="network" title="No Ports Declared"
+                                   description="Without a port set a server gets whatever number happens to be free, and nothing downstream knows which port is the game and which is RCON. Edit the template to declare them." />
+                @else
+                    <x-table flush>
+                        <thead><tr><th>Purpose</th><th>Key</th><th>Port</th><th>Protocol</th><th>How It Is Worked Out</th><th>Required</th></tr></thead>
+                        <tbody>
+                            @foreach ($template->ports as $port)
+                                <tr>
+                                    <td class="font-medium text-slate-900">{{ $port->label ?: $port->roleLabel() }}</td>
+                                    <td class="font-mono text-xs text-slate-500">{{ $port->role }}</td>
+                                    <td class="tabular text-slate-900">{{ $port->resolve((int) $template->canonicalGamePort()) }}</td>
+                                    <td><x-badge color="{{ $port->protocol === 'both' ? 'info' : 'neutral' }}">{{ $port->protocolLabel() }}</x-badge></td>
+                                    <td class="text-slate-500">{{ $port->derivationLabel() }}</td>
+                                    <td>
+                                        @if ($port->required)
+                                            <x-badge color="success">Required</x-badge>
+                                        @else
+                                            <x-badge color="neutral">Optional</x-badge>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </x-table>
+                @endif
+            </x-card>
+
             <x-card title="What This Template Does">
                 <div class="space-y-5">
                     <p class="max-w-3xl text-sm leading-relaxed text-slate-600">

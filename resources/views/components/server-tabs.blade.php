@@ -20,6 +20,7 @@
         ['Backups', 'server.backups', 'archive', $can('backup.read') && $server->backup_limit > 0, 'server.backups*'],
         ['Schedules', 'server.schedules', 'clock', $can('schedule.read'), 'server.schedules*'],
         ['Players', 'server.players', 'user-group', $can('player.read') && (bool) ($template?->rcon_supported || $template?->query_protocol), 'server.players*'],
+        ['Config', 'server.config', 'sliders', $can('config.read') && (bool) $template?->hasConfigSchema(), 'server.config*'],
         ['Mods', 'server.mods', 'puzzle', $can('mod.read') && (bool) $template?->supportsMods(), 'server.mods*'],
         ['Worlds', 'server.worlds', 'map', $can('world.read'), 'server.worlds*'],
         ['Metrics', 'server.metrics', 'chart', $can('control.console'), 'server.metrics*'],
