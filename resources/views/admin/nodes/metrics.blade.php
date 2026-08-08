@@ -16,8 +16,8 @@
         @endphp
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
             <x-stat label="CPU Now" :value="round($latest->cpu, 1).'%'" icon="cpu" :trend="'peak '.$peakCpu.'%'" trend-color="neutral" />
-            <x-stat label="Memory Now" :value="\App\Support\Format::mib($latest->memory)" icon="memory" :trend="'peak '.\App\Support\Format::mib($peakMem)" trend-color="neutral" />
-            <x-stat label="Disk Used" :value="\App\Support\Format::mib($latest->disk)" icon="database" />
+            <x-stat label="Memory Now" :value="\App\Support\Format::bytes($latest->memory)" icon="memory" :trend="'peak '.\App\Support\Format::bytes($peakMem)" trend-color="neutral" />
+            <x-stat label="Disk Used" :value="\App\Support\Format::bytes($latest->disk)" icon="database" />
             <x-stat label="Load Average" :value="round($latest->load, 2)" icon="bolt" />
         </div>
 
@@ -29,8 +29,8 @@
                         <tr>
                             <td class="text-slate-500">{{ $sample->sampled_at->format('M j, H:i') }}</td>
                             <td class="tabular">{{ round($sample->cpu, 1) }}%</td>
-                            <td class="tabular">{{ \App\Support\Format::mib($sample->memory) }}</td>
-                            <td class="tabular">{{ \App\Support\Format::mib($sample->disk) }}</td>
+                            <td class="tabular">{{ \App\Support\Format::bytes($sample->memory) }}</td>
+                            <td class="tabular">{{ \App\Support\Format::bytes($sample->disk) }}</td>
                             <td class="tabular">{{ round($sample->load, 2) }}</td>
                         </tr>
                     @endforeach

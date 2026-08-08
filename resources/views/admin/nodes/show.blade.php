@@ -94,7 +94,12 @@
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">OS</dt><dd class="text-slate-900 truncate">{{ $node->reported_os ?: 'not reported' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Kernel</dt><dd class="font-mono text-xs text-slate-700 truncate">{{ $node->reported_kernel ?: 'not reported' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">CPU Cores</dt><dd class="text-slate-900 tabular">{{ $node->reported_cpu_cores ?: 'not reported' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Physical Memory</dt><dd class="text-slate-900 tabular">{{ $node->reported_memory ? \App\Support\Format::mib($node->reported_memory) : 'not reported' }}</dd></div>
+                    {{-- Bytes, not MiB. Everything the daemon reports about the
+                         machine itself is in bytes, while every limit the panel
+                         stores is in MiB. Formatting one with the other's helper
+                         is how Physical Memory came to read 793,120 GiB. --}}
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Physical Memory</dt><dd class="text-slate-900 tabular">{{ $node->reported_memory ? \App\Support\Format::bytes($node->reported_memory) : 'not reported' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt class="text-slate-500">Physical Disk</dt><dd class="text-slate-900 tabular">{{ $node->reported_disk ? \App\Support\Format::bytes($node->reported_disk) : 'not reported' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Docker</dt><dd class="text-slate-900">{{ $node->reported_docker ?: 'not reported' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Last Heartbeat</dt><dd class="text-slate-900">{{ $node->last_seen_at?->diffForHumans() ?? 'never' }}</dd></div>
                 </dl>

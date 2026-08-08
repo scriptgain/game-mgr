@@ -27,7 +27,15 @@ class Format
             : number_format($value, $precision).' '.$units[$power];
     }
 
-    /** MiB as GiB where that is clearer. Limits are stored in MiB throughout. */
+    /**
+     * MiB as GiB where that is clearer. Limits are stored in MiB throughout.
+     *
+     * Only for LIMITS. Anything the node daemon reports about the machine, so
+     * reported_memory, reported_disk, and every node_metrics row, is in BYTES
+     * and wants bytes() instead. Passing bytes here inflates the number by
+     * 1,048,576 and still renders happily, which is exactly how a node page
+     * came to claim 793,120 GiB of memory.
+     */
     public static function mib(int|float|null $mib, int $precision = 1): string
     {
         $mib = (float) ($mib ?? 0);
