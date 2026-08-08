@@ -592,6 +592,29 @@ document.addEventListener('alpine:init', () => {
             return this.selected.includes(path);
         },
 
+        /** Every path in the table, in the order it is rendered. */
+        allPaths() {
+            return Array.from(this.$root.querySelectorAll('[data-file-path]'))
+                .map((row) => row.dataset.filePath)
+                .filter(Boolean);
+        },
+
+        allSelected() {
+            const all = this.allPaths();
+
+            return all.length > 0 && all.every((p) => this.selected.includes(p));
+        },
+
+        /**
+         * Select or clear the whole page. Deliberately replaces the selection
+         * rather than merging: a header switch that only ever adds leaves the
+         * operator unable to undo it with the same control.
+         */
+        toggleAll(on) {
+            this.selected = on ? this.allPaths() : [];
+            this.lastIndex = null;
+        },
+
         clear() {
             this.selected = [];
             this.lastIndex = null;

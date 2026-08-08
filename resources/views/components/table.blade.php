@@ -25,10 +25,14 @@
        how many there are instead of a guessed pixel value. Text buttons used to
        live here and got clipped, which is precisely why they are gone. */
     .vx-table th.text-right:last-child, .vx-table td.text-right:last-child { width: 8.5rem; }
-    .vx-table th.vx-act-1:last-child, .vx-table td.vx-act-1:last-child { width: 3.75rem; }
-    .vx-table th.vx-act-2:last-child, .vx-table td.vx-act-2:last-child { width: 6.25rem; }
-    .vx-table th.vx-act-3:last-child, .vx-table td.vx-act-3:last-child { width: 8.75rem; }
-    .vx-table th.vx-act-4:last-child, .vx-table td.vx-act-4:last-child { width: 11.25rem; }
+    /* These reservations size the column for its BUTTONS, but the header word
+       has to fit too. "Actions" is about 4.6rem at this size, so a 3.75rem
+       column clipped the label and it read as though buttons were being cut
+       off. Each width is now the greater of the buttons and the word. */
+    .vx-table th.vx-act-1:last-child, .vx-table td.vx-act-1:last-child { width: 6rem; }
+    .vx-table th.vx-act-2:last-child, .vx-table td.vx-act-2:last-child { width: 6.5rem; }
+    .vx-table th.vx-act-3:last-child, .vx-table td.vx-act-3:last-child { width: 9rem; }
+    .vx-table th.vx-act-4:last-child, .vx-table td.vx-act-4:last-child { width: 11.5rem; }
     /* Kept so existing markup does not break; same size as two actions. */
     .vx-table th.text-right.vx-col-sm:last-child, .vx-table td.text-right.vx-col-sm:last-child { width: 6.25rem; }
 

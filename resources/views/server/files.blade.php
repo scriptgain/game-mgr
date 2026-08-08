@@ -42,7 +42,15 @@
                 <x-table flush>
                     <thead>
                         <tr>
-                            <th class="w-10"></th>
+                            <th class="w-10">
+                                {{-- Select the whole page. Bound to the browser's own selection
+                                     state, so shift-click ranges and this control agree. --}}
+                                <label class="vx-switch">
+                                    <input type="checkbox" :checked="allSelected()" @change="toggleAll($event.target.checked)">
+                                    <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                    <span class="sr-only">Select Everything On This Page</span>
+                                </label>
+                            </th>
                             <th>Name</th>
                             <th>Size</th>
                             <th>Mode</th>
