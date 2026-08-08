@@ -80,6 +80,17 @@ type Server struct {
 	IP          string            `json:"ip"`
 	Port        int               `json:"port"`
 
+	// What the node's firewall has to allow. Port above is the allocation and
+	// is authoritative: the query and RCON ports are these template offsets
+	// applied to it, because the panel stores offsets rather than absolute
+	// numbers. Zero means the game does not use a separate port.
+	//
+	// DefaultProtocol is the template's default_protocol: tcp, udp or both.
+	// Empty is read as both, which is what a panel too old to send it produces.
+	RconPortOffset  int    `json:"rcon_port_offset"`
+	QueryPortOffset int    `json:"query_port_offset"`
+	DefaultProtocol string `json:"default_protocol"`
+
 	// SteamCMD.
 	SteamAppID     int    `json:"steam_app_id"`
 	SteamAnonymous bool   `json:"steam_anonymous"`

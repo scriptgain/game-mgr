@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/config"
+	"github.com/scriptgain/gamemgr-node/internal/firewall"
 	gruntime "github.com/scriptgain/gamemgr-node/internal/runtime"
 	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
@@ -32,14 +33,15 @@ type Server struct {
 	started time.Time
 	version string
 	sup     *supervise.Supervisor
+	fw      *firewall.Manager
 	// Held apart from cfg because enrollment can finish after the listener is
 	// already up, and a node that just enrolled has to start accepting the
 	// panel without waiting for a restart.
 	token atomic.Value
 }
 
-func New(cfg config.Config, drivers gruntime.Registry, version string, sup *supervise.Supervisor) *Server {
-	s := &Server{cfg: cfg, drivers: drivers, started: time.Now(), version: version, sup: sup}
+func New(cfg config.Config, drivers gruntime.Registry, version string, sup *supervise.Supervisor, fw *firewall.Manager) *Server {
+	s := &Server{cfg: cfg, drivers: drivers, started: time.Now(), version: version, sup: sup, fw: fw}
 	s.token.Store(cfg.Token)
 
 	return s
@@ -144,6 +146,15 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 		ok, detail := d.Available(r.Context())
 		drivers[name] = map[string]any{"available": ok, "detail": detail}
 	}
+	// Whether this node's ports are managed at all. Present and Active are
+	// reported separately: "no ufw here" is a legitimate node behind a cloud
+	// firewall, "ufw installed but switched off" usually is not, and the panel
+	// cannot tell an operator which to fix from one boolean.
+	var fwState any
+	if s.fw != nil {
+		fwState = s.fw.Status(r.Context())
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"name":          s.cfg.Name,
 		"version":       s.version,
@@ -151,6 +162,7 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 		"root":          s.cfg.Root,
 		"forced_driver": s.cfg.Driver,
 		"drivers":       drivers,
+		"firewall":      fwState,
 		// Whether a memory or CPU limit on a native server is real. The panel
 		// shows the limit on every screen, and one that nothing enforces reads
 		// as a promise, so it is stated rather than assumed.

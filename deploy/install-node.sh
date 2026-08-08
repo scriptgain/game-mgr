@@ -34,13 +34,14 @@ BINARY_SHA256=""
 SOURCE_DIR=""
 REENROLL="no"
 TOUCH_FIREWALL="yes"
-# Game ports opened when ufw is active. Both TCP and UDP, because Source,
-# Minecraft, and everything Unreal disagree about which one matters.
-# 8211:8226 is Palworld, and it is the range the seeded allocations use. It is
-# listed explicitly because it sits nowhere near the Minecraft or Source ranges
-# and a Palworld server that boots perfectly but accepts no players looks like a
-# game problem rather than a firewall one.
-GAME_PORTS="${GAME_PORTS:-8211:8226,25565:25595,27000:27050}"
+# Broad game port ranges, off by default now that the daemon opens the exact
+# port each server is allocated and closes it again when the server is deleted.
+#
+# This used to default to 8211:8226,25565:25595,27000:27050, which was wrong in
+# both directions: a server allocated 2456 was unreachable because it fell
+# outside every range, while ports for games nobody was running stayed open.
+# --game-ports brings the old behaviour back for anyone who wants it.
+GAME_PORTS="${GAME_PORTS:-}"
 
 CONFIG_DIR="/etc/gamemgr-node"
 CONFIG_FILE="${CONFIG_DIR}/node.env"
@@ -79,8 +80,15 @@ Usage: install-node.sh [options]
   --source <dir>      Build from this source tree instead (needs Go installed).
   --reenroll          Discard an existing node token and enroll again.
                       --reenrol, the old British spelling, still works.
-  --game-ports <list> Game port ranges to open, comma separated, ufw syntax.
-                      Default 8211:8226,25565:25595,27000:27050
+  --game-ports <list> Extra game port ranges to open, comma separated, ufw
+                      syntax, for example 25565:25595,27000:27050. Empty by
+                      default. The daemon now opens the exact port each server
+                      is allocated when it is installed or started, and closes
+                      it again when the server is deleted, so blanket ranges
+                      are no longer needed: they left ports open for games
+                      nobody was running and still missed any allocation that
+                      fell outside them. Use this only if something else on the
+                      box needs a range open.
   --no-firewall       Do not touch ufw at all.
   -h, --help          This.
 USAGE
@@ -509,40 +517,83 @@ fi
 # This section is not optional. A sibling product's installer left ufw alone,
 # produced a perfectly correct install, and the panel could not reach the node.
 # Silently. An install that cannot be reached is not an install.
+#
+# What it opens is now only the management surface: ssh, the daemon's port, and
+# http/https. Game ports belong to the daemon, which opens the exact port a
+# server was allocated on install and start, and removes it again on delete.
+# Those two sets never overlap: the daemon refuses to create or remove a rule
+# on 22, 80, 443 or its own port, so nothing written here can be taken away by
+# a server operation.
 
 log "Firewall"
 
 open_ufw() {
     local rule="$1" note="$2"
-    if ufw allow "$rule" >/dev/null 2>&1; then
+    # The comment is how a human tells these apart from the daemon's per-server
+    # rules later. It deliberately does not start with "gamemgr:", which is the
+    # marker the daemon requires before it will delete anything: these rules are
+    # the installer's and must stay out of that namespace.
+    if ufw allow "$rule" comment "gamemgr installer: ${note}" >/dev/null 2>&1; then
         FIREWALL_NOTES+=("opened ${rule} (${note})")
     else
         warn "ufw refused to open ${rule}. Open it by hand: ufw allow ${rule}"
     fi
 }
 
+# legacy_ranges lists port-range rules already in the ruleset. Older versions of
+# this installer added three of them, and a node upgraded today may well have a
+# server running on a port only one of those ranges covers. Removing them
+# automatically would cut those players off mid-session, so they are reported
+# and left alone.
+legacy_ranges() {
+    ufw status 2>/dev/null | awk '$1 ~ /^[0-9]+:[0-9]+\/(tcp|udp)$/ {print $1}' | sort -u
+}
+
 if [[ "$TOUCH_FIREWALL" != "yes" ]]; then
     warn "Skipping the firewall because --no-firewall was given. If ufw is active, the panel will not reach port ${PORT} and the node will show as offline."
 elif command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
+    open_ufw "22/tcp" "ssh"
     open_ufw "${PORT}/tcp" "the node daemon"
+    open_ufw "80/tcp" "http"
+    open_ufw "443/tcp" "https"
+
     IFS=',' read -r -a ranges <<< "$GAME_PORTS"
     for range in "${ranges[@]}"; do
         range="${range// /}"
         [[ -n "$range" ]] || continue
-        open_ufw "${range}/tcp" "game servers"
-        open_ufw "${range}/udp" "game servers"
+        open_ufw "${range}/tcp" "game ports, requested with --game-ports"
+        open_ufw "${range}/udp" "game ports, requested with --game-ports"
     done
-    ufw reload >/dev/null 2>&1 || true
+
     if [[ ${#FIREWALL_NOTES[@]} -gt 0 ]]; then
         ok "ufw is active, so these rules were added:"
         for note in "${FIREWALL_NOTES[@]}"; do printf '       %s\n' "$note"; done
     fi
+    ok "game ports are opened per server by the daemon, not here"
+
+    stale="$(legacy_ranges || true)"
+    if [[ -n "$stale" ]]; then
+        printf '\033[0;33m  !!\033[0m %s\n' "This node has port ranges open from an earlier installer:" >&2
+        while read -r r; do [[ -n "$r" ]] && printf '       %s\n' "$r" >&2; done <<< "$stale"
+        cat >&2 <<'STALE'
+       They are NOT removed automatically: a server running right now may be
+       reachable only because of one of them. Check what is running first, then
+       remove them one at a time, highest rule number first:
+
+           ufw status numbered
+           ufw delete <number>
+
+       Restart each affected server afterwards so the daemon writes the exact
+       rule it needs, or just leave the server alone: it opens its own port on
+       the next start.
+STALE
+    fi
 elif command -v ufw >/dev/null 2>&1; then
     ok "ufw is installed but inactive, nothing to open"
+    ok "the daemon will report this node as unmanaged, and will not add or remove any rule while ufw is off"
 elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
-    warn "firewalld is running and this installer does not manage it. Open the ports yourself:
+    warn "firewalld is running and this installer does not manage it, and neither does the daemon: it only drives ufw. Open the management ports yourself, and a port for every server you create:
        firewall-cmd --permanent --add-port=${PORT}/tcp
-       firewall-cmd --permanent --add-port=${GAME_PORTS//,/ --permanent --add-port=}/tcp
        firewall-cmd --reload"
 else
     ok "no active host firewall found (ufw/firewalld); nothing to open"
@@ -608,4 +659,10 @@ Config:   ${CONFIG_FILE}
 Logs:     journalctl -u gamemgr-node -f
 Data:     ${NODE_ROOT}
 Panel:    ${PANEL}
+
+Game ports are not opened here. The daemon opens the exact port a server is
+allocated when it is installed or started, and removes that rule when the
+server is deleted. Each rule carries a comment naming the server it belongs to:
+
+    ufw status numbered | grep gamemgr:
 EOF

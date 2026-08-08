@@ -31,6 +31,7 @@ import (
 	"github.com/scriptgain/gamemgr-node/internal/api"
 	"github.com/scriptgain/gamemgr-node/internal/config"
 	dockerapi "github.com/scriptgain/gamemgr-node/internal/docker"
+	"github.com/scriptgain/gamemgr-node/internal/firewall"
 	"github.com/scriptgain/gamemgr-node/internal/panel"
 	gruntime "github.com/scriptgain/gamemgr-node/internal/runtime"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/docker"
@@ -75,6 +76,16 @@ func main() {
 		log.Printf("stub driver active: this node reports synthetic data and runs nothing")
 	}
 
+	// Every driver is wrapped so a server's ports open and close with the
+	// server itself. The daemon's own listen port joins ssh, 80 and 443 in the
+	// set this never touches: closing it would leave the panel with no way back
+	// in to fix whatever went wrong.
+	fw := firewall.New(firewall.ListenPort(cfg.Listen))
+	for name, d := range drivers {
+		drivers[name] = firewall.Wrap(d, fw)
+	}
+	log.Printf("firewall: %s", fw.Status(context.Background()).Detail)
+
 	// The data root has to be a path that means the same thing to this process
 	// and to the Docker daemon. Containers are created by the host daemon, so a
 	// bind mount is resolved against the HOST filesystem: if the daemon runs in
@@ -84,7 +95,7 @@ func main() {
 		log.Printf("warning: could not create the data root %s: %v", cfg.Root, err)
 	}
 
-	node := api.New(cfg, drivers, version, sup)
+	node := api.New(cfg, drivers, version, sup, fw)
 	srv := &http.Server{
 		Addr:              cfg.Listen,
 		Handler:           node.Handler(),
