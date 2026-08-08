@@ -156,6 +156,32 @@ class Node extends Model
         return (int) $this->servers()->sum('disk');
     }
 
+    /**
+     * CPU percent this node may hand out, where 100 is one core.
+     *
+     * cpu_overallocate has been stored and validated since the first import and
+     * read by nothing, so the field on the node form changed a number in the
+     * database and nothing else. CPU is the one people genuinely want to
+     * oversell, because a game server's threads are idle far more often than
+     * they are busy.
+     */
+    public function cpuCapacity(): int
+    {
+        return (int) round($this->cpu * (1 + $this->cpu_overallocate / 100));
+    }
+
+    public function cpuAllocated(): int
+    {
+        return (int) $this->servers()->sum('cpu');
+    }
+
+    public function cpuPressure(): float
+    {
+        $cap = $this->cpuCapacity();
+
+        return $cap > 0 ? round($this->cpuAllocated() / $cap * 100, 1) : 0;
+    }
+
     /** Percent of allocatable memory already promised to servers. */
     public function memoryPressure(): float
     {
@@ -175,9 +201,18 @@ class Node extends Model
      * Can this node take another server of the given size? Used by the create
      * form and by auto placement.
      */
-    public function hasRoomFor(int $memoryMib, int $diskMib): bool
+    public function hasRoomFor(int $memoryMib, int $diskMib, int $cpuPercent = 0): bool
     {
         if ($this->maintenance_mode) {
+            return false;
+        }
+
+        // CPU is checked only when the caller asks about it and the node
+        // declares a CPU budget at all. A node left at cpu = 0 means "not
+        // tracked", and turning that into "no room for anything" would refuse
+        // every placement on every node that has never set it.
+        if ($cpuPercent > 0 && $this->cpu > 0
+            && $this->cpuAllocated() + $cpuPercent > $this->cpuCapacity()) {
             return false;
         }
 

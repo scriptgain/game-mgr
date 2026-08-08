@@ -21,9 +21,18 @@
                     <x-meter label="Disk" :value="$node->diskAllocated()" :max="$node->diskCapacity()">
                         {{ \App\Support\Format::mib($node->diskAllocated()) }} / {{ \App\Support\Format::mib($node->diskCapacity()) }}
                     </x-meter>
+                    @if ($node->cpu > 0)
+                        {{-- 100 percent is one core, so this reads in cores. A node
+                             left at cpu 0 means "not tracked" and shows nothing
+                             rather than a meter against a budget nobody set. --}}
+                        <x-meter label="CPU" :value="$node->cpuAllocated()" :max="$node->cpuCapacity()">
+                            {{ rtrim(rtrim(number_format($node->cpuAllocated() / 100, 1), '0'), '.') }} /
+                            {{ rtrim(rtrim(number_format($node->cpuCapacity() / 100, 1), '0'), '.') }} cores
+                        </x-meter>
+                    @endif
                 </div>
                 <dl class="mt-5 grid gap-3 sm:grid-cols-3 text-sm">
-                    <div><dt class="text-slate-500">Over-allocation</dt><dd class="text-slate-900 tabular">memory {{ $node->memory_overallocate }}%, disk {{ $node->disk_overallocate }}%</dd></div>
+                    <div><dt class="text-slate-500">Over-allocation</dt><dd class="text-slate-900 tabular">memory {{ $node->memory_overallocate }}%, disk {{ $node->disk_overallocate }}%, cpu {{ $node->cpu_overallocate }}%</dd></div>
                     <div><dt class="text-slate-500">Free Ports</dt><dd class="text-slate-900 tabular">{{ $freePorts }} of {{ $node->allocations_count }}</dd></div>
                     <div><dt class="text-slate-500">Servers</dt><dd class="text-slate-900 tabular">{{ $node->servers_count }}</dd></div>
                 </dl>

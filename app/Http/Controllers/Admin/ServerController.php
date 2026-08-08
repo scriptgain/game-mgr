@@ -655,7 +655,7 @@ class ServerController extends Controller
             ->when(! empty($data['location_id']), fn ($q) => $q->where('location_id', $data['location_id']))
             ->get()
             ->filter(fn (Node $n) => $n->supports($template->runtime))
-            ->filter(fn (Node $n) => $n->hasRoomFor((int) $data['memory'], (int) $data['disk']))
+            ->filter(fn (Node $n) => $n->hasRoomFor((int) $data['memory'], (int) $data['disk'], (int) ($data['cpu'] ?? 0)))
             ->sortBy(fn (Node $n) => $n->memoryPressure());
 
         $node = $candidates->first();
