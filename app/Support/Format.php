@@ -45,6 +45,32 @@ class Format
             : number_format($mib).' MiB';
     }
 
+    /**
+     * A used-of-capacity pair in ONE unit, e.g. "0 / 12 GiB".
+     *
+     * Formatting each side separately gives "0 MiB of 12.0 GiB", which carries
+     * two units for one fact and is wide enough to wrap in a table column. The
+     * unit is chosen from the capacity, since that is the side that does not
+     * move.
+     */
+    public static function mibPair(int|float|null $used, int|float|null $capacity, int $precision = 1): string
+    {
+        $used = (float) ($used ?? 0);
+        $capacity = (float) ($capacity ?? 0);
+
+        $asGib = $capacity >= 1024;
+        $unit = $asGib ? 'GiB' : 'MiB';
+        $scale = $asGib ? 1024 : 1;
+
+        // Past 10 the decimal is noise in a table column: 76.8 GiB of capacity
+        // and 77 GiB of capacity are the same fact, and one of them wraps.
+        $trim = static fn (float $v) => (fmod($v, 1) === 0.0 || $v >= 10)
+            ? number_format($v)
+            : number_format($v, $precision);
+
+        return $trim($used / $scale).' / '.$trim($capacity / $scale).' '.$unit;
+    }
+
     /** Seconds as a short duration, e.g. "3d 4h" or "12m". */
     public static function duration(int|float|null $seconds): string
     {

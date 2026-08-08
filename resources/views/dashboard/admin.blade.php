@@ -94,8 +94,8 @@
                                     <a href="{{ route('admin.nodes.show', $node) }}" class="font-medium text-brand-700 hover:text-brand-800">{{ $node->name }}</a>
                                 </td>
                                 <td class="text-slate-500">{{ $node->location?->flag }} {{ $node->location?->name }}</td>
-                                <td class="vx-cell-wrap">
-                                    <span class="flex flex-wrap items-center gap-1">
+                                <td>
+                                    <span class="flex flex-nowrap items-center gap-1">
                                         @foreach ($node->runtimes ?? [] as $runtime)
                                             <x-runtime-badge :runtime="$runtime" compact />
                                         @endforeach
@@ -104,7 +104,7 @@
                                 <td class="tabular">{{ $node->servers_count }}</td>
                                 <td class="vx-cell-wrap">
                                     <x-meter :value="$node->memoryAllocated()" :max="$node->memoryCapacity()">
-                                        {{ \App\Support\Format::mib($node->memoryAllocated()) }} of {{ \App\Support\Format::mib($node->memoryCapacity()) }}
+                                        {{ \App\Support\Format::mibPair($node->memoryAllocated(), $node->memoryCapacity()) }}
                                     </x-meter>
                                 </td>
                                 <td><x-status-dot :tone="$node->statusTone()" :label="$node->statusLabel()" :pulse="$node->isOnline()" /></td>

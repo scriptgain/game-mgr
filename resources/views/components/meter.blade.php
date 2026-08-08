@@ -19,9 +19,11 @@
          all: a node with nothing on it then drew a 0% bar under no number and
          the column looked empty rather than idle. --}}
     @if ($label || ! $slot->isEmpty())
-        <div class="flex items-baseline gap-3 text-sm {{ $label ? 'justify-between' : '' }}">
+        {{-- Smaller type when there is no label, because that is the in-table
+             use and a table column is the one place this has to be narrow. --}}
+        <div class="flex items-baseline gap-3 {{ $label ? 'justify-between text-sm' : 'text-xs' }}">
             @if ($label)<span class="font-medium text-slate-700">{{ $label }}</span>@endif
-            <span class="tabular text-slate-500">{{ $slot->isEmpty() ? $pct.'%' : $slot }}{{ $suffix }}</span>
+            <span class="tabular whitespace-nowrap text-slate-500">{{ $slot->isEmpty() ? $pct.'%' : $slot }}{{ $suffix }}</span>
         </div>
     @endif
     <div class="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
