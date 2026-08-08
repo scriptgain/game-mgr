@@ -9,7 +9,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="Schedule">
+                <x-card title="Schedule" icon="clock">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name', $schedule->name) }}" required placeholder="Nightly Restart" />
@@ -37,7 +37,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Tasks" subtitle="They run in order. The offset is how long to wait after the previous one finishes.">
+                <x-card title="Tasks" icon="play" subtitle="They run in order. The offset is how long to wait after the previous one finishes.">
                     <div class="space-y-4">
                         @php
                             $existing = $schedule->exists ? $schedule->tasks : collect();
@@ -73,7 +73,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Behaviour">
+                <x-card title="Behaviour" icon="settings">
                     <div class="space-y-4">
                         <x-toggle name="is_active" :checked="(bool) old('is_active', $schedule->is_active ?? true)"
                                   label="Active" description="Paused schedules keep their tasks but never fire." />

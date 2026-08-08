@@ -10,7 +10,7 @@
                 :trend-color="$summary['worst_tick'] && $summary['worst_tick'] < 18 ? 'danger' : 'success'" />
     </div>
 
-    <x-card title="History"
+    <x-card title="History" icon="chart"
             subtitle="Kept for {{ config('gamemgr.metric_history_days', 30) }} days. Pterodactyl throws these numbers away the moment you close the tab."
             x-data="metricChart({ url: @js(route('server.metrics.series', [$server, 'range' => $range])), metric: 'cpu' })">
         <x-slot:actions>

@@ -5,7 +5,7 @@
         <div class="lg:col-span-2 space-y-6">
             <form method="POST" action="{{ route('account.update') }}">
                 @csrf @method('PUT')
-                <x-card title="Details">
+                <x-card title="Details" icon="info">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name', $user->name) }}" required />
@@ -23,7 +23,7 @@
                 </x-card>
             </form>
 
-            <x-card title="Recent Activity" flush>
+            <x-card title="Recent Activity" icon="book" flush>
                 <ul class="divide-y divide-slate-100">
                     @forelse ($recent as $entry)
                         <li class="px-5 py-3 flex items-start gap-3">
@@ -41,7 +41,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="Security">
+            <x-card title="Security" icon="shield">
                 <ul class="space-y-2">
                     <li>
                         <a href="{{ route('settings.password.edit') }}" class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm border border-transparent hover:bg-slate-50 hover:border-slate-200 transition">
@@ -67,7 +67,7 @@
                 </ul>
             </x-card>
 
-            <x-card title="Account">
+            <x-card title="Account" icon="users">
                 <dl class="space-y-2.5 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Role</dt><dd class="text-slate-900">{{ $user->isAdmin() ? ($user->isRootAdmin() ? 'Root Admin' : 'Admin') : 'Client' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Servers Owned</dt><dd class="tabular text-slate-900">{{ $user->servers()->count() }}</dd></div>

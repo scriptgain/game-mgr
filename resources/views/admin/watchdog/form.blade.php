@@ -12,7 +12,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Rule">
+                <x-card title="The Rule" icon="eye">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -31,7 +31,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="What To Watch For" subtitle="One condition. Build a second rule rather than trying to make one cover two things.">
+                <x-card title="What To Watch For" icon="target" subtitle="One condition. Build a second rule rather than trying to make one cover two things.">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Trigger" required :error="$errors->first('trigger')">
@@ -64,7 +64,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="What To Do About It">
+                <x-card title="What To Do About It" icon="bolt">
                     <div class="space-y-5">
                         {{-- Half width via the grid, not a max-w on the select itself:
                              x-select draws its chevron against a full width wrapper, so
@@ -97,7 +97,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Status">
+                <x-card title="Status" icon="check-circle">
                     <div class="space-y-5">
                         <x-toggle name="is_active" :checked="(bool) old('is_active', $rule->is_active ?? true)"
                                   label="Active" description="Paused rules are kept but never evaluated." />

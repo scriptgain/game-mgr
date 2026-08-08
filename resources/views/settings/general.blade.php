@@ -7,7 +7,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="Regional And Display" subtitle="How dates, times and lists appear across the panel.">
+                <x-card title="Regional And Display" icon="globe" subtitle="How dates, times and lists appear across the panel.">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <x-field label="Timezone" for="timezone" required :error="$errors->first('timezone')"
                                  hint="Schedules fire on this zone. Arizona is America/Phoenix.">
@@ -40,7 +40,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="New Server Defaults" subtitle="Prefilled on the create form. Per-server limits still win.">
+                <x-card title="New Server Defaults" icon="server" subtitle="Prefilled on the create form. Per-server limits still win.">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <x-field label="Memory (MiB)" for="default_memory" :error="$errors->first('default_memory')">
                             <x-input type="number" id="default_memory" name="default_memory" value="{{ $v['default_memory'] }}" />
@@ -60,7 +60,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Nodes" subtitle="How the panel decides a node has gone away.">
+                <x-card title="Nodes" icon="cpu" subtitle="How the panel decides a node has gone away.">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <x-field label="Mark Offline After (seconds)" for="node_offline_after" :error="$errors->first('node_offline_after')"
                                  hint="Time without a heartbeat before a node reads offline and its servers are parked.">
@@ -82,7 +82,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="History And Housekeeping" subtitle="Metric history is the table that grows without bound if nobody watches it.">
+                <x-card title="History And Housekeeping" icon="trash" subtitle="Metric history is the table that grows without bound if nobody watches it.">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <x-field label="Keep Metric History (days)" for="metric_history_days" :error="$errors->first('metric_history_days')"
                                  hint="One sample per server per minute is roughly half a million rows a year, per server.">
@@ -95,7 +95,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Security">
+                <x-card title="Security" icon="shield">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <x-field label="Session Timeout (minutes)" for="session_timeout_minutes" :error="$errors->first('session_timeout_minutes')">
                             <x-input type="number" id="session_timeout_minutes" name="session_timeout_minutes" min="5" max="43200" value="{{ $v['session_timeout_minutes'] }}" />
@@ -114,7 +114,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="System">
+                <x-card title="System" icon="settings">
                     <dl class="space-y-2.5 text-sm">
                         @foreach ($info as $label => $value)
                             <div class="flex justify-between gap-3">
@@ -125,7 +125,7 @@
                     </dl>
                 </x-card>
 
-                <x-card title="This Install">
+                <x-card title="This Install" icon="info">
                     <dl class="space-y-2.5 text-sm">
                         @foreach ($counts as $label => $value)
                             <div class="flex justify-between gap-3">

@@ -17,7 +17,7 @@
         @csrf
         @method('PUT')
 
-        <x-card title="Slack" subtitle="Post to a Slack channel via an incoming webhook.">
+        <x-card title="Slack" icon="link" subtitle="Post to a Slack channel via an incoming webhook.">
             <div class="space-y-5">
                 <x-toggle name="integrations_slack_enabled" :checked="$en('integrations_slack_enabled')" label="Enable Slack" description="Send alerts to a Slack incoming webhook URL." />
                 <x-field label="Webhook URL" for="integrations_slack_url" hint="Slack → Apps → Incoming Webhooks." :error="$errors->first('integrations_slack_url')">
@@ -27,7 +27,7 @@
             </div>
         </x-card>
 
-        <x-card title="Discord" subtitle="Post to a Discord channel via a webhook.">
+        <x-card title="Discord" icon="link" subtitle="Post to a Discord channel via a webhook.">
             <div class="space-y-5">
                 <x-toggle name="integrations_discord_enabled" :checked="$en('integrations_discord_enabled')" label="Enable Discord" description="Send alerts to a Discord channel webhook URL." />
                 <x-field label="Webhook URL" for="integrations_discord_url" hint="Channel Settings → Integrations → Webhooks." :error="$errors->first('integrations_discord_url')">
@@ -37,7 +37,7 @@
             </div>
         </x-card>
 
-        <x-card title="Telegram" subtitle="Message a Telegram chat via a bot.">
+        <x-card title="Telegram" icon="link" subtitle="Message a Telegram chat via a bot.">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div class="sm:col-span-2">
                     <x-toggle name="integrations_telegram_enabled" :checked="$en('integrations_telegram_enabled')" label="Enable Telegram" description="Send alerts through a Telegram bot to a chat." />
@@ -52,7 +52,7 @@
             </div>
         </x-card>
 
-        <x-card title="Generic Webhook" subtitle="POST a JSON payload to any URL.">
+        <x-card title="Generic Webhook" icon="link" subtitle="POST a JSON payload to any URL.">
             <div class="space-y-5">
                 <x-toggle name="integrations_webhook_enabled" :checked="$en('integrations_webhook_enabled')" label="Enable Webhook" description="POST {title, body, text, product} to your endpoint." />
                 <x-field label="Endpoint URL" for="integrations_webhook_url" :error="$errors->first('integrations_webhook_url')">

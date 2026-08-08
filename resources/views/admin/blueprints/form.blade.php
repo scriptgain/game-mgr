@@ -67,7 +67,7 @@
                      whole page sideways at 320px. --}}
                 <div class="min-w-0 lg:col-span-2 space-y-6">
 
-                    <x-card title="What This Preset Is"
+                    <x-card title="What This Preset Is" icon="sparkles"
                             subtitle="The name is what an operator reads at three in the morning. Make it say the job, not the numbers.">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" for="bp-name" required :error="$errors->first('name')">
@@ -132,7 +132,7 @@
 
                     <x-tab-pane id="resources">
                     {{-- --------------------------------------------- the size --}}
-                    <x-card title="The Size"
+                    <x-card title="The Size" icon="memory"
                             subtitle="Stored in MiB and CPU percent, because that is what a cgroup wants. Read back in GiB and cores, because that is what a person wants.">
                         <div class="space-y-4">
 
@@ -383,7 +383,7 @@
 
                     {{-- ------------------------------------- what the owner may do --}}
                     <x-tab-pane id="caps">
-                    <x-card title="What The Owner May Create"
+                    <x-card title="What The Owner May Create" icon="lock"
                             subtitle="Caps the client can spend for themselves, without asking you. Zero means they cannot.">
                         <div class="grid gap-4 sm:grid-cols-3">
                             <x-field label="Databases" for="bp-databases" required :error="$errors->first('databases')"
@@ -454,7 +454,7 @@
                 {{-- ---------------------------------------------- the artefact --}}
                 <div class="min-w-0 space-y-6 lg:sticky lg:top-20">
 
-                    <x-card title="The Card Operators Pick"
+                    <x-card title="The Card Operators Pick" icon="eye"
                             subtitle="Drawn live from the values you set.">
                         {{-- Deliberately drawn in its selected state: this is the
                              moment the blueprint is actually used, so it should
@@ -515,7 +515,7 @@
 
                     {{-- The question a sizing screen has to answer is not "what
                          number", it is "which of ours is this one". --}}
-                    <x-card title="Where It Sits" subtitle="Every blueprint on this template, by memory.">
+                    <x-card title="Where It Sits" icon="chart" subtitle="Every blueprint on this template, by memory.">
                         <div class="space-y-3">
                             <template x-for="row in ladder" :key="row.key">
                                 <div class="min-w-0">

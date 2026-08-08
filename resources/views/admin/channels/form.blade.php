@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Channel">
+                <x-card title="The Channel" icon="link">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -36,7 +36,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Send On" subtitle="Everything switched on here is delivered to this channel. Switch the noisy ones off rather than muting the whole channel.">
+                <x-card title="Send On" icon="bell" subtitle="Everything switched on here is delivered to this channel. Switch the noisy ones off rather than muting the whole channel.">
                     @php $selected = (array) old('events', $channel->events ?? []); @endphp
                     <div class="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
                         @foreach (\App\Models\NotificationChannel::EVENTS as $value => $label)
@@ -48,7 +48,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Delivery">
+                <x-card title="Delivery" icon="upload">
                     <div class="space-y-5">
                         <x-toggle name="is_active" :checked="(bool) old('is_active', $channel->is_active ?? true)"
                                   label="Active" description="Off keeps the channel but stops anything being sent to it." />

@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Browse Mods" subtitle="Search across every catalogue this template supports." flush>
+    <x-card title="Browse Mods" icon="puzzle" subtitle="Search across every catalogue this template supports." flush>
         <x-slot:actions>
             <x-button href="{{ route('server.mods', $server) }}" variant="secondary" size="sm">Back To Installed</x-button>
         </x-slot:actions>

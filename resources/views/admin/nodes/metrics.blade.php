@@ -22,7 +22,7 @@
                     :trend="'peak '.round($summary->peak_load, 2)" trend-color="neutral" />
         </div>
 
-        <x-card title="Last Seven Days"
+        <x-card title="Last Seven Days" icon="chart"
                 :subtitle="number_format($summary->samples).' '.\Illuminate\Support\Str::plural('sample', $summary->samples).', newest first.'" flush>
             <x-slot:actions>
                 {{-- Housekeeping trims this nightly, but that is a retention

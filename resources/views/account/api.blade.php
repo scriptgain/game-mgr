@@ -4,7 +4,7 @@
 
     @if (session('plain_token'))
         <div class="mb-6">
-            <x-card title="Your New Token" subtitle="Shown once. Copy it now; only its hash is stored.">
+            <x-card title="Your New Token" icon="eye" subtitle="Shown once. Copy it now; only its hash is stored.">
                 <x-copy-field :value="session('plain_token')" masked />
             </x-card>
         </div>
@@ -12,7 +12,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2">
-            <x-card title="Tokens" flush>
+            <x-card title="Tokens" icon="key" flush>
                 @if ($tokens->isEmpty())
                     <x-empty-state icon="key" title="No Tokens"
                                    description="Create one to drive the panel from a script, a bot or your own front end." />
@@ -49,7 +49,7 @@
         <div class="space-y-6">
             <form method="POST" action="{{ route('account.api.store') }}">
                 @csrf
-                <x-card title="New Token">
+                <x-card title="New Token" icon="plus">
                     <div class="space-y-4">
                         <x-field label="Name" required hint="What is it for? You will thank yourself later." :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name') }}" required placeholder="Discord status bot" />
@@ -72,7 +72,7 @@
                 </x-card>
             </form>
 
-            <x-card title="Using It">
+            <x-card title="Using It" icon="book">
                 <p class="text-sm text-slate-600">Send it as a bearer token:</p>
                 <pre class="console-pane vx-scroll mt-2 p-3 text-xs overflow-x-auto">curl -H "Authorization: Bearer gm_..." \
   {{ rtrim(config('app.url'), '/') }}/api/client/servers</pre>

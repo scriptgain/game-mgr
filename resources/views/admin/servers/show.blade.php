@@ -376,7 +376,7 @@
             </x-tab-pane>
 
             <x-tab-pane id="overview">
-                <x-card title="Operator Facts">
+                <x-card title="Operator Facts" icon="info">
                     <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
                         <div class="min-w-0">
                             <dt class="text-slate-500">Owner</dt>
@@ -471,7 +471,7 @@
                     @endif
                 </x-card>
 
-                <x-card title="Client Tools" subtitle="The real tools live in the client area. These open it as this server.">
+                <x-card title="Client Tools" icon="link" subtitle="The real tools live in the client area. These open it as this server.">
                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                         @foreach ($clientLinks as $link)
                             <a href="{{ route($link['route'], $server) }}"
@@ -485,7 +485,7 @@
             </x-tab-pane>
 
             <x-tab-pane id="limits">
-                <x-card title="Resource Limits" subtitle="What the node enforces. Usage shown is the last cached sample.">
+                <x-card title="Resource Limits" icon="memory" subtitle="What the node enforces. Usage shown is the last cached sample.">
                     <div class="grid gap-5 sm:grid-cols-3">
                         <x-meter label="Memory" :value="$server->cached_memory" :max="max(1, $server->memory)">
                             {{ Format::mibPair($server->cached_memory, $server->memory) }}
@@ -505,7 +505,7 @@
                     </dl>
                 </x-card>
 
-                <x-card title="Feature Caps">
+                <x-card title="Feature Caps" icon="lock">
                     <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                         {{-- A cap of zero is zero, not unlimited: the client tab
                              for that feature is hidden when it is 0, so reading
@@ -520,7 +520,7 @@
             </x-tab-pane>
 
             <x-tab-pane id="startup">
-                <x-card title="Runtime And Image">
+                <x-card title="Runtime And Image" icon="play">
                     <dl class="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
                         <div class="min-w-0">
                             <dt class="text-slate-500">Runtime</dt>
@@ -536,7 +536,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Variables" flush>
+                <x-card title="Variables" icon="sliders" flush>
                     @if ($server->variables->isEmpty())
                         <x-empty-state icon="settings" title="No Variables"
                                        description="This template exposes nothing configurable, so there is nothing stored per server." />
@@ -558,7 +558,7 @@
             </x-tab-pane>
 
             <x-tab-pane id="access">
-                <x-card title="Shared With" flush
+                <x-card title="Shared With" icon="users" flush
                         subtitle="Subusers hold a named permission list. The owner and admins are not listed here.">
                     @if ($server->subusers->isEmpty())
                         <x-empty-state icon="users" title="Not Shared"
@@ -581,7 +581,7 @@
             </x-tab-pane>
 
             <x-tab-pane id="backups">
-                <x-card title="Backups" flush>
+                <x-card title="Backups" icon="archive" flush>
                     <x-slot:actions>
                         <x-button href="{{ route('server.backups', $server) }}" variant="secondary" size="sm" icon="archive">Manage</x-button>
                     </x-slot:actions>

@@ -18,7 +18,7 @@
 @endphp
 
 @if ($installing || $failed)
-    <x-card :title="$failed ? 'Install Failed' : 'Installing'"
+    <x-card :title="$failed ? 'Install Failed' : 'Installing'" icon="download"
             :subtitle="$failed
                 ? 'The server has no game files yet, so it cannot start. The output below is what the node reported.'
                 : 'The node is fetching this game. You can leave this page; it keeps going.'">

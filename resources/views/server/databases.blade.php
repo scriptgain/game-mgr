@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Databases"
+    <x-card title="Databases" icon="database"
             subtitle="{{ $databases->count() }} of {{ $server->database_limit ?: 'unlimited' }} used."
             flush>
         <x-slot:actions>

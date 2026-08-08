@@ -12,7 +12,7 @@
     <div class="space-y-6">
         <x-mass-actions :action="route('admin.bulk', 'alerts')" label="alert">
             <x-slot:table>
-                <x-card title="Open" :subtitle="$open->count().' '.Str::plural('alert', $open->count()).' waiting'" flush>
+                <x-card title="Open" icon="warning" :subtitle="$open->count().' '.Str::plural('alert', $open->count()).' waiting'" flush>
                     @if ($open->isEmpty())
                         <x-empty-state icon="check-circle" title="Nothing Outstanding"
                                        description="Every alert has been acknowledged. The fleet is quiet." />
@@ -65,7 +65,7 @@
                            confirm-title="Delete These Alerts?">Delete</x-mass-action>
         </x-mass-actions>
 
-        <x-card title="Acknowledged" subtitle="The last 25, for context." flush>
+        <x-card title="Acknowledged" icon="check-circle" subtitle="The last 25, for context." flush>
             @if ($recent->isEmpty())
                 <p class="px-5 py-4 text-sm text-slate-500">Nothing acknowledged yet.</p>
             @else

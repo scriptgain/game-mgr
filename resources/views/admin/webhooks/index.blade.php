@@ -5,7 +5,7 @@
 
     @if (session('webhook_secret'))
         <div class="mb-6">
-            <x-card title="Signing Secret" subtitle="Shown once. Store it now.">
+            <x-card title="Signing Secret" icon="key" subtitle="Shown once. Store it now.">
                 <x-copy-field :value="session('webhook_secret')" masked />
             </x-card>
         </div>

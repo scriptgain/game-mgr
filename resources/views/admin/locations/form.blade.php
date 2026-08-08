@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Location">
+                <x-card title="The Location" icon="flag">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -32,7 +32,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Appearance">
+                <x-card title="Appearance" icon="eye">
                     <x-field label="Flag" :error="$errors->first('flag')"
                              hint="A single emoji. Purely cosmetic, but it makes a long node list scannable.">
                         <x-input name="flag" value="{{ old('flag', $location->flag) }}" placeholder="🇩🇪" class="w-24 text-lg" />

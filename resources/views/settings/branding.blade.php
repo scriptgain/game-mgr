@@ -12,7 +12,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2">
-                <x-card title="Identity">
+                <x-card title="Identity" icon="star">
                     <div class="space-y-5">
                         <x-field label="Product Name" for="brand_name" required :error="$errors->first('brand_name')">
                             <x-input id="brand_name" name="brand_name" x-model="name" :value="config('brand.name')" required />
@@ -31,7 +31,7 @@
             </div>
 
             <div>
-                <x-card title="Preview">
+                <x-card title="Preview" icon="eye">
                     <div class="rounded-xl overflow-hidden ring-1 ring-slate-200">
                         <div class="px-4 py-3 text-white flex items-center gap-2" :style="`background:#0b1220`">
                             <x-icon name="shield" class="w-5 h-5" x-bind:style="`color:${accent}`" />

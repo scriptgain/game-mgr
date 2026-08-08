@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Users" subtitle="Share this server without handing over the whole account." flush>
+    <x-card title="Users" icon="users" subtitle="Share this server without handing over the whole account." flush>
         <x-slot:actions>
             @can('check', [$server, 'user.create'])
                 <x-button href="{{ route('server.users.create', $server) }}" size="sm" icon="plus">Invite A User</x-button>

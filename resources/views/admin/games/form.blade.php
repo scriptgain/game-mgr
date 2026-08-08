@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Game">
+                <x-card title="The Game" icon="controller">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -31,7 +31,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Appearance" subtitle="How it is drawn on the games list. Both are optional.">
+                <x-card title="Appearance" icon="eye" subtitle="How it is drawn on the games list. Both are optional.">
                     <div class="space-y-4">
                         <x-field label="Icon" :error="$errors->first('icon')" hint="An icon name from the built-in set.">
                             <x-input name="icon" value="{{ old('icon', $game->icon) }}" placeholder="cube" class="font-mono text-xs" />

@@ -7,7 +7,7 @@
         @csrf
         @if ($editing)@method('PUT')@endif
 
-        <x-card :title="$editing ? 'Access For '.$subuser->user?->name : 'Invite A User'"
+        <x-card :title="$editing ? 'Access For '.$subuser->user?->name : 'Invite A User'" icon="users"
                 subtitle="Tick only what they need. Everything not ticked is refused, including through the API.">
             @unless ($editing)
                 <div class="mb-5 max-w-md">

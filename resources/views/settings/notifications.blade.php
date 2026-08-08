@@ -13,7 +13,7 @@
         @csrf
         @method('PUT')
 
-        <x-card title="Alerts">
+        <x-card title="Alerts" icon="bell">
             <div class="space-y-5">
                 <x-toggle name="notifications_enabled" :checked="$enabled" label="Email on Backup Failure" description="Send an email whenever a run fails." />
                 <x-field label="Notify Email" for="notify_email" hint="Where alerts are sent." :error="$errors->first('notify_email')">
@@ -22,7 +22,7 @@
             </div>
         </x-card>
 
-        <x-card title="SMTP" subtitle="Outgoing mail server (e.g. SendGrid).">
+        <x-card title="SMTP" icon="cloud" subtitle="Outgoing mail server (e.g. SendGrid).">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <x-field label="Host" for="smtp_host" :error="$errors->first('smtp_host')">
                     <x-input id="smtp_host" name="smtp_host" :value="$g('smtp_host')" placeholder="smtp.sendgrid.net" />

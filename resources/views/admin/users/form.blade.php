@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="Account">
+                <x-card title="Account" icon="users">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -29,7 +29,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Password"
+                <x-card title="Password" icon="lock"
                         :subtitle="$user->exists
                             ? 'Leave both boxes empty to keep the current password.'
                             : 'At least eight characters. The account can change it later from My Account.'">
@@ -45,7 +45,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Access">
+                <x-card title="Access" icon="shield">
                     <div class="space-y-5">
                         <x-field label="Role" required :error="$errors->first('role')"
                                  :hint="$user->isRootAdmin() ? 'Locked on the root admin.' : 'Admins can reach every server and every setting.'">

@@ -4,7 +4,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="How It Fits Together">
+            <x-card title="How It Fits Together" icon="puzzle">
                 <div class="space-y-4 text-sm text-slate-600">
                     <p>
                         The panel is the only thing you ever log into. Game servers run on <strong>nodes</strong>: any
@@ -19,7 +19,7 @@
                 </div>
             </x-card>
 
-            <x-card title="Three Runtimes, Not One">
+            <x-card title="Three Runtimes, Not One" icon="play">
                 <div class="space-y-4">
                     <div class="flex gap-3">
                         <x-runtime-badge runtime="docker" class="shrink-0 mt-0.5" />
@@ -47,7 +47,7 @@
                 </div>
             </x-card>
 
-            <x-card title="Games And Templates">
+            <x-card title="Games And Templates" icon="controller">
                 <div class="space-y-3 text-sm text-slate-600">
                     <p>
                         A <strong>Game</strong> holds <strong>Templates</strong>. Minecraft holds Paper, Forge and
@@ -60,7 +60,7 @@
                 </div>
             </x-card>
 
-            <x-card title="Nodes Behind NAT">
+            <x-card title="Nodes Behind NAT" icon="network">
                 <div class="space-y-3 text-sm text-slate-600">
                     <p>
                         A node can connect two ways. <strong>Direct</strong> means the panel dials the daemon, which
@@ -76,7 +76,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="Panel API">
+            <x-card title="Panel API" icon="link">
                 <p class="text-sm text-slate-600">
                     Two scopes, matching Pterodactyl so existing tooling ports across.
                 </p>
@@ -88,7 +88,7 @@ GET /api/client/servers</pre>
                 </p>
             </x-card>
 
-            <x-card title="Node API">
+            <x-card title="Node API" icon="link">
                 <p class="text-sm text-slate-600">What the daemon on each machine talks to.</p>
                 <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">POST /api/node/enroll
 POST /api/node/heartbeat
@@ -96,7 +96,7 @@ GET  /api/node/servers
 POST /api/node/servers/{uuid}/state</pre>
             </x-card>
 
-            <x-card title="Version">
+            <x-card title="Version" icon="info">
                 <dl class="space-y-2 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Panel</dt><dd class="text-slate-900 tabular">{{ \App\Services\UpdateService::currentVersion() }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Licence</dt><dd class="text-slate-900">Free, no key needed</dd></div>

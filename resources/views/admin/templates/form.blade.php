@@ -40,7 +40,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="Template">
+                <x-card title="Template" icon="cube">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name', $template->name) }}" required placeholder="Paper" />
@@ -63,7 +63,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Runtime" subtitle="How this template is installed and supervised. Most panels only offer the first one.">
+                <x-card title="Runtime" icon="play" subtitle="How this template is installed and supervised. Most panels only offer the first one.">
                     <div class="space-y-4">
                         <x-field label="How It Is Installed And Supervised" required>
                             <x-select name="runtime" x-model="runtime">
@@ -112,7 +112,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Startup">
+                <x-card title="Startup" icon="bolt">
                     <div class="space-y-4">
                         {{-- The hint deliberately spells the delimiters out rather than showing
                              them literally: a doubled brace inside a Blade attribute is parsed
@@ -160,7 +160,7 @@
                             return row.source === 'offset' ? this.gamePort() + Number(row.value) : Number(row.value);
                         },
                      }">
-                    <x-card title="Ports"
+                    <x-card title="Ports" icon="network"
                             subtitle="Every listener this game needs. A server reserves all of them together on one address, or it is not created at all.">
                         <x-slot:actions>
                             <x-button type="button" variant="secondary" size="sm" icon="plus" x-on:click="add()">Add A Port</x-button>
@@ -256,7 +256,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Players And Queries" subtitle="What makes the Players tab and the status page possible at all.">
+                <x-card title="Players And Queries" icon="user-group" subtitle="What makes the Players tab and the status page possible at all.">
                     <div class="space-y-4">
                         <x-toggle name="rcon_supported" :checked="(bool) old('rcon_supported', $template->rcon_supported)"
                                   label="Supports RCON" description="Lets the panel kick, ban and run commands without the console." />

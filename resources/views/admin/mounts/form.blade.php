@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Mount">
+                <x-card title="The Mount" icon="folder">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-field label="Name" required :error="$errors->first('name')">
@@ -35,7 +35,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Where It May Be Used"
+                <x-card title="Where It May Be Used" icon="target"
                         subtitle="A mount is offered only where both lists allow it. Leave a list empty to allow everything in it.">
                     <div class="grid gap-6 sm:grid-cols-2">
                         <div>
@@ -71,7 +71,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Access">
+                <x-card title="Access" icon="lock">
                     <div class="space-y-5">
                         <x-toggle name="read_only" :checked="(bool) old('read_only', $mount->read_only ?? true)"
                                   label="Read Only"

@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Server">
+                <x-card title="The Server" icon="database">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')"
                                  hint="What you will recognise it by in a list. Not the hostname.">
@@ -33,7 +33,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Privileged Credentials"
+                <x-card title="Privileged Credentials" icon="key"
                         subtitle="The account this panel uses to create databases and users on demand.">
                     <div class="space-y-4">
                         <div class="grid gap-4 sm:grid-cols-2">
@@ -55,7 +55,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Availability" subtitle="Who is offered a database on this host, and how many.">
+                <x-card title="Availability" icon="users" subtitle="Who is offered a database on this host, and how many.">
                     <div class="space-y-4">
                         <x-field label="Linked Node" :error="$errors->first('node_id')"
                                  hint="Optional. Only offered to servers on this node when set.">

@@ -6,7 +6,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="Install Command">
+            <x-card title="Install Command" icon="terminal">
                 <p class="text-sm text-slate-600 mb-4">
                     Paste this into a root shell on the machine. It installs the daemon, registers it against this panel,
                     and reports back what the box actually has.
@@ -31,7 +31,7 @@
                 </x-slot:footer>
             </x-card>
 
-            <x-card title="Doing It By Hand">
+            <x-card title="Doing It By Hand" icon="book">
                 <p class="text-sm text-slate-600">
                     If you would rather not pipe a script into a shell, the daemon is a single static binary with no
                     dependencies. Download it, drop it at <span class="font-mono text-xs">/usr/local/bin/gamemgr-node</span>,
@@ -49,7 +49,7 @@ NODE_ROOT={{ $node->daemon_base }}</pre>
         </div>
 
         <div>
-            <x-card title="What It Needs">
+            <x-card title="What It Needs" icon="info">
                 <ul class="space-y-3 text-sm text-slate-600">
                     <li class="flex gap-2.5"><x-icon name="check" class="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" /> A 64-bit Linux machine. Anything from a 2 GiB VPS upward.</li>
                     <li class="flex gap-2.5"><x-icon name="check" class="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" /> Docker, if you want to run containerised templates.</li>

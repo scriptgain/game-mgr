@@ -5,7 +5,7 @@
         <div class="lg:col-span-2 space-y-6">
             <form method="POST" action="{{ route('server.settings.update', $server) }}">
                 @csrf @method('PUT')
-                <x-card title="Server Details">
+                <x-card title="Server Details" icon="info">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name', $server->name) }}" required />
@@ -28,7 +28,7 @@
 
             <form method="POST" action="{{ route('server.settings.status-page', $server) }}">
                 @csrf @method('PUT')
-                <x-card title="Public Status Page"
+                <x-card title="Public Status Page" icon="globe"
                         subtitle="A link you can put in your Discord so nobody has to ask whether the server is up.">
                     <div class="space-y-4">
                         <x-field label="Address" :error="$errors->first('slug')">
@@ -65,7 +65,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="Connection">
+            <x-card title="Connection" icon="link">
                 <div class="space-y-4">
                     <x-copy-field label="Game Address" :value="$server->address()" />
                     <x-copy-field label="SFTP Host" :value="($server->node?->fqdn ?: 'node').':'.($server->node?->sftp_port ?? 2022)" />
@@ -74,7 +74,7 @@
                 </div>
             </x-card>
 
-            <x-card title="Limits">
+            <x-card title="Limits" icon="memory">
                 <dl class="space-y-2.5 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Memory</dt><dd class="tabular text-slate-900">{{ \App\Support\Format::mib($server->memory) }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Disk</dt><dd class="tabular text-slate-900">{{ \App\Support\Format::mib($server->disk) }}</dd></div>
@@ -87,7 +87,7 @@
             </x-card>
 
             @can('check', [$server, 'settings.reinstall'])
-                <x-card title="Reinstall">
+                <x-card title="Reinstall" icon="refresh">
                     <p class="text-sm text-slate-600">
                         Runs the template's install script again over this server. Game files are replaced; your world,
                         configuration and plugins stay where they are. Stop the server first.

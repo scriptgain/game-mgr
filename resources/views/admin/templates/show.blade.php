@@ -88,7 +88,7 @@
 
         {{-- ------------------------------------------------------- overview --}}
         <x-tab-pane id="overview">
-            <x-card title="Ports" class="mb-6" flush
+            <x-card title="Ports" icon="network" class="mb-6" flush
                     subtitle="What this game listens on. A server built from this template reserves the whole set together on one address, or it is not created.">
                 @if ($template->ports->isEmpty())
                     <x-empty-state icon="network" title="No Ports Declared"
@@ -118,7 +118,7 @@
                 @endif
             </x-card>
 
-            <x-card title="What This Template Does">
+            <x-card title="What This Template Does" icon="info">
                 <div class="space-y-5">
                     <p class="max-w-3xl text-sm leading-relaxed text-slate-600">
                         {{ $template->description ?: 'No description has been written for this template yet.' }}
@@ -167,7 +167,7 @@
             {{-- One card, not three. The command, the two lifecycle strings and
                  the install script are one story, and each extra card header
                  costs about eighty pixels of nothing. --}}
-            <x-card title="How It Runs" subtitle="Variables are substituted before any of this reaches the node.">
+            <x-card title="How It Runs" icon="play" subtitle="Variables are substituted before any of this reaches the node.">
                 <div class="space-y-6">
                     <x-code-pane label="Startup Command" :code="$template->startup" tall
                                  empty="No startup command. Edit this template before building a server from it." />
@@ -193,7 +193,7 @@
 
         {{-- ------------------------------------------------------ variables --}}
         <x-tab-pane id="variables">
-            <x-card title="Variables" subtitle="What a client can change on their Startup tab, and what stays yours." flush>
+            <x-card title="Variables" icon="sliders" subtitle="What a client can change on their Startup tab, and what stays yours." flush>
                 <x-slot:actions>
                     <x-button href="{{ route('admin.templates.variables', $template) }}" variant="secondary" size="sm" icon="bolt">Manage</x-button>
                 </x-slot:actions>
@@ -229,7 +229,7 @@
 
         {{-- -------------------------------------------------------- servers --}}
         <x-tab-pane id="servers">
-            <x-card title="Servers Built From This" flush>
+            <x-card title="Servers Built From This" icon="server" flush>
                 @if ($servers->isEmpty())
                     <x-empty-state icon="server" title="Nothing Uses It Yet"
                                    description="Create a server from this template to try it out." />
@@ -254,7 +254,7 @@
         {{-- ------------------------------------------------------- advanced --}}
         <x-tab-pane id="advanced">
             <div class="grid gap-6 lg:grid-cols-2">
-                <x-card title="Install Environment" class="min-w-0"
+                <x-card title="Install Environment" icon="download" class="min-w-0"
                         subtitle="The throwaway container the install script runs in, whatever the runtime.">
                     <dl class="space-y-4">
                         <div class="min-w-0">
@@ -280,7 +280,7 @@
                     </dl>
                 </x-card>
 
-                <x-card title="Docker Images" class="min-w-0"
+                <x-card title="Docker Images" icon="cloud" class="min-w-0"
                         subtitle="Offered when a server is created. The first one is the default.">
                     @if ($template->docker_images)
                         <dl class="space-y-3">
@@ -298,7 +298,7 @@
                     @endif
                 </x-card>
 
-                <x-card title="Steam" class="min-w-0">
+                <x-card title="Steam" icon="controller" class="min-w-0">
                     @if ($template->steam_app_id)
                         <dl class="space-y-4">
                             <div class="flex justify-between gap-3">
@@ -319,7 +319,7 @@
                     @endif
                 </x-card>
 
-                <x-card title="Provenance" class="min-w-0">
+                <x-card title="Provenance" icon="book" class="min-w-0">
                     <dl class="space-y-4">
                         <div class="min-w-0">
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-400">Imported From</dt>
@@ -345,14 +345,14 @@
                 </x-card>
 
                 @if ($configFilesJson)
-                    <x-card title="Config File Rewrites" class="min-w-0 lg:col-span-2"
+                    <x-card title="Config File Rewrites" icon="edit" class="min-w-0 lg:col-span-2"
                             subtitle="Values the node writes into the game's own config before every boot.">
                         <x-code-pane label="Config Files" :code="$configFilesJson" />
                     </x-card>
                 @endif
 
                 @if ($template->file_denylist)
-                    <x-card title="File Denylist" class="min-w-0 lg:col-span-2"
+                    <x-card title="File Denylist" icon="ban" class="min-w-0 lg:col-span-2"
                             subtitle="Paths a client can never read, write or download.">
                         <ul class="flex flex-wrap gap-1.5">
                             @foreach ($template->file_denylist as $path)

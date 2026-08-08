@@ -184,7 +184,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="Identity" subtitle="What this machine is called, and which part of the world it sits in.">
+                    <x-card title="Identity" icon="info" subtitle="What this machine is called, and which part of the world it sits in.">
                         <div class="space-y-5">
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <x-field label="Name" required hint="Short, and the same shape as your other machines."
@@ -240,7 +240,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="How The Panel Reaches It"
+                    <x-card title="How The Panel Reaches It" icon="network"
                             subtitle="Two kinds of machine. Pick the one that matches where this box actually lives.">
                         <div class="space-y-5">
                             <div class="grid gap-3 sm:grid-cols-2">
@@ -334,7 +334,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="Runtimes"
+                    <x-card title="Runtimes" icon="play"
                             subtitle="Three ways to run a game server. Turn on whatever this machine can actually do; the server create form only offers templates the node supports.">
                         <div class="grid gap-3 sm:grid-cols-3">
                             @foreach ($runtimeCards as $runtime => $copy)
@@ -389,7 +389,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="Capacity"
+                    <x-card title="Capacity" icon="chart"
                             subtitle="What this machine promises to servers. Over-allocation lets it promise more than it has, which is normal for game hosting and dangerous when it is wrong.">
                         <div class="space-y-4">
                             @foreach ($resources as $r)
@@ -487,7 +487,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card title="Placement" subtitle="Whether servers land here on their own, and where their files go.">
+                    <x-card title="Placement" icon="target" subtitle="Whether servers land here on their own, and where their files go.">
                         <div class="space-y-5">
                             <div class="grid gap-3 sm:grid-cols-2">
                                 <x-node-switch-card model="isPublic" name="public" icon="target"
@@ -531,7 +531,7 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
-                    <x-card :title="$node->exists ? 'Review' : 'Review And Create'"
+                    <x-card :title="$node->exists ? 'Review' : 'Review And Create'" icon="check-circle"
                             subtitle="Everything you chose, in one place. Anything wrong is one click away.">
                         <dl class="divide-y divide-slate-100">
                             @foreach ([
@@ -567,7 +567,7 @@
                     {{-- Act two. A node row is not a node until something on the machine
                          is told about it, and that has to be visible before the create
                          button rather than discovered after the redirect. --}}
-                    <x-card :title="$node->exists ? 'Part Two: The Machine Itself' : 'What Happens Next'"
+                    <x-card :title="$node->exists ? 'Part Two: The Machine Itself' : 'What Happens Next'" icon="terminal"
                             subtitle="A node in the database does nothing until the daemon on the machine is enrolled against it.">
                         <ol class="space-y-4">
                             @foreach ([

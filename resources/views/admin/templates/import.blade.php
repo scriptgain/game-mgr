@@ -6,7 +6,7 @@
         <div class="lg:col-span-2">
             <form method="POST" action="{{ route('admin.templates.import.store') }}" enctype="multipart/form-data">
                 @csrf
-                <x-card title="Definition">
+                <x-card title="Definition" icon="file">
                     <div class="space-y-4">
                         <x-field label="Paste The JSON" hint="The whole file, exactly as exported. Both common format versions work.">
                             <textarea name="json" rows="14" spellcheck="false" placeholder='{ "meta": { "version": "..." }, "name": "Paper", "startup": "java -jar server.jar", ... }'
@@ -43,7 +43,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="What Gets Imported">
+            <x-card title="What Gets Imported" icon="download">
                 <ul class="space-y-3 text-sm text-slate-600">
                     <li class="flex gap-2.5"><x-icon name="check" class="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" /> Name, author and description.</li>
                     <li class="flex gap-2.5"><x-icon name="check" class="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" /> Container images, including the label to image map.</li>
@@ -54,7 +54,7 @@
                 </ul>
             </x-card>
 
-            <x-card title="What It Works Out For You">
+            <x-card title="What It Works Out For You" icon="info">
                 <ul class="space-y-3 text-sm text-slate-600">
                     <li class="flex gap-2.5"><x-icon name="sparkles" class="w-4 h-4 mt-0.5 text-brand-600 shrink-0" /> Which game it belongs to, from its name.</li>
                     <li class="flex gap-2.5"><x-icon name="sparkles" class="w-4 h-4 mt-0.5 text-brand-600 shrink-0" /> The Steam app id, dug out of the install script.</li>

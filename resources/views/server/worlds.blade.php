@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Worlds And Saves"
+    <x-card title="Worlds And Saves" icon="map"
             subtitle="Switching the active world is a first-class action here, not a folder rename you do by hand."
             flush>
         @if ($worlds->isEmpty())

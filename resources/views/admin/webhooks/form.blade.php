@@ -11,7 +11,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3 items-start">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="The Endpoint">
+                <x-card title="The Endpoint" icon="link">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')"
                                  hint="What you will recognise it by in a list.">
@@ -25,7 +25,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Send On" subtitle="Only the events switched on here are posted. Everything else is dropped without a request.">
+                <x-card title="Send On" icon="bell" subtitle="Only the events switched on here are posted. Everything else is dropped without a request.">
                     @php $selected = (array) old('events', $webhook->events ?? []); @endphp
                     <div class="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
                         @foreach (\App\Models\NotificationChannel::EVENTS as $value => $label)
@@ -37,7 +37,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Delivery">
+                <x-card title="Delivery" icon="upload">
                     <div class="space-y-5">
                         <x-toggle name="is_active" :checked="(bool) old('is_active', $webhook->is_active ?? true)"
                                   label="Active" description="Off keeps the webhook but stops anything being posted to it." />

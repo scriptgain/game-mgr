@@ -48,7 +48,7 @@
 
         {{-- ============ TAB 1: Active Sessions ============ --}}
         <div x-show="tab === 'sessions'" x-cloak>
-            <x-card title="Active Sessions" subtitle="Signed-in sessions stored in the database. Revoke to force a re-login." flush>
+            <x-card title="Active Sessions" icon="users" subtitle="Signed-in sessions stored in the database. Revoke to force a re-login." flush>
                 @if ($sessions->isEmpty())
                     <x-empty-state icon="users" title="No Active Sessions" description="Sessions appear here as users sign in." />
                 @else
@@ -163,7 +163,7 @@
 
         {{-- ============ TAB 2: IP Bans ============ --}}
         <div x-show="tab === 'bans'" x-cloak>
-            <x-card title="IP Bans" subtitle="A banned IP receives a 403 on every request. Expired bans no longer apply.">
+            <x-card title="IP Bans" icon="ban" subtitle="A banned IP receives a 403 on every request. Expired bans no longer apply.">
                 <form method="POST" action="{{ route('settings.firewall.ban') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-start">
                     @csrf
                     <x-field label="IP Address" for="ban_ip" :error="$errors->first('ip')">
@@ -297,7 +297,7 @@
                 @method('PUT')
 
                 {{-- Access Limit (allowlist) --}}
-                <x-card title="Access Limit" subtitle="When on, only the listed IPs and CIDR ranges can reach this app. Everything else gets a 403.">
+                <x-card title="Access Limit" icon="shield" subtitle="When on, only the listed IPs and CIDR ranges can reach this app. Everything else gets a 403.">
                     <div class="space-y-5">
                         <x-alert type="warn" title="Handle With Care">
                             Turning this on locks out every address not on the list. Your current IP
@@ -320,7 +320,7 @@
                 </x-card>
 
                 {{-- Failed-Login Auto-Ban --}}
-                <x-card title="Failed-Login Protection" subtitle="Automatically ban an IP after too many failed sign-ins within the window.">
+                <x-card title="Failed-Login Protection" icon="lock" subtitle="Automatically ban an IP after too many failed sign-ins within the window.">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <x-field label="Failed Login Limit" for="failed_login_limit"
                             hint="Auto-ban after this many failures." :error="$errors->first('failed_login_limit')">
@@ -342,7 +342,7 @@
             </form>
 
             {{-- Recent failed attempts (read-only) --}}
-            <x-card title="Recent Failed Attempts"
+            <x-card title="Recent Failed Attempts" icon="warning"
                 subtitle="Failed sign-ins per IP within the last {{ $settings['lockout_minutes'] }} minutes." flush>
                 @if ($attempts->isEmpty())
                     <x-empty-state icon="shield-check" title="No Recent Failures" description="Failed sign-in attempts within the window appear here." />

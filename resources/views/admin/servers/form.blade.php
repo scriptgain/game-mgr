@@ -8,7 +8,7 @@
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2 space-y-6">
-                <x-card title="Server">
+                <x-card title="Server" icon="server">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name', $server->name) }}" required placeholder="Survival SMP" />
@@ -28,7 +28,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Template" subtitle="Copied onto the server at create time, so editing a template later never re-points a running server.">
+                <x-card title="Template" icon="cube" subtitle="Copied onto the server at create time, so editing a template later never re-points a running server.">
                     <x-field label="Template" required :error="$errors->first('template_id')">
                         <x-select name="template_id" required :disabled="$server->exists">
                             @foreach ($templates as $template)
@@ -52,7 +52,7 @@
                 </x-card>
 
                 @unless ($server->exists)
-                    <x-card title="Placement" subtitle="Auto puts it on the emptiest node that can run this template and has the room.">
+                    <x-card title="Placement" icon="target" subtitle="Auto puts it on the emptiest node that can run this template and has the room.">
                         <div class="space-y-4">
                             <div class="grid gap-2 sm:grid-cols-2">
                                 <label class="flex items-start gap-3 cursor-pointer rounded-lg ring-1 ring-inset p-3 transition"
@@ -102,7 +102,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Limits">
+                <x-card title="Limits" icon="memory">
                     <div class="space-y-4">
                         <x-field label="Memory (MiB)" required>
                             <x-input type="number" name="memory" value="{{ old('memory', $server->memory) }}" required />
@@ -124,7 +124,7 @@
                     </div>
                 </x-card>
 
-                <x-card title="Feature Caps">
+                <x-card title="Feature Caps" icon="lock">
                     <div class="space-y-4">
                         <x-field label="Databases" required>
                             <x-input type="number" name="database_limit" value="{{ old('database_limit', $server->database_limit ?? 2) }}" required />

@@ -3,7 +3,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="Online Now" :subtitle="$online->count().' '.Str::plural('player', $online->count()).' connected'" flush>
+            <x-card title="Online Now" icon="user-group" :subtitle="$online->count().' '.Str::plural('player', $online->count()).' connected'" flush>
                 @if ($online->isEmpty())
                     <x-empty-state icon="user-group" title="Nobody Is On"
                                    description="Players appear here as soon as they connect." />
@@ -68,7 +68,7 @@
 
             <x-mass-actions :action="route('server.bulk', [$server, 'players'])" label="player">
                 <x-slot:table>
-                    <x-card title="Everyone Who Has Played" flush>
+                    <x-card title="Everyone Who Has Played" icon="users" flush>
                     <x-slot:actions>
                     <form method="GET" class="flex items-center gap-2">
                     <x-input name="q" value="{{ $search }}" placeholder="Search by name or id" class="w-56" />
@@ -135,7 +135,7 @@
         </div>
 
         <div>
-            <x-card title="Recent Events" flush>
+            <x-card title="Recent Events" icon="book" flush>
                 <ul class="divide-y divide-slate-100">
                     @forelse ($events as $event)
                         <li class="px-5 py-3 flex items-start gap-3">

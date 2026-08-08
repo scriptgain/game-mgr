@@ -8,7 +8,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2">
-            <x-card title="Variables" flush>
+            <x-card title="Variables" icon="sliders" flush>
                 @if ($template->variables->isEmpty())
                     <x-empty-state icon="bolt" title="No Variables"
                                    description="Add one for anything the startup command needs, like a version or a map name." />
@@ -50,7 +50,7 @@
         <div>
             <form method="POST" action="{{ route('admin.templates.variables.store', $template) }}">
                 @csrf
-                <x-card title="Add A Variable">
+                <x-card title="Add A Variable" icon="plus">
                     <div class="space-y-4">
                         <x-field label="Name" required :error="$errors->first('name')">
                             <x-input name="name" value="{{ old('name') }}" required placeholder="Minecraft Version" />

@@ -7,7 +7,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="Version" subtitle="Your installed build against the newest release published by ScriptGain.">
+            <x-card title="Version" icon="info" subtitle="Your installed build against the newest release published by ScriptGain.">
                 <div class="flex flex-wrap items-center gap-x-10 gap-y-4">
                     <div>
                         <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Installed</p>
@@ -48,7 +48,7 @@
                 @endif
             </x-card>
 
-            <x-card title="Automatic Updates" subtitle="When on, this install applies new signed releases on its own overnight.">
+            <x-card title="Automatic Updates" icon="refresh" subtitle="When on, this install applies new signed releases on its own overnight.">
                 <form method="POST" action="{{ route('settings.updates.auto') }}" x-data x-on:change="$el.submit()">
                     @csrf
                     <style>
@@ -71,7 +71,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="How Updates Work" flush>
+            <x-card title="How Updates Work" icon="book" flush>
                 <div class="p-5 space-y-3 text-sm text-slate-600">
                     <p>Update availability comes from a public release manifest on scriptgain.com. The download is verified against the published SHA-256 before anything is unpacked.</p>
                     <p>Each release tarball is checksum-verified before it is applied, and the previous build is archived under <code class="text-xs">storage/app/private/updates</code> in case a rollback is needed.</p>

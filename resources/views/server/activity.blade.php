@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Activity" subtitle="Every action taken against this server, by anyone." flush>
+    <x-card title="Activity" icon="book" subtitle="Every action taken against this server, by anyone." flush>
         @if ($entries->isEmpty())
             <x-empty-state icon="book" title="Nothing Recorded Yet"
                            description="Actions appear here as soon as somebody does something." />

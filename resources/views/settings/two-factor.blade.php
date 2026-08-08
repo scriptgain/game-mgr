@@ -23,7 +23,7 @@
             </form>
         </x-card>
     @elseif ($secret)
-        <x-card title="Set Up Your Authenticator">
+        <x-card title="Set Up Your Authenticator" icon="lock">
             <ol class="text-sm text-slate-600 space-y-4 list-decimal list-inside">
                 <li>Open your authenticator app (Google Authenticator, Authy, 1Password…).</li>
                 <li>Scan this QR code:

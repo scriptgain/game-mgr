@@ -97,7 +97,7 @@
             </div>
 
             <div class="space-y-6">
-                <x-card title="Files">
+                <x-card title="Files" icon="folder">
                     <div class="space-y-3 text-sm">
                         @foreach ($files as $file)
                             <div class="min-w-0">
@@ -118,7 +118,7 @@
                     </x-slot:footer>
                 </x-card>
 
-                <x-card title="How This Works">
+                <x-card title="How This Works" icon="info">
                     <div class="space-y-3 text-sm text-slate-600">
                         <p>
                             These are the game's own configuration files, read straight off the server every time you

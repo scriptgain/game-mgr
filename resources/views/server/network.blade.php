@@ -24,7 +24,7 @@
         </div>
     @endif
 
-    <x-card title="Network"
+    <x-card title="Network" icon="network"
             subtitle="{{ $allocations->count() }} of {{ $server->allocation_limit ?: 'unlimited' }} allocations used. The primary address is the one players connect to."
             flush>
         <x-slot:actions>

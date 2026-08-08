@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Schedules"
+    <x-card title="Schedules" icon="clock"
             subtitle="Tasks chain, so warn, wait, warn again, restart is one schedule rather than four cron entries that drift apart."
             flush>
         <x-slot:actions>

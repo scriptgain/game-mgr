@@ -1,7 +1,7 @@
 <x-layouts.app :title="$title">
     @include('server._shell', ['server' => $server])
 
-    <x-card title="Backups"
+    <x-card title="Backups" icon="archive"
             subtitle="{{ $used }} of {{ $server->backup_limit ?: 'unlimited' }} used. Locked backups sit outside the limit."
             flush>
         <x-slot:actions>

@@ -13,7 +13,7 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="Capacity" subtitle="Allocated is what has been promised to servers, not what is in use right now.">
+            <x-card title="Capacity" icon="chart" subtitle="Allocated is what has been promised to servers, not what is in use right now.">
                 <div class="grid gap-5 sm:grid-cols-2">
                     <x-meter label="Memory" :value="$node->memoryAllocated()" :max="$node->memoryCapacity()">
                         {{ \App\Support\Format::mib($node->memoryAllocated()) }} / {{ \App\Support\Format::mib($node->memoryCapacity()) }}
@@ -29,7 +29,7 @@
                 </dl>
             </x-card>
 
-            <x-card title="Servers On This Node" flush>
+            <x-card title="Servers On This Node" icon="server" flush>
                 @if ($servers->isEmpty())
                     <x-empty-state icon="server" title="Nothing Placed Here Yet"
                                    description="This node has capacity but no servers on it." />
@@ -53,7 +53,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="Daemon">
+            <x-card title="Daemon" icon="bolt">
                 @if ($system)
                     <dl class="space-y-2.5 text-sm">
                         <div class="flex justify-between gap-3"><dt class="text-slate-500">Version</dt><dd class="text-slate-900">{{ $system['version'] ?? 'unknown' }}</dd></div>
@@ -89,7 +89,7 @@
                 @endif
             </x-card>
 
-            <x-card title="Reported By The Machine">
+            <x-card title="Reported By The Machine" icon="cpu">
                 <dl class="space-y-2.5 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">OS</dt><dd class="text-slate-900 truncate">{{ $node->reported_os ?: 'not reported' }}</dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Kernel</dt><dd class="font-mono text-xs text-slate-700 truncate">{{ $node->reported_kernel ?: 'not reported' }}</dd></div>
