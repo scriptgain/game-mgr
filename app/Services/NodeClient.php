@@ -240,7 +240,6 @@ class NodeClient
             }
 
             $body = $response->toPsrResponse()->getBody();
-            $buffer = '';
             $event = 'message';
             $failed = false;
             $deadline = time() + $maxSeconds;
@@ -252,27 +251,33 @@ class NodeClient
                     return false;
                 }
 
-                $buffer .= $body->read(8192);
+                // readLine, not read(8192). fread on this stream waits to fill
+                // the buffer, so a whole install's output arrived in one lump
+                // at the end instead of line by line, which for a progress
+                // stream is the same as no stream at all. readLine reads to the
+                // next newline and returns.
+                $line = \GuzzleHttp\Psr7\Utils::readLine($body);
+                if ($line === '') {
+                    continue;
+                }
 
-                while (($break = strpos($buffer, "\n")) !== false) {
-                    $line = rtrim(substr($buffer, 0, $break), "\r");
-                    $buffer = substr($buffer, $break + 1);
+                $line = rtrim($line, "\r\n");
 
-                    if ($line === '') {
-                        $event = 'message';
-                        continue;
+                if ($line === '') {
+                    // Blank line ends an event; the next one starts fresh.
+                    $event = 'message';
+                    continue;
+                }
+                if (str_starts_with($line, 'event: ')) {
+                    $event = substr($line, 7);
+                    continue;
+                }
+                if (str_starts_with($line, 'data: ')) {
+                    $data = substr($line, 6);
+                    if ($event === 'error') {
+                        $failed = true;
                     }
-                    if (str_starts_with($line, 'event: ')) {
-                        $event = substr($line, 7);
-                        continue;
-                    }
-                    if (str_starts_with($line, 'data: ')) {
-                        $data = substr($line, 6);
-                        if ($event === 'error') {
-                            $failed = true;
-                        }
-                        $onLine($event, $data);
-                    }
+                    $onLine($event, $data);
                 }
             }
 

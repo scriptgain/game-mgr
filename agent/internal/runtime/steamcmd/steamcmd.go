@@ -168,6 +168,14 @@ func (d *Driver) runSteamCMD(ctx context.Context, s runtime.Server, dir string, 
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Credential: &syscall.Credential{Uid: d.runAs.uid, Gid: d.runAs.gid},
 		}
+		// Without this steamcmd inherits root's HOME and announces
+		// "Redirecting stderr to /root/Steam/logs/stderr.txt" while running as
+		// somebody who cannot write there.
+		home := "/home/" + d.runAs.name
+		if _, err := os.Stat(home); err != nil {
+			home = dir
+		}
+		cmd.Env = append(os.Environ(), "HOME="+home)
 	}
 
 	pipe, err := cmd.StdoutPipe()
@@ -266,6 +274,19 @@ func (d *Driver) writeRunscript(s runtime.Server, dir string) (string, error) {
 	script := filepath.Join(runtimeDir, ".gamemgr-steamcmd")
 	if err := os.WriteFile(script, []byte(body), 0o600); err != nil {
 		return "", err
+	}
+
+	// steamcmd runs unprivileged, and both the directory and the file were
+	// created by root, so without this it reports "Failed to load script file"
+	// and exits having downloaded nothing. Ownership moves, the mode does not:
+	// this file holds a Steam password for the length of the install.
+	if d.runAs != nil {
+		if err := os.Chown(runtimeDir, int(d.runAs.uid), int(d.runAs.gid)); err != nil {
+			return "", fmt.Errorf("hand the runtime directory to %s: %w", d.runAs.name, err)
+		}
+		if err := os.Chown(script, int(d.runAs.uid), int(d.runAs.gid)); err != nil {
+			return "", fmt.Errorf("hand the runscript to %s: %w", d.runAs.name, err)
+		}
 	}
 
 	return script, nil
