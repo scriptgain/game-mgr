@@ -200,14 +200,29 @@ class NodeController extends Controller
     public function metrics(Node $node)
     {
         $since = now()->subDays(7);
+        $window = NodeMetric::where('node_id', $node->id)->where('sampled_at', '>=', $since);
+
+        // The headline figures are aggregated across the whole week rather than
+        // read off the visible page. A node heartbeats every 30 seconds, so a
+        // week is around twenty thousand rows: whichever fifty happen to be on
+        // screen cannot tell you the week's peak, and loading all of them to
+        // find out was the reason this page carried the lot into memory and
+        // then rendered the newest 48.
+        $summary = (clone $window)
+            // `load` is a reserved word in MariaDB, so it has to be quoted even
+            // inside an aggregate. Unquoted it is a bare syntax error, and the
+            // page 500s rather than degrading.
+            ->selectRaw('MAX(cpu) as peak_cpu, MAX(memory) as peak_memory, MAX(disk) as peak_disk, MAX(`load`) as peak_load, COUNT(*) as samples')
+            ->first();
 
         return view('admin.nodes.metrics', [
             'title' => $node->name.' Metrics',
             'node' => $node,
-            'series' => NodeMetric::where('node_id', $node->id)
-                ->where('sampled_at', '>=', $since)
-                ->orderBy('sampled_at')
-                ->get(['sampled_at', 'cpu', 'memory', 'disk', 'load']),
+            'latest' => (clone $window)->orderByDesc('sampled_at')->first(),
+            'summary' => $summary,
+            'samples' => (clone $window)
+                ->orderByDesc('sampled_at')
+                ->paginate(50, ['sampled_at', 'cpu', 'memory', 'disk', 'load']),
         ]);
     }
 
@@ -247,6 +262,10 @@ class NodeController extends Controller
             'disk' => ['required', 'integer', 'min:0'],
             'disk_overallocate' => ['required', 'integer', 'between:0,500'],
             'cpu' => ['required', 'integer', 'min:0'],
+            // nullable, not required: the form has always posted this, but it
+            // was missing from the rules and so was silently discarded on the
+            // way through. Anything older that posts without it still saves.
+            'cpu_overallocate' => ['nullable', 'integer', 'between:0,500'],
             'upload_size' => ['required', 'integer', 'between:1,4096'],
             // Posted as a map by the toggles: runtimes[docker] => "1".
             'runtimes' => ['required', 'array'],

@@ -217,8 +217,13 @@ class InfrastructureSeeder extends Seeder
                 'node_id' => $node->id,
                 'sampled_at' => $at,
                 'cpu' => round(12 + $wave * 55 + ($seed % 7), 2),
-                'memory' => (int) ($node->memory * (0.25 + $wave * 0.45)),
-                'disk' => (int) ($node->disk * 0.31),
+                // BYTES, because that is what a real daemon reports. The node's
+                // own memory and disk columns are MiB, so they need converting:
+                // seeding them raw made the dev stack the only place these
+                // figures ever looked sane, and hid a display bug that showed
+                // 774 MiB of real usage as 792,620 GiB in production.
+                'memory' => (int) ($node->memory * 1024 * 1024 * (0.25 + $wave * 0.45)),
+                'disk' => (int) ($node->disk * 1024 * 1024 * 0.31),
                 'load' => round(1 + $wave * 6, 2),
                 'server_count' => 0,
                 'running_count' => 0,
