@@ -12,6 +12,7 @@
     $groups = [
         [
             'label' => 'Servers And Games',
+            'icon' => 'controller',
             'items' => [
                 ['Server', 'admin.servers.create', 'server', 'A game server on one of your nodes'],
                 ['Template', 'admin.templates.create', 'cube', 'How a game installs and starts'],
@@ -22,6 +23,7 @@
         ],
         [
             'label' => 'Infrastructure',
+            'icon' => 'server',
             'items' => [
                 ['Node', 'admin.nodes.create', 'cpu', 'A machine that runs game servers'],
                 ['Location', 'admin.locations.create', 'map', 'A region to group nodes under'],
@@ -31,6 +33,7 @@
         ],
         [
             'label' => 'People And Automation',
+            'icon' => 'users',
             'items' => [
                 ['User', 'admin.users.create', 'users', 'An account that can own servers'],
                 ['Watchdog Rule', 'admin.watchdog.create', 'shield', 'Act on a crash, or a log line'],
@@ -60,13 +63,18 @@
         <div class="grid gap-x-6 gap-y-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($groups as $group)
                 <div class="min-w-0">
-                    <p class="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ $group['label'] }}</p>
+                    <p class="flex items-center gap-2 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        <span class="flex h-5 w-5 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-400">
+                            <x-icon :name="$group['icon']" class="w-3 h-3" />
+                        </span>
+                        {{ $group['label'] }}
+                    </p>
                     <div class="space-y-0.5">
                         @foreach ($group['items'] as [$label, $route, $icon, $blurb])
                             @if (Route::has($route))
                                 <a href="{{ route($route) }}"
                                    class="group flex items-start gap-3 rounded-lg border border-transparent px-2 py-2 transition hover:border-brand-200 hover:bg-brand-50/60">
-                                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-brand-100 group-hover:text-brand-700">
+                                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 transition group-hover:border-brand-300 group-hover:bg-brand-50 group-hover:text-brand-700">
                                         <x-icon :name="$icon" class="w-4 h-4" />
                                     </span>
                                     <span class="min-w-0">

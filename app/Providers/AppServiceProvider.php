@@ -65,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
             config([
                 'gamemgr.date_format' => $s['date_format'] ?? 'M j, Y',
                 'gamemgr.time_format' => $s['time_format'] ?? 'g:i A',
-                'gamemgr.rows_per_page' => (int) ($s['rows_per_page'] ?? 25),
+                'gamemgr.rows_per_page' => (int) ($s['rows_per_page'] ?? 10),
                 'gamemgr.require_2fa' => ($s['require_2fa'] ?? '0') === '1',
                 'gamemgr.force_password_days' => (int) ($s['force_password_days'] ?? 0),
                 'gamemgr.metric_history_days' => (int) ($s['metric_history_days'] ?? 30),

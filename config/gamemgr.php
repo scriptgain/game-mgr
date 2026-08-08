@@ -15,7 +15,7 @@ return [
 
     'date_format' => 'M j, Y',
     'time_format' => 'g:i A',
-    'rows_per_page' => 25,
+    'rows_per_page' => 10,
     'metric_history_days' => 30,
     'audit_log_days' => 180,
     'default_memory' => 2048,

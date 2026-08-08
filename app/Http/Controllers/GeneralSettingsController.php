@@ -22,7 +22,7 @@ class GeneralSettingsController extends Controller
             'timezone' => config('app.timezone', 'UTC'),
             'date_format' => 'M j, Y',
             'time_format' => 'g:i A',
-            'rows_per_page' => '25',
+            'rows_per_page' => '10',
 
             // Defaults offered when creating a server
             'default_memory' => '2048',

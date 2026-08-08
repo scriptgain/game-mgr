@@ -146,7 +146,7 @@ class NodeController extends Controller
         return view('admin.nodes.allocations', [
             'title' => $node->name.' Allocations',
             'node' => $node,
-            'allocations' => $node->allocations()->with('server')->orderBy('ip')->orderBy('port')->paginate(100),
+            'allocations' => $node->allocations()->with('server')->orderBy('ip')->orderBy('port')->paginate(config('gamemgr.rows_per_page', 10)),
         ]);
     }
 
@@ -204,7 +204,7 @@ class NodeController extends Controller
 
         // The headline figures are aggregated across the whole week rather than
         // read off the visible page. A node heartbeats every 30 seconds, so a
-        // week is around twenty thousand rows: whichever fifty happen to be on
+        // week is around twenty thousand rows: whichever rows happen to be on
         // screen cannot tell you the week's peak, and loading all of them to
         // find out was the reason this page carried the lot into memory and
         // then rendered the newest 48.
@@ -222,7 +222,7 @@ class NodeController extends Controller
             'summary' => $summary,
             'samples' => (clone $window)
                 ->orderByDesc('sampled_at')
-                ->paginate(50, ['sampled_at', 'cpu', 'memory', 'disk', 'load']),
+                ->paginate(config('gamemgr.rows_per_page', 10), ['sampled_at', 'cpu', 'memory', 'disk', 'load']),
         ]);
     }
 
