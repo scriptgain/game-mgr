@@ -61,6 +61,44 @@ usage() { sed -n '3,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit "${1:-
 
 need_arg() { [ -n "${2:-}" ] || die "$1 needs a value."; }
 
+# Wait for dpkg, rather than dying half way through an install.
+#
+# A fresh Ubuntu VM runs unattended-upgrades within minutes of first boot, and
+# it holds the dpkg frontend lock while it works. Installing GameMGR in that
+# window used to abort at whichever apt call came first. That is not a clean
+# failure: this installer writes an HTTP vhost, then obtains a certificate,
+# then rewrites the vhost with TLS, so aborting in the middle left nginx
+# serving port 80 with no 443 block at all and the panel reachable only over
+# plain HTTP. Observed on a real box.
+wait_for_dpkg() {
+  local waited=0 limit="${DPKG_LOCK_WAIT:-600}" holder=''
+  while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+    if [ "$waited" -eq 0 ]; then
+      holder="$(ps -o comm= -p "$(fuser /var/lib/dpkg/lock-frontend 2>/dev/null | tr -d ' ' | cut -d' ' -f1)" 2>/dev/null || true)"
+      log "Waiting for another package manager to finish${holder:+ (}${holder}${holder:+)}"
+    fi
+    if [ "$waited" -ge "$limit" ]; then
+      die "Gave up after ${limit}s waiting for the dpkg lock. Something is still installing packages; wait for it and re-run."
+    fi
+    sleep 5
+    waited=$((waited + 5))
+  done
+  [ "$waited" -gt 0 ] && ok_note "package manager free after ${waited}s"
+
+  return 0
+}
+
+# Every apt call goes through this, so the wait can never be forgotten at a
+# new call site.
+apt_do() {
+  wait_for_dpkg
+  DEBIAN_FRONTEND=noninteractive apt-get "$@"
+}
+
+# log() is defined above; this is only used by wait_for_dpkg and stays quiet
+# when nothing waited.
+ok_note() { printf '\033[0;32m  ok\033[0m %s\n' "$*"; }
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --domain)      need_arg "$1" "${2:-}"; DOMAIN="$2"; shift 2 ;;
@@ -123,8 +161,8 @@ USE_SSL=0
 if [ "$DRY_RUN" = "0" ]; then
   log "Installing base tools"
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y
-  apt-get install -y --no-install-recommends \
+  apt_do update -y
+  apt_do install -y --no-install-recommends \
     ca-certificates curl unzip tar rsync gnupg software-properties-common openssl
 fi
 
@@ -368,13 +406,13 @@ log "Installing PHP ${PHP_VER}, nginx, MariaDB"
 # Ubuntu 24.04 carries PHP 8.3 already; anything else needs ondrej's PPA.
 if ! apt-cache show "php${PHP_VER}-fpm" >/dev/null 2>&1; then
   add-apt-repository -y ppa:ondrej/php
-  apt-get update -y
+  apt_do update -y
 fi
 # Extension list is the union of the ext-* requirements in composer.lock
 # (ctype, dom, fileinfo, filter, hash, iconv, json, libxml, mbstring, openssl,
 # pcre, session, tokenizer) plus the PDO driver the app connects with. The ones
 # PHP compiles in by default are not listed as packages; the rest are:
-apt-get install -y \
+apt_do install -y \
   "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-mysql" \
   "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-curl" \
   "php${PHP_VER}-zip" "php${PHP_VER}-bcmath" "php${PHP_VER}-intl" \
@@ -674,7 +712,7 @@ chmod 644 /etc/cron.d/gamemgr
 # --------------------------------------------------------------------- TLS
 if [ "$USE_SSL" = "1" ]; then
   log "Issuing a Let's Encrypt certificate for ${DOMAIN}"
-  apt-get install -y certbot
+  apt_do install -y certbot
 
   # HTTP-01 preflight. Each of these has silently wasted a rate-limited cert
   # attempt on a real VM.

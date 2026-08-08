@@ -18,10 +18,26 @@ document.addEventListener('alpine:init', () => {
         overflowHasActive: false,
 
         init() {
+            // Measure immediately so the layout is right, but do NOT reveal the
+            // strip yet. Fonts landing late changes every label's width and can
+            // change the answer: measured with the fallback font, Network fits;
+            // measured with the real one it does not. Revealing after the first
+            // pass therefore showed Network for about 50ms and then took it
+            // away, which is exactly the flash this was meant to stop.
             this.measure();
-            // Fonts landing late changes every label's width, so measure again.
-            if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(() => this.measure());
+
+            const reveal = () => {
+                this.measure();
+                this.$refs.strip?.classList.add('is-measured');
+            };
+
+            if (document.fonts && document.fonts.status !== 'loaded') {
+                document.fonts.ready.then(reveal);
+                // A font that never resolves must not leave the navigation
+                // invisible forever.
+                setTimeout(reveal, 500);
+            } else {
+                reveal();
             }
             let t;
             window.addEventListener('resize', () => {
@@ -33,10 +49,6 @@ document.addEventListener('alpine:init', () => {
         measure() {
             const strip = this.$refs.strip;
             if (!strip) return;
-            // Measured at least once, so it is safe to show. Set before the
-            // work rather than after, because an early return below would
-            // otherwise leave the strip invisible forever.
-            strip.classList.add('is-measured');
 
             const tabs = Array.from(strip.querySelectorAll('[data-tab-index]'));
             tabs.forEach((el) => { el.hidden = false; });

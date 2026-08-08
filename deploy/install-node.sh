@@ -57,6 +57,21 @@ FIREWALL_NOTES=()
 # ------------------------------------------------------------------ output
 
 log()  { printf '\033[0;36m==>\033[0m %s\n' "$*"; }
+
+# Wait for dpkg rather than failing. A fresh Ubuntu VM runs unattended-upgrades
+# within minutes of first boot and holds the lock while it works, which is
+# exactly when somebody is most likely to be installing a node.
+wait_for_dpkg() {
+    local waited=0 limit="${DPKG_LOCK_WAIT:-600}"
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+        [ "$waited" -eq 0 ] && log "Waiting for another package manager to finish"
+        [ "$waited" -ge "$limit" ] && die "Gave up after ${limit}s waiting for the dpkg lock. Wait for the other package manager and re-run."
+        sleep 5
+        waited=$((waited + 5))
+    done
+
+    return 0
+}
 ok()   { printf '\033[0;32m  ok\033[0m %s\n' "$*"; }
 warn() { printf '\033[0;33m  !!\033[0m %s\n' "$*" >&2; WARNINGS+=("$*"); }
 die()  { printf '\033[0;31mERROR\033[0m %s\n' "$*" >&2; exit 1; }
@@ -175,6 +190,7 @@ if ! dpkg --print-foreign-architectures | grep -qx i386; then
     ok "added the i386 architecture (SteamCMD is 32-bit)"
 fi
 
+wait_for_dpkg
 apt-get update -qq
 
 APT_PACKAGES=(
@@ -202,6 +218,7 @@ APT_PACKAGES=(
     lib32stdc++6
 )
 
+wait_for_dpkg
 if ! apt-get install -y -qq --no-install-recommends "${APT_PACKAGES[@]}"; then
     die "Package install failed. Fix apt (check 'apt-get update' output) and re-run."
 fi
