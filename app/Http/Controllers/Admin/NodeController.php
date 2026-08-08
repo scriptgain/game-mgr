@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Allocation;
+use App\Models\AuditLog;
 use App\Models\Location;
 use App\Models\Node;
 use App\Models\NodeMetric;
@@ -229,6 +230,26 @@ class NodeController extends Controller
                 ->orderByDesc('sampled_at')
                 ->paginate(config('gamemgr.rows_per_page', 10), ['sampled_at', 'cpu', 'memory', 'disk', 'load']),
         ]);
+    }
+
+    /**
+     * Throw away this node's telemetry history.
+     *
+     * Housekeeping trims it nightly, but that is a retention window and not a
+     * button: an operator who has just fixed a node does not want a week of the
+     * old node's readings dragging the averages around. Deletes only this
+     * node's rows, never anybody else's.
+     */
+    public function clearMetrics(Node $node)
+    {
+        $count = NodeMetric::where('node_id', $node->id)->count();
+        NodeMetric::where('node_id', $node->id)->delete();
+
+        AuditLog::record('node.metrics_cleared',
+            'Cleared '.number_format($count).' '.Str::plural('metric sample', $count).' from "'.$node->name.'"', $node);
+
+        return redirect()->route('admin.nodes.metrics', $node)
+            ->with('status', number_format($count).' '.Str::plural('sample', $count).' deleted. New readings arrive on the next heartbeat.');
     }
 
     /** Poke the daemon on demand, so "is it back yet" has an answer button. */

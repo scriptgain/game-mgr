@@ -546,6 +546,12 @@ log "Seeding reference data"
 # DatabaseSeeder calls all six, so it must never run on a live install.
 "$PHP" artisan db:seed --force --no-interaction --class=SettingsSeeder
 "$PHP" artisan db:seed --force --no-interaction --class=CatalogueSeeder
+# Blueprints are reference data, the named sizes an operator picks from when
+# creating a server. They used to live in ActivitySeeder next to fake alerts,
+# which this installer rightly refuses to run, so a real panel had none at all:
+# the create wizard's pick-a-size step was empty and the under-provisioned
+# memory warning had no floor to compare against.
+"$PHP" artisan db:seed --force --no-interaction --class=BlueprintSeeder
 
 # A panel with settings and a catalogue still cannot create a single server: it
 # has no location, no node, and no ports. Every one of those is something the

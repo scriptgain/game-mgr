@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,11 +27,21 @@ import (
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
+	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
 
 // Store owns the node's data root and derives every server directory from it.
 type Store struct {
 	Root string
+
+	// The account a game runs as on this node, when the daemon is root.
+	//
+	// Anything this package creates has to end up belonging to that account or
+	// the game cannot read it, and a root-owned file dropped into a customer's
+	// directory is worse than a missing one: it is invisible until the server
+	// fails to start. Nil when the daemon is not root, in which case everything
+	// it creates already belongs to the right user.
+	RunAs *supervise.Credential
 }
 
 func New(root string) Store {
@@ -38,7 +49,17 @@ func New(root string) Store {
 		root = "/var/lib/gamemgr/volumes"
 	}
 
-	return Store{Root: root}
+	return Store{Root: root, RunAs: supervise.Unprivileged()}
+}
+
+// own hands a path to the account the game runs as. A no-op when the daemon is
+// already unprivileged.
+func (s Store) own(path string) error {
+	if s.RunAs == nil {
+		return nil
+	}
+
+	return os.Chown(path, int(s.RunAs.Uid), int(s.RunAs.Gid))
 }
 
 // Short is the directory name a server gets. Derived from the uuid rather than
@@ -79,6 +100,44 @@ func (s Store) Resolve(server runtime.Server, path string) (string, error) {
 	rel, err := filepath.Rel(base, full)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return "", fmt.Errorf("path escapes the server directory")
+	}
+
+	return full, nil
+}
+
+// ResolveWrite is Resolve with one extra refusal, for paths a caller is about
+// to have something written to.
+//
+// Resolve collapses a path before it checks it, so "../../etc/passwd" comes out
+// as "/etc/passwd" and lands inside the server directory. Contained, and for
+// browsing that is also the friendlier answer, because a stray "../" in a
+// breadcrumb should not be an error page.
+//
+// A write is different. Silently retargeting an upload puts a file somewhere
+// the person who sent it will not look for it, and a caller sending ".." at all
+// is either broken or probing. Neither deserves a 200, so this one refuses
+// rather than sanitises, and the panel gets told which it was.
+func (s Store) ResolveWrite(server runtime.Server, path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("no destination path")
+	}
+	// A NUL truncates the path at the syscall boundary, so "safe.txt\x00.jar"
+	// checked here is not the file that gets opened.
+	if strings.ContainsRune(path, 0) {
+		return "", fmt.Errorf("path contains a null byte")
+	}
+	for _, segment := range strings.Split(filepath.ToSlash(path), "/") {
+		if segment == ".." {
+			return "", fmt.Errorf("path escapes the server directory")
+		}
+	}
+
+	full, err := s.Resolve(server, path)
+	if err != nil {
+		return "", err
+	}
+	if full == s.Dir(server) {
+		return "", fmt.Errorf("that is the server directory itself, not a file")
 	}
 
 	return full, nil
@@ -159,6 +218,105 @@ func (s Store) Write(_ context.Context, server runtime.Server, path string, body
 	}
 
 	return os.WriteFile(full, body, 0o644)
+}
+
+// ErrTooLarge is what Upload returns when the body ran past the cap. The API
+// layer turns it into 413 rather than a generic failure, because "too big" is
+// the one upload error the person at the other end can act on.
+var ErrTooLarge = errors.New("upload is larger than this node accepts")
+
+// DefaultMaxUploadBytes is the ceiling the daemon applies when the panel names
+// no smaller one. 4 GiB matches the largest value the panel's own node form
+// will accept, so a node with a caller that forgets to send a cap is still
+// bounded rather than open.
+const DefaultMaxUploadBytes int64 = 4096 << 20
+
+// Upload streams a file into the server's directory and returns its size.
+//
+// Deliberately not Write. Write takes the whole body as a []byte and is reached
+// through a JSON string field, so a 200 MiB modpack through that path is a
+// base64 copy in memory on the panel side and a full copy in memory here, for a
+// file that is going straight to disk either way. This one copies from the
+// reader to the file and never holds more than io.Copy's buffer.
+//
+// maxBytes is enforced here rather than trusted to the caller: the panel checks
+// the node's limit before it starts, but the daemon does not get to assume that
+// happened.
+func (s Store) Upload(_ context.Context, server runtime.Server, path string, body io.Reader, maxBytes int64) (int64, error) {
+	if maxBytes <= 0 || maxBytes > DefaultMaxUploadBytes {
+		maxBytes = DefaultMaxUploadBytes
+	}
+
+	full, err := s.ResolveWrite(server, path)
+	if err != nil {
+		return 0, err
+	}
+	if info, statErr := os.Stat(full); statErr == nil && info.IsDir() {
+		return 0, fmt.Errorf("%s is a folder on this server", filepath.Base(full))
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return 0, err
+	}
+	// Every directory the upload had to create belongs to the game too, or the
+	// next write into it fails for the same reason the file would have.
+	s.ownUpTo(server, filepath.Dir(full))
+
+	// Written beside the destination and renamed into place. An upload that
+	// dies halfway therefore leaves no half a jar sitting where the game will
+	// try to load it, and a name that already existed still holds its old
+	// contents rather than a truncated file.
+	tmp, err := os.CreateTemp(filepath.Dir(full), ".gamemgr-upload-*")
+	if err != nil {
+		return 0, err
+	}
+	scratch := tmp.Name()
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(scratch) // no-op once the rename below has moved it
+	}()
+
+	// maxBytes+1, not maxBytes. io.Copy over a LimitReader stops at the limit
+	// and reports success, so capping at exactly maxBytes would silently
+	// truncate a file one byte too large and call it a finished upload.
+	written, err := io.Copy(tmp, io.LimitReader(body, maxBytes+1))
+	if err != nil {
+		return 0, err
+	}
+	if written > maxBytes {
+		return 0, ErrTooLarge
+	}
+	if err := tmp.Close(); err != nil {
+		return 0, err
+	}
+	// CreateTemp makes the file 0600 and owned by this process. Both are fixed
+	// before the rename, so the file is never visible at its real name with the
+	// wrong owner on it.
+	if err := os.Chmod(scratch, 0o644); err != nil {
+		return 0, err
+	}
+	if err := s.own(scratch); err != nil {
+		return 0, fmt.Errorf("could not hand the file to the game account: %w", err)
+	}
+	if err := os.Rename(scratch, full); err != nil {
+		return 0, err
+	}
+
+	return written, nil
+}
+
+// ownUpTo chowns dir and every parent of it back to the server's own directory,
+// which is as far up as this daemon has any business going.
+func (s Store) ownUpTo(server runtime.Server, dir string) {
+	if s.RunAs == nil {
+		return
+	}
+	base := s.Dir(server)
+	for current := dir; strings.HasPrefix(current, base); current = filepath.Dir(current) {
+		_ = s.own(current)
+		if current == base {
+			return
+		}
+	}
 }
 
 func (s Store) Delete(_ context.Context, server runtime.Server, paths []string) error {

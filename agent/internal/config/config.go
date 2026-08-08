@@ -29,6 +29,13 @@ type Config struct {
 	EnrollToken string
 	// Seconds between heartbeats to the panel.
 	HeartbeatInterval int
+	// The largest file the file manager will accept on this node, in MiB.
+	//
+	// The panel has its own per-node limit and checks it before it starts
+	// sending, but this one is the node's own and is applied whatever the
+	// panel asked for. A daemon that took its cap from the request would have
+	// no cap at all the day something else starts talking to it.
+	MaxUploadMiB int
 	// The env file this daemon was configured from. Enrollment rewrites it so
 	// the long-lived token survives a restart; without that, a restart would
 	// try to enroll again with a token the panel has already spent and the node
@@ -53,6 +60,7 @@ func Load() Config {
 		// the rename.
 		EnrollToken:       env("NODE_ENROLL_TOKEN", env("NODE_ENROL_TOKEN", "")),
 		HeartbeatInterval: envInt("NODE_HEARTBEAT", 30),
+		MaxUploadMiB:      envInt("NODE_MAX_UPLOAD", 4096),
 		ConfigFile:        env("NODE_CONFIG_FILE", "/etc/gamemgr-node/node.env"),
 	}
 	return c

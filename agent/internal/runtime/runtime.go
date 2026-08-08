@@ -149,6 +149,11 @@ type Driver interface {
 	List(ctx context.Context, s Server, path string) ([]FileEntry, error)
 	Read(ctx context.Context, s Server, path string) ([]byte, error)
 	Write(ctx context.Context, s Server, path string, body []byte) error
+	// Upload streams a file in from an open reader and returns its size.
+	// Separate from Write because Write holds the whole body in memory, which
+	// is fine for a config file and not fine for a modpack. maxBytes is the
+	// cap the driver must enforce itself.
+	Upload(ctx context.Context, s Server, path string, body io.Reader, maxBytes int64) (int64, error)
 	Delete(ctx context.Context, s Server, paths []string) error
 	Rename(ctx context.Context, s Server, from, to string) error
 	MakeDir(ctx context.Context, s Server, path string) error

@@ -24,6 +24,7 @@ import (
 	"github.com/scriptgain/gamemgr-node/internal/config"
 	"github.com/scriptgain/gamemgr-node/internal/firewall"
 	gruntime "github.com/scriptgain/gamemgr-node/internal/runtime"
+	"github.com/scriptgain/gamemgr-node/internal/runtime/store"
 	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
 
@@ -76,6 +77,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/servers/{uuid}/files", s.auth(http.HandlerFunc(s.filesList)))
 	mux.Handle("GET /api/servers/{uuid}/files/contents", s.auth(http.HandlerFunc(s.filesRead)))
 	mux.Handle("POST /api/servers/{uuid}/files/write", s.auth(http.HandlerFunc(s.filesWrite)))
+	mux.Handle("POST /api/servers/{uuid}/files/upload", s.auth(http.HandlerFunc(s.filesUpload)))
 	mux.Handle("POST /api/servers/{uuid}/files/delete", s.auth(http.HandlerFunc(s.filesDelete)))
 	mux.Handle("POST /api/servers/{uuid}/files/rename", s.auth(http.HandlerFunc(s.filesRename)))
 	mux.Handle("POST /api/servers/{uuid}/files/mkdir", s.auth(http.HandlerFunc(s.filesMkdir)))
@@ -477,6 +479,74 @@ func (s *Server) filesWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// filesUpload takes the file as the raw request body.
+//
+// Every other file endpoint here is JSON, and this one deliberately is not. A
+// JSON string field means the panel base64-encodes the whole file, holds it in
+// memory, and this daemon decodes it into memory again before a byte reaches
+// the disk: three copies of a 200 MiB modpack to move it once. The body is the
+// file, the destination is a query parameter, and the driver copies straight
+// from the socket to the file.
+//
+// Contract:
+//
+//	POST /api/servers/{uuid}/files/upload?path=/plugins/mod.jar&max_bytes=268435456
+//	     plus the usual server definition query parameters
+//	Content-Type: application/octet-stream
+//	body: the file, as-is
+//
+//	200 {"ok":true,"path":"/plugins/mod.jar","bytes":1234}
+//	400 {"error":"path escapes the server directory"}
+//	413 {"error":"upload is larger than this node accepts"}
+func (s *Server) filesUpload(w http.ResponseWriter, r *http.Request) {
+	srv, d, err := s.queryServer(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+
+		return
+	}
+
+	// The node's own ceiling wins over anything the caller asked for. The panel
+	// sends max_bytes so the two agree on the message the customer sees, not so
+	// it can raise the limit.
+	limit := int64(s.cfg.MaxUploadMiB) << 20
+	if limit <= 0 {
+		limit = store.DefaultMaxUploadBytes
+	}
+	if asked, _ := strconv.ParseInt(r.URL.Query().Get("max_bytes"), 10, 64); asked > 0 && asked < limit {
+		limit = asked
+	}
+
+	// Content-Length is a courtesy check only, so an oversized upload is
+	// refused before it is streamed rather than after. The real enforcement is
+	// in the driver, which counts what actually arrives: a chunked body has no
+	// Content-Length at all and a lying one is a header anybody can write.
+	if r.ContentLength > limit {
+		writeErr(w, http.StatusRequestEntityTooLarge, store.ErrTooLarge.Error())
+
+		return
+	}
+
+	written, err := d.Upload(r.Context(), srv, r.URL.Query().Get("path"), r.Body, limit)
+	if err != nil {
+		if errors.Is(err, store.ErrTooLarge) {
+			writeErr(w, http.StatusRequestEntityTooLarge, err.Error())
+
+			return
+		}
+		// A refused path is the caller's mistake, not the node failing.
+		writeErr(w, http.StatusBadRequest, err.Error())
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":    true,
+		"path":  r.URL.Query().Get("path"),
+		"bytes": written,
+	})
 }
 
 func (s *Server) filesDelete(w http.ResponseWriter, r *http.Request) {

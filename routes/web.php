@@ -176,6 +176,7 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('nodes/{node}/allocations', [Admin\NodeController::class, 'storeAllocations'])->name('nodes.allocations.store');
         Route::delete('nodes/{node}/allocations/{allocation}', [Admin\NodeController::class, 'destroyAllocation'])->name('nodes.allocations.destroy');
         Route::get('nodes/{node}/metrics', [Admin\NodeController::class, 'metrics'])->name('nodes.metrics');
+        Route::delete('nodes/{node}/metrics', [Admin\NodeController::class, 'clearMetrics'])->name('nodes.metrics.clear');
         Route::post('nodes/{node}/check', [Admin\NodeController::class, 'check'])->name('nodes.check');
         Route::resource('nodes', Admin\NodeController::class);
 

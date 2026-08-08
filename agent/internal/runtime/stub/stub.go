@@ -15,12 +15,14 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
+	"github.com/scriptgain/gamemgr-node/internal/runtime/store"
 )
 
 type Driver struct {
@@ -328,6 +330,35 @@ func (d *Driver) Write(_ context.Context, s runtime.Server, path string, body []
 	p := normalise(path)
 	st.files[p] = &file{body: body, mode: "0644", mod: time.Now()}
 	return nil
+}
+
+// Upload keeps the file in the same in-memory map everything else here uses.
+// The cap is still enforced, because the panel's "that file is too big"
+// message is one of the things a stub node exists to let somebody exercise.
+func (d *Driver) Upload(_ context.Context, s runtime.Server, path string, body io.Reader, maxBytes int64) (int64, error) {
+	if maxBytes <= 0 || maxBytes > store.DefaultMaxUploadBytes {
+		maxBytes = store.DefaultMaxUploadBytes
+	}
+	if strings.Contains(filepath.ToSlash(path), "../") || strings.HasSuffix(path, "/..") {
+		return 0, fmt.Errorf("path escapes the server directory")
+	}
+
+	// One past the cap, so a file exactly one byte too large is refused rather
+	// than truncated. Same reasoning as the real store.
+	buf, err := io.ReadAll(io.LimitReader(body, maxBytes+1))
+	if err != nil {
+		return 0, err
+	}
+	if int64(len(buf)) > maxBytes {
+		return 0, store.ErrTooLarge
+	}
+
+	st := d.state(s)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	st.files[normalise(path)] = &file{body: buf, mode: "0644", mod: time.Now()}
+
+	return int64(len(buf)), nil
 }
 
 func (d *Driver) Delete(_ context.Context, s runtime.Server, paths []string) error {

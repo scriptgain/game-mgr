@@ -24,6 +24,22 @@
 
         <x-card title="Last Seven Days"
                 :subtitle="number_format($summary->samples).' '.\Illuminate\Support\Str::plural('sample', $summary->samples).', newest first.'" flush>
+            <x-slot:actions>
+                {{-- Housekeeping trims this nightly, but that is a retention
+                     window and not a button. An operator who has just rebuilt a
+                     node does not want the old one's readings in the averages. --}}
+                <x-confirm-action
+                    name="clear-node-metrics"
+                    :action="route('admin.nodes.metrics.clear', $node)"
+                    method="DELETE"
+                    tone="danger"
+                    title="Clear All Metrics?"
+                    :message="'This deletes all '.number_format($summary->samples).' stored samples for '.$node->name.'. Nothing else is touched, and new readings arrive on the next heartbeat. It cannot be undone.'"
+                    confirm="Clear Them"
+                    confirm-variant="danger">
+                    <x-button type="button" variant="secondary" size="sm" icon="trash">Clear All</x-button>
+                </x-confirm-action>
+            </x-slot:actions>
             <x-table flush>
                 <thead><tr><th>When</th><th>CPU</th><th>Memory</th><th>Disk</th><th>Load</th></tr></thead>
                 <tbody>
