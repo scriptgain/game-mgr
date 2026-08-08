@@ -81,6 +81,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'Paper',
+                        'default_port' => 25565,
+                        'default_protocol' => 'tcp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'High performance Spigot fork, run from itzg/minecraft-server, which downloads and upgrades Paper itself.',
@@ -136,6 +138,8 @@ class CatalogueSeeder extends Seeder
                     ],
                     [
                         'name' => 'Forge',
+                        'default_port' => 25565,
+                        'default_protocol' => 'tcp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Modded Minecraft on the same itzg/minecraft-server image, which runs the Forge installer for the version pair below.',
@@ -180,6 +184,8 @@ class CatalogueSeeder extends Seeder
                     ],
                     [
                         'name' => 'Bedrock',
+                        'default_port' => 19132,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Mojang bedrock_server for console, mobile and Windows 10 players, run from itzg/minecraft-bedrock-server.',
@@ -236,6 +242,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'Rust Vanilla',
+                        'default_port' => 28015,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 258550, anonymous login. No container, because Rust is happier owning its own network stack.',
@@ -323,6 +331,8 @@ class CatalogueSeeder extends Seeder
                     ],
                     [
                         'name' => 'Rust Oxide',
+                        'default_port' => 28015,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Rust with the Oxide/uMod plugin framework, applied over the Steam files on every boot.',
@@ -411,6 +421,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'Valheim Dedicated',
+                        'default_port' => 2456,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'LinuxGSM vhserver, Steam app 896660, anonymous login. LinuxGSM does the install, the update and the console, so this runtime drives its control script rather than wrapping it in a second supervisor.',
@@ -461,6 +473,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'ARK ASA',
+                        'default_port' => 7777,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'Docker, because there is no other option: Studio Wildcard never shipped a Linux server for Survival Ascended, and LinuxGSM has no asaserver, only arkserver for the older Survival Evolved.',
@@ -546,6 +560,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'CS2 Dedicated',
+                        'default_port' => 27015,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 730, anonymous login. Anti-cheat and container networking do not always agree, so this one skips the container.',
@@ -620,6 +636,8 @@ class CatalogueSeeder extends Seeder
                 'templates' => [
                     [
                         'name' => 'Palworld Dedicated',
+                        'default_port' => 8211,
+                        'default_protocol' => 'udp',
                         'author' => 'GameMGR',
                         'description' => implode(' ', [
                             'SteamCMD native, app 2394010, anonymous login.',

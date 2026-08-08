@@ -16,6 +16,8 @@
 #   --db-pass <pass>      database password (generated when omitted)
 #   --admin-email <addr>  first admin login (defaults to --email)
 #   --admin-pass <pass>   first admin password (generated and printed when omitted)
+#   --node-ip <ip>        public address game servers are reached on (detected when omitted)
+#   --no-bootstrap        do not create the starter location, node and ports
 #   --app-dir <path>      install location (default /var/www/gamemgr)
 #   --node-port <port>    node daemon the /daemon/ console proxy targets (8942)
 #   --dry-run             resolve flags and unpack the source, change nothing else
@@ -42,6 +44,11 @@ SOURCE=""
 DB_PASS=""
 ADMIN_EMAIL=""
 ADMIN_PASS=""
+# Public address game servers are reached on. Empty means ask the kernel which
+# source address it would use to reach the internet, which is right on a box
+# with several addresses.
+NODE_IP=""
+BOOTSTRAP=1
 NO_SSL=0
 DRY_RUN=0
 
@@ -50,7 +57,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m!!  %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31m!!  %s\033[0m\n' "$*" >&2; exit 1; }
-usage() { sed -n '3,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '3,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 need_arg() { [ -n "${2:-}" ] || die "$1 needs a value."; }
 
@@ -62,6 +69,8 @@ while [ $# -gt 0 ]; do
     --db-pass)     need_arg "$1" "${2:-}"; DB_PASS="$2"; shift 2 ;;
     --admin-email) need_arg "$1" "${2:-}"; ADMIN_EMAIL="$2"; shift 2 ;;
     --admin-pass)  need_arg "$1" "${2:-}"; ADMIN_PASS="$2"; shift 2 ;;
+    --node-ip)     need_arg "$1" "${2:-}"; NODE_IP="$2"; shift 2 ;;
+    --no-bootstrap) BOOTSTRAP=0; shift ;;
     --app-dir)     need_arg "$1" "${2:-}"; APP_DIR="$2"; shift 2 ;;
     --db-name)     need_arg "$1" "${2:-}"; DB_NAME="$2"; shift 2 ;;
     --db-user)     need_arg "$1" "${2:-}"; DB_USER="$2"; shift 2 ;;
@@ -499,6 +508,19 @@ log "Seeding reference data"
 # DatabaseSeeder calls all six, so it must never run on a live install.
 "$PHP" artisan db:seed --force --no-interaction --class=SettingsSeeder
 "$PHP" artisan db:seed --force --no-interaction --class=CatalogueSeeder
+
+# A panel with settings and a catalogue still cannot create a single server: it
+# has no location, no node, and no ports. Every one of those is something the
+# machine can work out for itself, so it does. Idempotent, and it leaves an
+# install that already has a node completely alone.
+if [ "$BOOTSTRAP" = "1" ]; then
+  log "Creating a starter location, node and ports"
+  BOOTSTRAP_ARGS=""
+  [ -n "$NODE_IP" ] && BOOTSTRAP_ARGS="--ip=$NODE_IP"
+  # shellcheck disable=SC2086  # deliberate word splitting: empty means "detect"
+  "$PHP" artisan gamemgr:bootstrap-node --no-interaction $BOOTSTRAP_ARGS \
+    || warn "Bootstrap failed. Create a location, a node and its ports by hand in the admin area."
+fi
 
 # SettingsSeeder writes node_fake=1 and setup_complete=1 for the dev stack.
 # AppServiceProvider lets the settings row override config, so the .env switch
