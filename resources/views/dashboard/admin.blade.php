@@ -21,7 +21,7 @@
 
     @if ($alerts->isNotEmpty())
         <div class="mt-6">
-            <x-card title="Open Alerts" subtitle="Nothing here is being acted on until somebody acknowledges it." flush>
+            <x-card title="Open Alerts" icon="warning" subtitle="Nothing here is being acted on until somebody acknowledges it." flush>
                 <x-slot:actions>
                     <form method="POST" action="{{ route('admin.alerts.ack-all') }}">
                         @csrf
@@ -72,9 +72,9 @@
 
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
-            <x-card title="Nodes" subtitle="Capacity is memory promised to servers against what the node can allocate." flush>
+            <x-card title="Nodes" icon="cpu" subtitle="Capacity is memory promised to servers against what the node can allocate." flush>
                 <x-slot:actions>
-                    <x-button href="{{ route('admin.nodes.index') }}" variant="ghost" size="sm">See All</x-button>
+                    <x-button href="{{ route('admin.nodes.index') }}" variant="secondary" size="sm">See All</x-button>
                 </x-slot:actions>
                 <x-table flush>
                     <thead>
@@ -114,9 +114,9 @@
                 </x-table>
             </x-card>
 
-            <x-card title="Servers" subtitle="Sorted by the ones most likely to need you." flush>
+            <x-card title="Servers" icon="server" subtitle="Sorted by the ones most likely to need you." flush>
                 <x-slot:actions>
-                    <x-button href="{{ route('admin.servers.index') }}" variant="ghost" size="sm">See All</x-button>
+                    <x-button href="{{ route('admin.servers.index') }}" variant="secondary" size="sm">See All</x-button>
                 </x-slot:actions>
                 @if ($servers->isEmpty())
                     <x-empty-state icon="server" title="No Servers Yet"
@@ -156,7 +156,7 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="Runtime Mix" subtitle="Docker is not the only way to run a game server.">
+            <x-card title="Runtime Mix" icon="play" subtitle="Docker is not the only way to run a game server.">
                 <div class="space-y-4">
                     @forelse ($runtimes as $runtime => $count)
                         <div class="flex items-center justify-between gap-3">
@@ -169,9 +169,9 @@
                 </div>
             </x-card>
 
-            <x-card title="Recent Activity" flush>
+            <x-card title="Recent Activity" icon="book" flush>
                 <x-slot:actions>
-                    <x-button href="{{ route('settings.audit.index') }}" variant="ghost" size="sm">Audit Log</x-button>
+                    <x-button href="{{ route('settings.audit.index') }}" variant="secondary" size="sm">Audit Log</x-button>
                 </x-slot:actions>
                 <ul class="divide-y divide-slate-100">
                     @forelse ($activity as $entry)
@@ -186,6 +186,9 @@
                         <li class="px-5 py-6 text-sm text-slate-500">Nothing recorded yet.</li>
                     @endforelse
                 </ul>
+                @if ($activity->hasPages())
+                    <x-slot:footer>{{ $activity->links() }}</x-slot:footer>
+                @endif
             </x-card>
         </div>
     </div>

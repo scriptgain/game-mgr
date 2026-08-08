@@ -17,7 +17,9 @@ class AuditLogController extends Controller
             $query->where('action', $action);
         }
 
-        $logs = $query->paginate(50)->withQueryString();
+        // The operator's own Rows Per Page setting, not a number hardcoded
+        // here. Changing that setting did nothing to this page.
+        $logs = $query->paginate(config('gamemgr.rows_per_page', 10))->withQueryString();
         $actions = AuditLog::query()->distinct()->orderBy('action')->pluck('action');
 
         return view('settings.audit.index', compact('logs', 'actions', 'action'));

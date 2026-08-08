@@ -41,7 +41,12 @@ class DashboardController extends Controller
             'servers' => $servers,
             'nodes' => $nodes,
             'alerts' => Alert::with(['server', 'node'])->whereNull('acknowledged_at')->latest('id')->limit(6)->get(),
-            'activity' => AuditLog::with('user')->latest('id')->limit(10)->get(),
+            // Paginated rather than a fixed ten. pageName keeps it from fighting
+            // any other paginator that lands on this dashboard later, and the
+            // page size follows the operator's own Rows Per Page setting.
+            'activity' => AuditLog::with('user')->latest('id')
+                ->paginate(config('gamemgr.rows_per_page', 10), ['*'], 'activity')
+                ->withQueryString(),
             'playerSeries' => $playerSeries,
             'counts' => [
                 'total' => $servers->count(),
