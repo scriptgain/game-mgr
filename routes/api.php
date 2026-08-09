@@ -108,6 +108,51 @@ Route::prefix('client')->name('api.client.')->middleware('api.token:client')->gr
     Route::get('servers/{server}/resources', [App\Http\Controllers\Api\Client\ServerController::class, 'resources'])->name('servers.resources');
     Route::post('servers/{server}/power', [App\Http\Controllers\Api\Client\ServerController::class, 'power'])->name('servers.power');
     Route::post('servers/{server}/command', [App\Http\Controllers\Api\Client\ServerController::class, 'command'])->name('servers.command');
+
+    // Every per-server feature, each guarded by the same ServerPolicy
+    // permission its web screen uses.
+    Route::get('servers/{server}/files', [App\Http\Controllers\Api\Client\FileController::class, 'index'])->name('servers.files.index');
+    Route::get('servers/{server}/files/download', [App\Http\Controllers\Api\Client\FileController::class, 'download'])->name('servers.files.download');
+    Route::post('servers/{server}/files/upload', [App\Http\Controllers\Api\Client\FileController::class, 'upload'])->name('servers.files.upload');
+    Route::post('servers/{server}/files/write', [App\Http\Controllers\Api\Client\FileController::class, 'write'])->name('servers.files.write');
+    Route::post('servers/{server}/files/mkdir', [App\Http\Controllers\Api\Client\FileController::class, 'mkdir'])->name('servers.files.mkdir');
+    Route::post('servers/{server}/files/rename', [App\Http\Controllers\Api\Client\FileController::class, 'rename'])->name('servers.files.rename');
+    Route::delete('servers/{server}/files', [App\Http\Controllers\Api\Client\FileController::class, 'destroy'])->name('servers.files.destroy');
+
+    Route::get('servers/{server}/backups', [App\Http\Controllers\Api\Client\BackupController::class, 'index'])->name('servers.backups.index');
+    Route::post('servers/{server}/backups', [App\Http\Controllers\Api\Client\BackupController::class, 'store'])->name('servers.backups.store');
+    Route::post('servers/{server}/backups/{backup}/restore', [App\Http\Controllers\Api\Client\BackupController::class, 'restore'])->name('servers.backups.restore');
+    Route::post('servers/{server}/backups/{backup}/lock', [App\Http\Controllers\Api\Client\BackupController::class, 'lock'])->name('servers.backups.lock');
+    Route::delete('servers/{server}/backups/{backup}', [App\Http\Controllers\Api\Client\BackupController::class, 'destroy'])->name('servers.backups.destroy');
+
+    Route::get('servers/{server}/subusers', [App\Http\Controllers\Api\Client\SubuserController::class, 'index'])->name('servers.subusers.index');
+    Route::post('servers/{server}/subusers', [App\Http\Controllers\Api\Client\SubuserController::class, 'store'])->name('servers.subusers.store');
+    Route::patch('servers/{server}/subusers/{subuser}', [App\Http\Controllers\Api\Client\SubuserController::class, 'update'])->name('servers.subusers.update');
+    Route::delete('servers/{server}/subusers/{subuser}', [App\Http\Controllers\Api\Client\SubuserController::class, 'destroy'])->name('servers.subusers.destroy');
+
+    Route::get('servers/{server}/network', [App\Http\Controllers\Api\Client\NetworkController::class, 'index'])->name('servers.network.index');
+    Route::post('servers/{server}/network', [App\Http\Controllers\Api\Client\NetworkController::class, 'store'])->name('servers.network.store');
+    Route::post('servers/{server}/network/{allocation}/primary', [App\Http\Controllers\Api\Client\NetworkController::class, 'primary'])->name('servers.network.primary');
+    Route::delete('servers/{server}/network/{allocation}', [App\Http\Controllers\Api\Client\NetworkController::class, 'destroy'])->name('servers.network.destroy');
+
+    Route::get('servers/{server}/startup', [App\Http\Controllers\Api\Client\StartupController::class, 'index'])->name('servers.startup.index');
+    Route::put('servers/{server}/startup', [App\Http\Controllers\Api\Client\StartupController::class, 'update'])->name('servers.startup.update');
+
+    Route::get('servers/{server}/schedules', [App\Http\Controllers\Api\Client\ScheduleController::class, 'index'])->name('servers.schedules.index');
+    Route::get('servers/{server}/databases', [App\Http\Controllers\Api\Client\DatabaseController::class, 'index'])->name('servers.databases.index');
+    Route::get('servers/{server}/activity', [App\Http\Controllers\Api\Client\ActivityController::class, 'index'])->name('servers.activity.index');
+
+    Route::get('servers/{server}/mods', [App\Http\Controllers\Api\Client\ModController::class, 'index'])->name('servers.mods.index');
+    Route::post('servers/{server}/mods/{mod}/toggle', [App\Http\Controllers\Api\Client\ModController::class, 'toggle'])->name('servers.mods.toggle');
+    Route::delete('servers/{server}/mods/{mod}', [App\Http\Controllers\Api\Client\ModController::class, 'destroy'])->name('servers.mods.destroy');
+
+    Route::get('servers/{server}/worlds', [App\Http\Controllers\Api\Client\WorldController::class, 'index'])->name('servers.worlds.index');
+    Route::post('servers/{server}/worlds/{world}/activate', [App\Http\Controllers\Api\Client\WorldController::class, 'activate'])->name('servers.worlds.activate');
+    Route::delete('servers/{server}/worlds/{world}', [App\Http\Controllers\Api\Client\WorldController::class, 'destroy'])->name('servers.worlds.destroy');
+
+    Route::get('servers/{server}/players', [App\Http\Controllers\Api\Client\PlayerController::class, 'index'])->name('servers.players.index');
+    Route::post('servers/{server}/players/{player}', [App\Http\Controllers\Api\Client\PlayerController::class, 'action'])->name('servers.players.action');
+
 });
 
 /*
