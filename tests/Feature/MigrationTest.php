@@ -247,6 +247,48 @@ class MigrationTest extends TestCase
         $this->assertLessThan($restore, $fetch, 'the restore ran before the archive had arrived');
     }
 
+    /**
+     * The row must still be on the SOURCE when the archive is fetched.
+     *
+     * This is the one the old ordering got wrong, and it cost a real two-node
+     * test to find. `backups.download` resolves which node to stream from off
+     * the server row itself, so moving the row before the fetch pointed that
+     * link at the target: the target asked the panel for the archive, the panel
+     * turned round and asked the target, and the fetch failed with the archive
+     * still on the source.
+     *
+     * Faking HTTP hides it completely, because a fake answers every URL the
+     * same way, and so does a dev stack where two node rows share one daemon.
+     * The only thing that catches it without two real machines is asserting
+     * WHERE the row is at the moment the fetch goes out.
+     */
+    public function test_the_row_is_still_on_the_source_when_the_archive_is_fetched(): void
+    {
+        $nodeAtFetch = null;
+        $id = $this->server->id;
+
+        Http::fake(function ($request) use (&$nodeAtFetch, $id) {
+            if (str_contains($request->url(), '/backups/fetch')) {
+                $nodeAtFetch = Server::withoutGlobalScopes()->find($id)?->node_id;
+            }
+
+            return Http::response(['ok' => true, 'bytes' => 100, 'checksum' => 'x'], 200);
+        });
+
+        $this->assertTrue(app(ServerMigrator::class)->migrate($this->server->fresh(), $this->target));
+
+        $this->assertNotNull($nodeAtFetch, 'the archive was never fetched');
+        $this->assertSame(
+            $this->source->id,
+            $nodeAtFetch,
+            'the server row had already been moved to the target when the archive was fetched, so the signed '.
+            'download link pointed at the node that does not have the archive yet',
+        );
+
+        // And it did land on the target once the copy was done.
+        $this->assertSame($this->target->id, $this->server->fresh()->node_id);
+    }
+
     /** A transfer that fails leaves the server where it was, like every other failure. */
     public function test_a_failed_transfer_leaves_the_server_where_it_was(): void
     {

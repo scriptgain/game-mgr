@@ -125,9 +125,32 @@ class ServerMigrator
                 'completed_at' => now(),
             ])->save();
 
-            // 3. Move the row to the target and reserve its new ports. The old
-            //    allocations are deliberately still held at this point: if the
-            //    restore fails, they are what the server goes back to.
+            // 3. Carry the archive across, while the row is STILL on the source.
+            //
+            // The order here is not cosmetic. backups.download resolves which
+            // node to stream from off the server row itself, so moving the row
+            // first pointed that link at the target: the target asked the panel
+            // for the archive, the panel turned round and asked the target, and
+            // the fetch failed with the archive sitting untouched on the source.
+            // Two node rows sharing one daemon hide it completely, because both
+            // answers come off the same disk. Between two real nodes it could
+            // never have worked, and it never had until it was run on two.
+            //
+            // Nothing has moved and nothing is destroyed at this point, so a
+            // failure here needs no rollback at all.
+            $say('line', 'Copying the archive from '.$source->name.' to '.$target->name);
+            $url = \Illuminate\Support\Facades\URL::temporarySignedRoute('backups.download', now()->addHours(2), [
+                'server' => $server->uuid_short,
+                'backup' => $backupUuid,
+            ]);
+
+            if (! NodeClient::for($target)->fetchBackup($server, $url, $backupUuid)) {
+                throw new \RuntimeException($target->name.' could not fetch the archive from '.$source->name.'. The server has been left where it was.');
+            }
+
+            // 4. Only now move the row and reserve its new ports. The old
+            //    allocations are deliberately still held: if the restore fails,
+            //    they are what the server goes back to.
             $say('line', 'Restoring on '.$target->name);
             $oldAllocations = $server->allocations()->pluck('id')->all();
             $oldNodeId = $server->node_id;
@@ -137,31 +160,6 @@ class ServerMigrator
             $primary = $this->planner->reserve($server, $plan);
             if ($primary) {
                 $server->forceFill(['allocation_id' => $primary->id])->save();
-            }
-
-            // 4. Carry the archive across, THEN unpack it.
-            //
-            // The step that was missing: Backup wrote the tarball to the source
-            // node's own disk and Restore reads it from the target's, so
-            // without this the target opened a path that had never existed
-            // there. The target pulls it directly over a signed, short-lived
-            // URL rather than the panel piping the bytes.
-            $say('line', 'Copying the archive from '.$source->name.' to '.$target->name);
-            $url = \Illuminate\Support\Facades\URL::temporarySignedRoute('backups.download', now()->addHours(2), [
-                'server' => $server->uuid_short,
-                'backup' => $backupUuid,
-            ]);
-
-            if (! NodeClient::for($target)->fetchBackup($server, $url, $backupUuid)) {
-                $server->forceFill([
-                    'node_id' => $oldNodeId,
-                    'allocation_id' => $oldAllocationId,
-                    'status' => null,
-                ])->save();
-                $server->allocations()->whereNotIn('id', $oldAllocations)
-                    ->update(['server_id' => null, 'role' => null]);
-
-                throw new \RuntimeException($target->name.' could not fetch the archive from '.$source->name.'. The server has been left where it was.');
             }
 
             if (! NodeClient::for($target)->restore($server, $backupUuid)) {
