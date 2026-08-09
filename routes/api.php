@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
  * own per-node key rather than a user token.
  */
 
-Route::prefix('application')->name('api.app.')->middleware('api.token')->group(function () {
+Route::prefix('application')->name('api.app.')->middleware('api.token:application')->group(function () {
     Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'email', 'role']));
 
     Route::get('nodes', fn () => Node::with('location')->withCount('servers')->get());
@@ -26,7 +26,7 @@ Route::prefix('application')->name('api.app.')->middleware('api.token')->group(f
     Route::get('servers/{server}', fn (Server $server) => $server->load(['owner:id,name,email', 'node', 'template', 'allocation', 'subusers.user:id,name,email']));
 });
 
-Route::prefix('client')->name('api.client.')->middleware('api.token')->group(function () {
+Route::prefix('client')->name('api.client.')->middleware('api.token:client')->group(function () {
     Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'email']));
 
     Route::get('servers', fn (Request $r) => $r->user()->accessibleServers()
