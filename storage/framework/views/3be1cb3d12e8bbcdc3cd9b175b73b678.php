@@ -37,16 +37,17 @@ unset($__defined_vars, $__key, $__value); ?>
     [$label, $color, $icon] = $map[$runtime] ?? [ucfirst((string) $runtime), 'neutral', 'cube'];
 ?>
 <?php if($compact): ?>
-    <?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal2ddbc40e602c342e508ac696e52f8719 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.badge','data' => ['color' => $color,'title' => $label,'attributes' => $attributes]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('badge'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['color' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($color),'title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($label),'attributes' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($attributes)]); ?>
+    
+    <?php
+        $tones = [
+            'info' => 'bg-sky-50 text-sky-700 ring-sky-200',
+            'warn' => 'bg-amber-50 text-amber-700 ring-amber-200',
+            'success' => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+            'neutral' => 'bg-slate-50 text-slate-600 ring-slate-200',
+        ];
+    ?>
+    <span title="<?php echo e($label); ?>"
+          <?php echo e($attributes->merge(['class' => 'vx-badge inline-flex items-center justify-center rounded-full px-1.5 py-0.5 ring-1 ring-inset '.($tones[$color] ?? $tones['neutral'])])); ?>>
         <?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon','data' => ['name' => $icon,'class' => 'w-3.5 h-3.5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -68,16 +69,7 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
 <?php endif; ?>
         <span class="sr-only"><?php echo e($label); ?></span>
-     <?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal2ddbc40e602c342e508ac696e52f8719)): ?>
-<?php $attributes = $__attributesOriginal2ddbc40e602c342e508ac696e52f8719; ?>
-<?php unset($__attributesOriginal2ddbc40e602c342e508ac696e52f8719); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal2ddbc40e602c342e508ac696e52f8719)): ?>
-<?php $component = $__componentOriginal2ddbc40e602c342e508ac696e52f8719; ?>
-<?php unset($__componentOriginal2ddbc40e602c342e508ac696e52f8719); ?>
-<?php endif; ?>
+    </span>
 <?php else: ?>
     <?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal2ddbc40e602c342e508ac696e52f8719 = $attributes; } ?>

@@ -10,7 +10,134 @@
 <?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($title)]); ?>
     <?php echo $__env->make('server._shell', ['server' => $server], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    <div x-data="fileBrowser()">
+    <?php
+        $canCreate = auth()->user()->can('check', [$server, 'file.create']);
+    ?>
+
+    
+    <div x-data="fileBrowser(<?php echo \Illuminate\Support\Js::from([
+            'path' => $path,
+            'uploadUrl' => $canCreate ? route('server.files.upload', $server) : null,
+            'maxBytes' => $uploadLimit,
+            'csrf' => csrf_token(),
+        ])->toHtml() ?>)"
+         <?php if($canCreate): ?>
+             x-on:dragenter.prevent="dragIn()"
+             x-on:dragover.prevent
+             x-on:dragleave.prevent="dragOut()"
+             x-on:drop.prevent="dropped($event)"
+         <?php endif; ?>
+         class="relative">
+
+        <?php if($canCreate): ?>
+            
+            <input type="file" x-ref="picker" multiple class="hidden" x-on:change="picked($event)">
+
+            
+            <div x-show="dragDepth > 0" x-cloak
+                 class="absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-brand-400 bg-brand-50/80 backdrop-blur-[1px] pointer-events-none">
+                <div class="flex flex-col items-center gap-2 text-brand-700">
+                    <?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon','data' => ['name' => 'upload','class' => 'w-8 h-8']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'upload','class' => 'w-8 h-8']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $attributes = $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $component = $__componentOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+                    <p class="font-medium">Drop To Upload Into <?php echo e($path); ?></p>
+                </div>
+            </div>
+
+            
+            <div x-show="uploads.length" x-cloak class="mb-4">
+                <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="text-[15px] font-semibold text-slate-900">Uploads</h3>
+                        <button type="button" x-show="idle()" x-on:click="uploads = []"
+                                class="text-sm text-slate-500 hover:text-slate-800 rounded-lg px-2 py-1 border border-transparent hover:border-slate-200 transition">Clear</button>
+                    </div>
+                    <ul class="space-y-3">
+                        <template x-for="item in uploads" :key="item.id">
+                            <li>
+                                <div class="flex items-baseline justify-between gap-3 text-sm">
+                                    <span class="font-medium text-slate-800 truncate" x-text="item.name"></span>
+                                    <span class="tabular text-xs shrink-0"
+                                          :class="item.state === 'failed' ? 'text-rose-600' : 'text-slate-500'"
+                                          x-text="item.detail"></span>
+                                </div>
+                                <div class="mt-1.5 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                    <div class="h-full rounded-full transition-[width] duration-150"
+                                         :class="{
+                                            'bg-brand-500': item.state === 'sending',
+                                            'bg-emerald-500': item.state === 'done',
+                                            'bg-rose-500': item.state === 'failed',
+                                         }"
+                                         :style="`width: ${item.percent}%`"></div>
+                                </div>
+                                <p x-show="item.error" x-cloak class="mt-1.5 text-xs text-rose-600" x-text="item.error"></p>
+                            </li>
+                        </template>
+                    </ul>
+                    <?php if($uploadShortfall): ?>
+                        <p class="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
+                            <?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon','data' => ['name' => 'warning','class' => 'w-4 h-4 shrink-0 mt-px']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'warning','class' => 'w-4 h-4 shrink-0 mt-px']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $attributes = $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $component = $__componentOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+                            <span><?php echo e($uploadShortfall); ?></span>
+                        </p>
+                    <?php endif; ?>
+                 <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal53747ceb358d30c0105769f8471417f6)): ?>
+<?php $attributes = $__attributesOriginal53747ceb358d30c0105769f8471417f6; ?>
+<?php unset($__attributesOriginal53747ceb358d30c0105769f8471417f6); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal53747ceb358d30c0105769f8471417f6)): ?>
+<?php $component = $__componentOriginal53747ceb358d30c0105769f8471417f6; ?>
+<?php unset($__componentOriginal53747ceb358d30c0105769f8471417f6); ?>
+<?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -86,6 +213,44 @@
                     <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('check', [$server, 'file.create'])): ?>
                         <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['type' => 'button','size' => 'sm','variant' => 'secondary','icon' => 'upload','xOn:click' => '$refs.picker.click()']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'button','size' => 'sm','variant' => 'secondary','icon' => 'upload','x-on:click' => '$refs.picker.click()']); ?>Upload <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+                        <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['type' => 'button','size' => 'sm','variant' => 'secondary','icon' => 'file','xOn:click' => '$dispatch(\'open-modal\', \'new-file\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'button','size' => 'sm','variant' => 'secondary','icon' => 'file','x-on:click' => '$dispatch(\'open-modal\', \'new-file\')']); ?>New File <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+                        <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['type' => 'button','size' => 'sm','variant' => 'secondary','icon' => 'plus','xOn:click' => '$dispatch(\'open-modal\', \'new-folder\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('button'); ?>
 <?php if ($component->shouldRender()): ?>
@@ -110,14 +275,14 @@
             <?php if(empty($entries)): ?>
                 <?php if (isset($component)) { $__componentOriginal074a021b9d42f490272b5eefda63257c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal074a021b9d42f490272b5eefda63257c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'folder','title' => 'This Folder Is Empty','description' => 'Nothing here yet. Create a folder or upload files from your game client\'s export.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'folder','title' => 'This Folder Is Empty','description' => 'Nothing here yet. Create a file or a folder, or drag files straight onto this page to upload them.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('empty-state'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['icon' => 'folder','title' => 'This Folder Is Empty','description' => 'Nothing here yet. Create a folder or upload files from your game client\'s export.']); ?>
+<?php $component->withAttributes(['icon' => 'folder','title' => 'This Folder Is Empty','description' => 'Nothing here yet. Create a file or a folder, or drag files straight onto this page to upload them.']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal074a021b9d42f490272b5eefda63257c)): ?>
@@ -141,7 +306,14 @@
 <?php $component->withAttributes(['flush' => true]); ?>
                     <thead>
                         <tr>
-                            <th class="w-10"></th>
+                            <th class="w-10">
+                                
+                                <label class="vx-switch">
+                                    <input type="checkbox" :checked="allSelected()" @change="toggleAll($event.target.checked)">
+                                    <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                    <span class="sr-only">Select Everything On This Page</span>
+                                </label>
+                            </th>
                             <th>Name</th>
                             <th>Size</th>
                             <th>Mode</th>
@@ -159,9 +331,13 @@
                             ?>
                             <tr data-file-path="<?php echo e($full); ?>">
                                 <td class="w-10">
-                                    <input type="checkbox" :checked="isSelected(<?php echo \Illuminate\Support\Js::from($full)->toHtml() ?>)"
-                                           @click="toggle(<?php echo \Illuminate\Support\Js::from($full)->toHtml() ?>, <?php echo e($i); ?>, $event.shiftKey)"
-                                           class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                    
+                                    <label class="vx-switch">
+                                        <input type="checkbox" :checked="isSelected(<?php echo \Illuminate\Support\Js::from($full)->toHtml() ?>)"
+                                               @click="toggle(<?php echo \Illuminate\Support\Js::from($full)->toHtml() ?>, <?php echo e($i); ?>, $event.shiftKey)">
+                                        <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                        <span class="sr-only">Select <?php echo e($entry['name']); ?></span>
+                                    </label>
                                 </td>
                                 <td>
                                     <?php if($isDir): ?>
@@ -299,6 +475,111 @@
 <?php endif; ?>
 
         <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('check', [$server, 'file.create'])): ?>
+            <?php if (isset($component)) { $__componentOriginal9f64f32e90b9102968f2bc548315018c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9f64f32e90b9102968f2bc548315018c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.modal','data' => ['name' => 'new-file','title' => 'New File','icon' => 'file','maxWidth' => 'max-w-md','subtitle' => 'The file is created empty and opens in the editor.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('modal'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'new-file','title' => 'New File','icon' => 'file','maxWidth' => 'max-w-md','subtitle' => 'The file is created empty and opens in the editor.']); ?>
+                <form method="POST" action="<?php echo e(route('server.files.create', $server)); ?>" id="new-file-form">
+                    <?php echo csrf_field(); ?>
+                    <input type="hidden" name="path" value="<?php echo e($path); ?>">
+                    <?php if (isset($component)) { $__componentOriginalae4c123bc9806121d87d234de2f27a3b = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalae4c123bc9806121d87d234de2f27a3b = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.field','data' => ['label' => 'File Name','for' => 'file-name','hint' => 'Created inside '.e($path).'','error' => $errors->first('name')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('field'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['label' => 'File Name','for' => 'file-name','hint' => 'Created inside '.e($path).'','error' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($errors->first('name'))]); ?>
+                        <?php if (isset($component)) { $__componentOriginalc2fcfa88dc54fee60e0757a7e0572df1 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc2fcfa88dc54fee60e0757a7e0572df1 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.input','data' => ['id' => 'file-name','name' => 'name','required' => true,'placeholder' => 'server.properties','value' => ''.e(old('name')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('input'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['id' => 'file-name','name' => 'name','required' => true,'placeholder' => 'server.properties','value' => ''.e(old('name')).'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc2fcfa88dc54fee60e0757a7e0572df1)): ?>
+<?php $attributes = $__attributesOriginalc2fcfa88dc54fee60e0757a7e0572df1; ?>
+<?php unset($__attributesOriginalc2fcfa88dc54fee60e0757a7e0572df1); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc2fcfa88dc54fee60e0757a7e0572df1)): ?>
+<?php $component = $__componentOriginalc2fcfa88dc54fee60e0757a7e0572df1; ?>
+<?php unset($__componentOriginalc2fcfa88dc54fee60e0757a7e0572df1); ?>
+<?php endif; ?>
+                     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalae4c123bc9806121d87d234de2f27a3b)): ?>
+<?php $attributes = $__attributesOriginalae4c123bc9806121d87d234de2f27a3b; ?>
+<?php unset($__attributesOriginalae4c123bc9806121d87d234de2f27a3b); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalae4c123bc9806121d87d234de2f27a3b)): ?>
+<?php $component = $__componentOriginalae4c123bc9806121d87d234de2f27a3b; ?>
+<?php unset($__componentOriginalae4c123bc9806121d87d234de2f27a3b); ?>
+<?php endif; ?>
+                </form>
+                 <?php $__env->slot('footer', null, []); ?> 
+                    <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['variant' => 'secondary','size' => 'sm','xOn:click' => '$dispatch(\'close-modal\', \'new-file\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['variant' => 'secondary','size' => 'sm','x-on:click' => '$dispatch(\'close-modal\', \'new-file\')']); ?>Cancel <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+                    <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['size' => 'sm','type' => 'submit','form' => 'new-file-form']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['size' => 'sm','type' => 'submit','form' => 'new-file-form']); ?>Create File <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+                 <?php $__env->endSlot(); ?>
+             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9f64f32e90b9102968f2bc548315018c)): ?>
+<?php $attributes = $__attributesOriginal9f64f32e90b9102968f2bc548315018c; ?>
+<?php unset($__attributesOriginal9f64f32e90b9102968f2bc548315018c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9f64f32e90b9102968f2bc548315018c)): ?>
+<?php $component = $__componentOriginal9f64f32e90b9102968f2bc548315018c; ?>
+<?php unset($__componentOriginal9f64f32e90b9102968f2bc548315018c); ?>
+<?php endif; ?>
+
             <?php if (isset($component)) { $__componentOriginal9f64f32e90b9102968f2bc548315018c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal9f64f32e90b9102968f2bc548315018c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.modal','data' => ['name' => 'new-folder','title' => 'New Folder','icon' => 'folder','maxWidth' => 'max-w-md']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

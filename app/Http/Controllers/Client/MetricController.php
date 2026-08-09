@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Models\Server;
 use App\Models\ServerMetric;
 use Illuminate\Http\Request;
+use App\Support\TimeBucket;
 
 /**
  * Historical metrics. Pterodactyl throws its live stats away the moment the
@@ -45,17 +46,13 @@ class MetricController extends ServerController
 
         // Long ranges get bucketed rather than returned raw: 30 days of minute
         // samples is 43,000 points, and no chart is improved by 43,000 points.
-        $bucket = match (true) {
-            $hours <= 6 => '%Y-%m-%d %H:%i:00',
-            $hours <= 24 => '%Y-%m-%d %H:00:00',
-            $hours <= 168 => '%Y-%m-%d %H:00:00',
-            default => '%Y-%m-%d 00:00:00',
-        };
+        $bucket = TimeBucket::sizeForHours($hours);
 
         $rows = ServerMetric::query()
             ->where('server_id', $server->id)
             ->where('sampled_at', '>=', now()->subHours($hours))
-            ->selectRaw("DATE_FORMAT(sampled_at, ?) as bucket, AVG(cpu) as cpu, AVG(memory) as memory, MAX(disk) as disk, AVG(players) as players, AVG(tick_rate) as tick_rate", [$bucket])
+            ->selectRaw(TimeBucket::expression('sampled_at', $bucket)
+                .' as bucket, AVG(cpu) as cpu, AVG(memory) as memory, MAX(disk) as disk, AVG(players) as players, AVG(tick_rate) as tick_rate')
             ->groupBy('bucket')
             ->orderBy('bucket')
             ->get();

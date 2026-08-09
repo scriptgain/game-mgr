@@ -44,7 +44,12 @@ unset($__defined_vars, $__key, $__value); ?>
     <link rel="icon" type="image/png" sizes="64x64" href="<?php echo e(route('favicon.png')); ?>">
     <link rel="apple-touch-icon" href="<?php echo e(route('favicon.apple')); ?>">
     
-    <script defer src="<?php echo e(asset('js/gamemgr.js')); ?>"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    
+    
+    <script defer src="<?php echo e(asset('js/gamemgr.js')); ?>?v=<?php echo e(\App\Support\Asset::version('js/gamemgr.js')); ?>"></script>
     <?php if (isset($component)) { $__componentOriginald8148f5689903f6ad943797ae197f7c9 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald8148f5689903f6ad943797ae197f7c9 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.tailwind-cdn','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -402,7 +407,11 @@ unset($__defined_vars, $__key, $__value); ?>
                     'active' => request()->routeIs('admin.games.*', 'admin.templates.*', 'admin.blueprints.*'),
                     'items' => [
                         ['Games', route('admin.games.index'), 'controller', request()->routeIs('admin.games.*')],
-                        ['Templates', route('admin.templates.index'), 'cube', request()->routeIs('admin.templates.*')],
+                        // Excludes import explicitly: 'admin.templates.*' matches
+                        // 'admin.templates.import' too, so both entries lit up at
+                        // once and neither told you where you were.
+                        ['Templates', route('admin.templates.index'), 'cube',
+                            request()->routeIs('admin.templates.*') && ! request()->routeIs('admin.templates.import')],
                         ['Import Template', route('admin.templates.import'), 'download', request()->routeIs('admin.templates.import')],
                         ['Blueprints', route('admin.blueprints.index'), 'copy', request()->routeIs('admin.blueprints.*')],
                     ]],
@@ -548,26 +557,25 @@ unset($__defined_vars, $__key, $__value); ?>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <?php if($isAdmin): ?>
-                        <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('admin.servers.create')).'','icon' => 'plus','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('button'); ?>
+                        <?php if (isset($component)) { $__componentOriginal3926d578091497730d65289e5ea3ba49 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal3926d578091497730d65289e5ea3ba49 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.create-menu','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('create-menu'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e(route('admin.servers.create')).'','icon' => 'plus','size' => 'sm']); ?>
-                            <span class="hidden sm:inline">New Server</span><span class="sm:hidden">New</span>
-                         <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
-<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
-<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php if (isset($__attributesOriginal3926d578091497730d65289e5ea3ba49)): ?>
+<?php $attributes = $__attributesOriginal3926d578091497730d65289e5ea3ba49; ?>
+<?php unset($__attributesOriginal3926d578091497730d65289e5ea3ba49); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
-<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
-<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php if (isset($__componentOriginal3926d578091497730d65289e5ea3ba49)): ?>
+<?php $component = $__componentOriginal3926d578091497730d65289e5ea3ba49; ?>
+<?php unset($__componentOriginal3926d578091497730d65289e5ea3ba49); ?>
 <?php endif; ?>
                     <?php endif; ?>
                 </div>
@@ -647,6 +655,27 @@ unset($__defined_vars, $__key, $__value); ?>
             </nav>
         </div>
     </header>
+
+    <?php if (isset($component)) { $__componentOriginal81fc2c1cb3a33996210a2d0eb6512684 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal81fc2c1cb3a33996210a2d0eb6512684 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.impersonation-banner','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('impersonation-banner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal81fc2c1cb3a33996210a2d0eb6512684)): ?>
+<?php $attributes = $__attributesOriginal81fc2c1cb3a33996210a2d0eb6512684; ?>
+<?php unset($__attributesOriginal81fc2c1cb3a33996210a2d0eb6512684); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal81fc2c1cb3a33996210a2d0eb6512684)): ?>
+<?php $component = $__componentOriginal81fc2c1cb3a33996210a2d0eb6512684; ?>
+<?php unset($__componentOriginal81fc2c1cb3a33996210a2d0eb6512684); ?>
+<?php endif; ?>
 
     
     <main class="flex-1 py-8">

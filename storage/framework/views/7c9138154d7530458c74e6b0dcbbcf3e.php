@@ -156,14 +156,14 @@
         <div class="mt-6">
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Open Alerts','subtitle' => 'Nothing here is being acted on until somebody acknowledges it.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Open Alerts','icon' => 'warning','subtitle' => 'Nothing here is being acted on until somebody acknowledges it.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Open Alerts','subtitle' => 'Nothing here is being acted on until somebody acknowledges it.','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'Open Alerts','icon' => 'warning','subtitle' => 'Nothing here is being acted on until somebody acknowledges it.','flush' => true]); ?>
                  <?php $__env->slot('actions', null, []); ?> 
                     <form method="POST" action="<?php echo e(route('admin.alerts.ack-all')); ?>">
                         <?php echo csrf_field(); ?>
@@ -388,25 +388,25 @@
         <div class="lg:col-span-2 space-y-6">
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Nodes','subtitle' => 'Capacity is memory promised to servers against what the node can allocate.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Nodes','icon' => 'cpu','subtitle' => 'Capacity is memory promised to servers against what the node can allocate.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Nodes','subtitle' => 'Capacity is memory promised to servers against what the node can allocate.','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'Nodes','icon' => 'cpu','subtitle' => 'Capacity is memory promised to servers against what the node can allocate.','flush' => true]); ?>
                  <?php $__env->slot('actions', null, []); ?> 
                     <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('admin.nodes.index')).'','variant' => 'ghost','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('admin.nodes.index')).'','variant' => 'secondary','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e(route('admin.nodes.index')).'','variant' => 'ghost','size' => 'sm']); ?>See All <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['href' => ''.e(route('admin.nodes.index')).'','variant' => 'secondary','size' => 'sm']); ?>See All <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
 <?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
@@ -444,8 +444,8 @@
                                     <a href="<?php echo e(route('admin.nodes.show', $node)); ?>" class="font-medium text-brand-700 hover:text-brand-800"><?php echo e($node->name); ?></a>
                                 </td>
                                 <td class="text-slate-500"><?php echo e($node->location?->flag); ?> <?php echo e($node->location?->name); ?></td>
-                                <td class="vx-cell-wrap">
-                                    <span class="flex flex-wrap items-center gap-1">
+                                <td>
+                                    <span class="flex flex-nowrap items-center gap-1">
                                         <?php $__currentLoopData = $node->runtimes ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $runtime): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                             <?php if (isset($component)) { $__componentOriginal99cb7941a32bc885956a1a595193ad66 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal99cb7941a32bc885956a1a595193ad66 = $attributes; } ?>
@@ -482,7 +482,8 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($node->memoryAllocated()),'max' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($node->memoryCapacity())]); ?>
-                                        <?php echo e($node->memoryPressure()); ?>%
+                                        <?php echo e(\App\Support\Format::mibPair($node->memoryAllocated(), $node->memoryCapacity())); ?>
+
                                      <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal5ec38a558c9e3dae1794d3b23f1df1be)): ?>
@@ -540,25 +541,25 @@
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Servers','subtitle' => 'Sorted by the ones most likely to need you.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Servers','icon' => 'server','subtitle' => 'Sorted by the ones most likely to need you.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Servers','subtitle' => 'Sorted by the ones most likely to need you.','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'Servers','icon' => 'server','subtitle' => 'Sorted by the ones most likely to need you.','flush' => true]); ?>
                  <?php $__env->slot('actions', null, []); ?> 
                     <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('admin.servers.index')).'','variant' => 'ghost','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('admin.servers.index')).'','variant' => 'secondary','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e(route('admin.servers.index')).'','variant' => 'ghost','size' => 'sm']); ?>See All <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['href' => ''.e(route('admin.servers.index')).'','variant' => 'secondary','size' => 'sm']); ?>See All <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
 <?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
@@ -690,14 +691,14 @@
         <div class="space-y-6">
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Runtime Mix','subtitle' => 'Docker is not the only way to run a game server.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Runtime Mix','icon' => 'play','subtitle' => 'Docker is not the only way to run a game server.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Runtime Mix','subtitle' => 'Docker is not the only way to run a game server.']); ?>
+<?php $component->withAttributes(['title' => 'Runtime Mix','icon' => 'play','subtitle' => 'Docker is not the only way to run a game server.']); ?>
                 <div class="space-y-4">
                     <?php $__empty_1 = true; $__currentLoopData = $runtimes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $runtime => $count): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <div class="flex items-center justify-between gap-3">
@@ -740,25 +741,25 @@
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Recent Activity','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Recent Activity','icon' => 'book','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Recent Activity','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'Recent Activity','icon' => 'book','flush' => true]); ?>
                  <?php $__env->slot('actions', null, []); ?> 
                     <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('settings.audit.index')).'','variant' => 'ghost','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('settings.audit.index')).'','variant' => 'secondary','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e(route('settings.audit.index')).'','variant' => 'ghost','size' => 'sm']); ?>Audit Log <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['href' => ''.e(route('settings.audit.index')).'','variant' => 'secondary','size' => 'sm']); ?>Audit Log <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
 <?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
@@ -771,7 +772,7 @@
                  <?php $__env->endSlot(); ?>
                 <ul class="divide-y divide-slate-100">
                     <?php $__empty_1 = true; $__currentLoopData = $activity; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <li class="px-5 py-3 flex items-start gap-3">
+                        <li class="px-5 py-3.5 flex items-start gap-3">
                             <span class="mt-1.5"><?php if (isset($component)) { $__componentOriginale122a964aaade1f8044b1545740ce9f7 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale122a964aaade1f8044b1545740ce9f7 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.status-dot','data' => ['tone' => $entry->tone(),'label' => '']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -801,7 +802,7 @@
                         <li class="px-5 py-6 text-sm text-slate-500">Nothing recorded yet.</li>
                     <?php endif; ?>
                 </ul>
-             <?php echo $__env->renderComponent(); ?>
+ <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal53747ceb358d30c0105769f8471417f6)): ?>
 <?php $attributes = $__attributesOriginal53747ceb358d30c0105769f8471417f6; ?>

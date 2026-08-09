@@ -293,9 +293,12 @@
 <?php unset($__componentOriginal99cb7941a32bc885956a1a595193ad66); ?>
 <?php endif; ?>
                 </td>
+                
                 <td class="font-mono text-xs text-slate-500">
-                <?php echo e($server->address()); ?>
-
+                <?php if($server->connectAddress()): ?>
+                <span class="block truncate text-slate-700"><?php echo e($server->connectAddress()); ?></span>
+                <?php endif; ?>
+                <span class="block truncate"><?php echo e($server->address()); ?></span>
                 <span class="block font-sans text-slate-400"><?php echo e(\App\Support\Format::mib($server->memory)); ?> RAM</span>
                 </td>
                 <td><?php if (isset($component)) { $__componentOriginale122a964aaade1f8044b1545740ce9f7 = $component; } ?>

@@ -15,6 +15,8 @@ $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
     // back several buttons (e.g. which repository, which kind of task) without
     // the caller hand-rolling a form outside the modal.
     'fields' => [],
+    // Shown in place of the label once the action is on its way.
+    'working' => 'Working',
 ]));
 
 foreach ($attributes->all() as $__key => $__value) {
@@ -44,6 +46,8 @@ foreach (array_filter(([
     // back several buttons (e.g. which repository, which kind of task) without
     // the caller hand-rolling a form outside the modal.
     'fields' => [],
+    // Shown in place of the label once the action is on its way.
+    'working' => 'Working',
 ]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
@@ -55,6 +59,18 @@ foreach ($attributes->all() as $__key => $__value) {
 }
 
 unset($__defined_vars, $__key, $__value); ?>
+<?php
+    // match, not an array lookup with ??. The null coalesce binds to the whole
+    // concatenation rather than to the array access, so an unknown variant
+    // threw "Undefined array key" instead of falling back, and took every page
+    // carrying a confirm button with it.
+    $confirmTone = match ($confirmVariant) {
+        'danger' => 'bg-rose-600 text-white hover:bg-rose-700',
+        'secondary' => 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50',
+        default => 'bg-brand-600 text-white hover:bg-brand-700',
+    };
+    $confirmClasses = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed '.$confirmTone;
+?>
 
 <span x-data @click="$dispatch('open-modal', '<?php echo e($name); ?>')" class="inline-flex"><?php echo e($slot); ?></span>
 
@@ -71,41 +87,18 @@ unset($__defined_vars, $__key, $__value); ?>
     <?php echo e($message); ?>
 
      <?php $__env->slot('footer', null, []); ?> 
-        <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['variant' => 'secondary','size' => 'sm','xOn:click' => '$dispatch(\'close-modal\', \''.e($name).'\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('button'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['variant' => 'secondary','size' => 'sm','x-on:click' => '$dispatch(\'close-modal\', \''.e($name).'\')']); ?>Cancel <?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
-<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
-<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
-<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
-<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
-<?php endif; ?>
-        <form method="POST" action="<?php echo e($action); ?>">
-            <?php echo csrf_field(); ?>
-            <?php if($method !== 'POST'): ?><?php echo method_field($method); ?><?php endif; ?>
-            <?php $__currentLoopData = $fields; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $fieldName => $fieldValue): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                <input type="hidden" name="<?php echo e($fieldName); ?>" value="<?php echo e($fieldValue); ?>">
-            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        
+        <div x-data="{ busy: false }" class="flex items-center gap-2">
             <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['variant' => $confirmVariant,'size' => 'sm','icon' => $confirmIcon,'type' => 'submit']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['variant' => 'secondary','size' => 'sm','xOn:click' => '$dispatch(\'close-modal\', \''.e($name).'\')',':disabled' => 'busy']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['variant' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($confirmVariant),'size' => 'sm','icon' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($confirmIcon),'type' => 'submit']); ?><?php echo e($confirm); ?> <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['variant' => 'secondary','size' => 'sm','x-on:click' => '$dispatch(\'close-modal\', \''.e($name).'\')',':disabled' => 'busy']); ?>Cancel <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
 <?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
@@ -115,7 +108,49 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
 <?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
 <?php endif; ?>
-        </form>
+            <form method="POST" action="<?php echo e($action); ?>" @submit="busy = true">
+                <?php echo csrf_field(); ?>
+                <?php if($method !== 'POST'): ?><?php echo method_field($method); ?><?php endif; ?>
+                <?php $__currentLoopData = $fields; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $fieldName => $fieldValue): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <input type="hidden" name="<?php echo e($fieldName); ?>" value="<?php echo e($fieldValue); ?>">
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                
+                <button type="submit" x-bind:disabled="busy"
+                        class="<?php echo e($confirmClasses); ?>">
+                    
+                    <span x-show="busy" x-cloak style="display: none" class="inline-flex">
+                        
+                        <svg class="gm-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity="0.25" />
+                            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <?php if($confirmIcon): ?>
+                        <span x-show="! busy"><?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon','data' => ['name' => $confirmIcon,'class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($confirmIcon),'class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $attributes = $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__attributesOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc)): ?>
+<?php $component = $__componentOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
+<?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
+<?php endif; ?></span>
+                    <?php endif; ?>
+                    <span x-text="busy ? '<?php echo e($working); ?>' : '<?php echo e($confirm); ?>'"><?php echo e($confirm); ?></span>
+                </button>
+            </form>
+        </div>
      <?php $__env->endSlot(); ?>
  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>

@@ -40,11 +40,18 @@ unset($__defined_vars, $__key, $__value); ?>
     ][$tone] ?? 'from-brand-50';
 ?>
 
+
 <div x-data="{ open: false }"
      x-on:open-modal.window="if ($event.detail === '<?php echo e($name); ?>') open = true"
      x-on:close-modal.window="if ($event.detail === '<?php echo e($name); ?>') open = false"
-     x-on:keydown.escape.window="open = false"
-     x-show="open" x-cloak
+     x-on:keydown.escape.window="open = false">
+
+<style>
+    @keyframes gm-spin-kf { to { transform: rotate(360deg); } }
+    .gm-spin { animation: gm-spin-kf .7s linear infinite; }
+</style>
+<template x-teleport="body">
+<div x-show="open" x-cloak
      class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div x-show="open" x-transition.opacity.duration.200ms
          class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="open = false"></div>
@@ -121,5 +128,7 @@ unset($__defined_vars, $__key, $__value); ?>
             </div>
         <?php endif; ?>
     </div>
+</div>
+</template>
 </div>
 <?php /**PATH /var/www/gamemgr/resources/views/components/modal.blade.php ENDPATH**/ ?>
