@@ -246,7 +246,15 @@ class ModController extends ServerController
      */
     private function catalogueState(ModTarget $target, ?ModSource $source): array
     {
-        if ($target->loader === null) {
+        // Only the sources that place a file need to know the loader. This
+        // check used to be unconditional and disabled the search box on every
+        // ARK and Counter-Strike server, which have no Minecraft loader and
+        // never will. Third place the same assumption was hiding.
+        $needsLoader = $source !== null
+            && ! $source instanceof \App\Services\Mods\Contracts\NodeInstalledSource
+            && ! ($source instanceof \App\Services\Mods\Contracts\VariableManagedSource && $source->managesByList($target));
+
+        if ($needsLoader && $target->loader === null) {
             return [
                 'ok' => false,
                 'tone' => 'warn',

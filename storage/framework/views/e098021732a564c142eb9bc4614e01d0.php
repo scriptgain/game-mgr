@@ -185,7 +185,8 @@
 <?php endif; ?>
             </form>
 
-            <?php if($target->supported() && $source): ?>
+            
+            <?php if($source && $target->loader !== null): ?>
                 <p class="mt-2 text-sm text-slate-500">
                     Searching <?php echo e($source->label()); ?> for <?php echo e($target->loaderLabel); ?> files only, so nothing offered here is
                     something this server cannot load.
@@ -195,6 +196,12 @@
                         <span class="text-amber-700">This server's Minecraft version is not pinned, so results are not narrowed by version.</span>
                         Pin one on the Startup tab to filter by it.
                     <?php endif; ?>
+                </p>
+            <?php elseif($source instanceof \App\Services\Mods\Contracts\VariableManagedSource && $source->managesByList($target)): ?>
+                <p class="mt-2 text-sm text-slate-500">
+                    This game downloads its own mods. Installing one here adds it to
+                    <span class="font-mono text-xs"><?php echo e($source->listVariable()); ?></span>, and the server fetches it on its
+                    next start. Nothing is downloaded by the panel, so there is no checksum to verify.
                 </p>
             <?php endif; ?>
 
@@ -299,14 +306,14 @@
         <?php elseif($results === []): ?>
             <?php if (isset($component)) { $__componentOriginal074a021b9d42f490272b5eefda63257c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal074a021b9d42f490272b5eefda63257c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'search','title' => 'Nothing Matched','description' => 'No '.e($target->loaderLabel).' file matched that. Try a shorter or more general term.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'search','title' => 'Nothing Matched','description' => 'Nothing matched that'.e($target->loader ? ' for '.$target->loaderLabel : '').'. Try a shorter or more general term.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('empty-state'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['icon' => 'search','title' => 'Nothing Matched','description' => 'No '.e($target->loaderLabel).' file matched that. Try a shorter or more general term.']); ?>
+<?php $component->withAttributes(['icon' => 'search','title' => 'Nothing Matched','description' => 'Nothing matched that'.e($target->loader ? ' for '.$target->loaderLabel : '').'. Try a shorter or more general term.']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal074a021b9d42f490272b5eefda63257c)): ?>

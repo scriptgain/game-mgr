@@ -64,7 +64,10 @@
                 <x-button type="submit" icon="search" size="sm" :disabled="! $catalogue['ok']">Search</x-button>
             </form>
 
-            @if ($target->supported() && $source)
+            {{-- The loader and Minecraft version only mean anything to a
+                 Minecraft server. Saying "Searching for Unknown files" at an
+                 ARK owner is worse than saying nothing. --}}
+            @if ($source && $target->loader !== null)
                 <p class="mt-2 text-sm text-slate-500">
                     Searching {{ $source->label() }} for {{ $target->loaderLabel }} files only, so nothing offered here is
                     something this server cannot load.
@@ -74,6 +77,12 @@
                         <span class="text-amber-700">This server's Minecraft version is not pinned, so results are not narrowed by version.</span>
                         Pin one on the Startup tab to filter by it.
                     @endif
+                </p>
+            @elseif ($source instanceof \App\Services\Mods\Contracts\VariableManagedSource && $source->managesByList($target))
+                <p class="mt-2 text-sm text-slate-500">
+                    This game downloads its own mods. Installing one here adds it to
+                    <span class="font-mono text-xs">{{ $source->listVariable() }}</span>, and the server fetches it on its
+                    next start. Nothing is downloaded by the panel, so there is no checksum to verify.
                 </p>
             @endif
 
@@ -105,7 +114,7 @@
                            description="The search timed out or was rate limited. Nothing is broken, and everything already installed still works. Try again in a moment." />
         @elseif ($results === [])
             <x-empty-state icon="search" title="Nothing Matched"
-                           description="No {{ $target->loaderLabel }} file matched that. Try a shorter or more general term." />
+                           description="Nothing matched that{{ $target->loader ? ' for '.$target->loaderLabel : '' }}. Try a shorter or more general term." />
         @else
             <ul class="divide-y divide-slate-100">
                 @foreach ($results as $result)
