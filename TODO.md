@@ -3,15 +3,17 @@
 Internal. Not shipped: `deploy/build-release.sh` excludes it from the release
 tarball. Last updated 2026-08-09.
 
-Live test box: **gamemgr001.scriptgain.com** (45.63.49.152, SSH on port **22**,
-not 5410). Running Minecraft and Mumble. Connection names live under
-`play.scriptgain.com`. Full detail in `~/server-list.txt` and
-`~/servers/gamemgr001.scriptgain.com/CHANGELOG.md`.
+There is **no live GameMGR box any more**. gamemgr001 was destroyed on
+2026-08-09 once self-update had been proven twice unattended and ARK was done,
+and both of its Cloudflare records were deleted with it. Everything runs on the
+local dev stack at :8940 (`~/dev/gamemgr-docker-dev`, `make health`).
 
-Deploys to that box are **rsync over SSH**, which Allen authorised for it
-specifically: it was installed from a release tarball, is not a git checkout,
-and has no GitMGR entry. Back up first (`/root/gamemgr-backups/`). No php-fpm
-restart is needed; opcache there revalidates every 2 seconds.
+The rsync-over-SSH deploy Allen authorised was for that host specifically and
+died with it. Anything new needs its own decision. History and what the box
+proved: `~/servers/gamemgr001.scriptgain.com/CHANGELOG.md`.
+
+Loose end, not a GameMGR one: the cross-zone azcomputer Cloudflare token that
+lived on that box was never rotated. It can edit every zone on the account.
 
 ---
 
@@ -20,13 +22,10 @@ restart is needed; opcache there revalidates every 2 seconds.
 Nothing blocking. Every defect found is fixed and every claim is tested. The
 list below is all deferred work, each item wanting its own plan.
 
-**gamemgr001 has no unique job left.** Self-update was the last thing needing
-real hardware and it is proven twice, unattended: the box walked 1.0.0 to 1.1.0
-to 1.1.1 on the scheduler because `update_auto = 1`, verifying the checksum and
-archiving the previous install each time. Destroy it whenever you like, and
-delete BOTH Cloudflare records (`gamemgr001.scriptgain.com` and the
-`*.lax1.play.scriptgain.com` wildcard). Note that it cannot be reused as a
-manual-update test box without turning `update_auto` off first.
+**gamemgr001 is destroyed** and nothing is blocked on hardware. Self-update was
+the last thing that needed a real machine and it is proven: the box walked 1.0.0
+to 1.1.0 to 1.1.1 on its own scheduler, checksum-verified, archiving each
+previous install.
 
 ---
 
