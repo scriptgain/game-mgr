@@ -11,7 +11,9 @@ use App\Models\AuditLog;
 use App\Models\Node;
 use App\Models\Server;
 use App\Models\Template;
+use App\Jobs\MigrateServer;
 use App\Services\AllocationPlanner;
+use App\Services\ServerMigrator;
 use App\Services\NodeClient;
 use App\Support\Edition;
 use Illuminate\Http\Request;
@@ -246,6 +248,42 @@ class ServerController extends Controller
         ]);
     }
 
+    /**
+     * Move a server to another node.
+     *
+     * Answers immediately and does the work on the queue: copying a large world
+     * takes far longer than a request should live. Everything that can be
+     * checked is checked here, so an impossible migration is refused now rather
+     * than failing silently in a worker ten minutes later.
+     */
+    public function transfer(Request $request, Server $server, ServerMigrator $migrator)
+    {
+        $data = $request->validate([
+            'node_id' => ['required', 'exists:nodes,id'],
+        ]);
+
+        $target = Node::findOrFail($data['node_id']);
+
+        if ($reason = $migrator->reasonItCannotRun($server, $target)) {
+            return response()->json(['message' => $reason], 409);
+        }
+
+        MigrateServer::dispatch($server->id, $target->id);
+
+        return response()->json([
+            'object' => 'migration',
+            'attributes' => [
+                'server' => $server->uuid_short,
+                'from' => $server->node->name,
+                'to' => $target->name,
+                'status' => 'queued',
+            ],
+            'meta' => [
+                'note' => 'The server is offline for the transfer and its address will change. Its connection name follows automatically.',
+            ],
+        ], 202);
+    }
+
     private function firstNodeWithRoom(Template $template, array $data): ?Node
     {
         return Node::where('public', true)
@@ -263,5 +301,4 @@ class ServerController extends Controller
                 'value' => $environment[$variable->env_variable] ?? $variable->default_value,
             ]);
         }
-    }
-}
+    }}

@@ -96,6 +96,7 @@ Route::prefix('application')->name('api.app.')->middleware('api.token:applicatio
     Route::patch('servers/{server}/build', [App\Http\Controllers\Api\Application\ServerController::class, 'build'])->name('servers.build');
     Route::post('servers/{server}/suspend', [App\Http\Controllers\Api\Application\ServerController::class, 'suspend'])->name('servers.suspend');
     Route::post('servers/{server}/unsuspend', [App\Http\Controllers\Api\Application\ServerController::class, 'unsuspend'])->name('servers.unsuspend');
+    Route::post('servers/{server}/transfer', [App\Http\Controllers\Api\Application\ServerController::class, 'transfer'])->name('servers.transfer');
     Route::post('servers/{server}/reinstall', [App\Http\Controllers\Api\Application\ServerController::class, 'reinstall'])->name('servers.reinstall');
     Route::delete('servers/{server}', [App\Http\Controllers\Api\Application\ServerController::class, 'destroy'])->name('servers.destroy');
 });
