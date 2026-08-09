@@ -302,6 +302,7 @@ class ServerController extends Controller
             'server' => $server,
             'backlog' => $backlog,
             'streamUrl' => $client?->streamUrl($server),
+            'relayed' => $server->node?->connection_mode === 'reverse',
             'nodeCheck' => $nodeCheck,
             'memoryFloor' => $this->memoryFloor($server),
             'clientLinks' => $this->clientLinks($server),

@@ -294,9 +294,25 @@ class Node extends Model
 
     // ------------------------------------------------------------ transport
 
+    /**
+     * Where the panel dials this node.
+     *
+     * Only ever meaningful for a direct node. The old fallback to 127.0.0.1
+     * meant a reverse node, which has no fqdn by design, sent every call to the
+     * PANEL's own localhost: a request that either failed confusingly or, on a
+     * box running both, reached something it had no business reaching. A node
+     * with nowhere to dial now says so.
+     */
     public function daemonUrl(string $path = ''): string
     {
-        $host = $this->fqdn ?: '127.0.0.1';
+        $host = $this->fqdn ?: ($this->connection_mode === 'reverse' ? '' : '127.0.0.1');
+
+        if ($host === '') {
+            throw new \RuntimeException(
+                'Node "'.$this->name.'" connects out to the panel and has no address to dial. '
+                .'This call should have gone through App\\Services\\Node\\Transport.'
+            );
+        }
 
         return rtrim($this->scheme.'://'.$host.':'.$this->daemon_port, '/').'/'.ltrim($path, '/');
     }

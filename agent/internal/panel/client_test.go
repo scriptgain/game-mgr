@@ -146,7 +146,7 @@ func TestHeartbeatSendsBearerAndPanelFieldNames(t *testing.T) {
 
 	client := New(srv.URL, "long-lived-secret")
 	sample := Metrics{CPU: 12.5, Memory: 2048, Disk: 4096, Load: 0.75, Running: 3, AgentVersion: "0.1.0"}
-	if err := client.Heartbeat(context.Background(), sample); err != nil {
+	if _, err := client.Heartbeat(context.Background(), sample); err != nil {
 		t.Fatalf("Heartbeat: %v", err)
 	}
 
@@ -175,7 +175,7 @@ func TestHeartbeatUnauthorizedIsRecognisable(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	err := New(srv.URL, "revoked").Heartbeat(context.Background(), Metrics{})
+	_, err := New(srv.URL, "revoked").Heartbeat(context.Background(), Metrics{})
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("err = %v, want ErrUnauthorized", err)
 	}

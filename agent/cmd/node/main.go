@@ -248,7 +248,40 @@ func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, nod
 		sampler.ReportSFTP(true, sftpServer.Fingerprint())
 	}
 
-	panel.Heartbeat(ctx, client, interval, sampler.Sample)
+	// Reverse mode is started and stopped by what the panel says on each beat,
+	// so an admin can flip a node's transport without touching the node. That
+	// is not a convenience: a reverse node is by definition one behind somebody
+	// else's router, and "SSH in and edit a file" is not available.
+	var (
+		reverseCancel context.CancelFunc
+		reverseDone   chan struct{}
+	)
+	defer func() {
+		if reverseCancel != nil {
+			reverseCancel()
+			<-reverseDone
+		}
+	}()
+
+	panel.HeartbeatWith(ctx, client, interval, sampler.Sample, func(result panel.HeartbeatResult) {
+		switch {
+		case result.Reverse && reverseCancel == nil:
+			var rctx context.Context
+			rctx, reverseCancel = context.WithCancel(ctx)
+			reverseDone = make(chan struct{})
+
+			go func(done chan struct{}) {
+				defer close(done)
+				panel.ServeCalls(rctx, client, node.Handler(), node.CurrentToken, 0)
+			}(reverseDone)
+
+		case !result.Reverse && reverseCancel != nil:
+			log.Printf("panel says this node is direct now: stopping the reverse poller")
+			reverseCancel()
+			<-reverseDone
+			reverseCancel, reverseDone = nil, nil
+		}
+	})
 }
 
 // enroll exchanges the single-use token for the long-lived one, retrying until

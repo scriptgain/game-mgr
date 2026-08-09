@@ -329,8 +329,11 @@ document.addEventListener('alpine:init', () => {
      * page. Everything that differs between them is a config key, so there is
      * never a second console implementation to keep in step.
      *
-     *   streamUrl  SSE endpoint on the node (optional)
+     *   streamUrl  SSE endpoint on the node (optional, null for a reverse node)
      *   pollUrl    panel-side stats+backlog endpoint used when SSE never opens
+     *   relayed    this node connects out to the panel, so polling is the
+     *              normal mode here rather than a degraded one, and the label
+     *              says so instead of implying something is wrong
      *   backlog    server-rendered starting lines
      *   memory     memory limit in MiB, for the gauge
      *   cpuLimit   cpu limit in percent, for the gauge
@@ -413,7 +416,10 @@ document.addEventListener('alpine:init', () => {
         startPolling() {
             if (!config.pollUrl || this.poller) return;
             this.poll();
-            this.poller = setInterval(() => this.poll(), 5000);
+            // Faster for a relayed node, because this is not a fallback there:
+            // it is how that console works, and five seconds behind reads as
+            // broken when you are watching a server boot.
+            this.poller = setInterval(() => this.poll(), config.relayed ? 2000 : 5000);
         },
 
         stopPolling() {
@@ -478,7 +484,7 @@ document.addEventListener('alpine:init', () => {
         feedLabel() {
             if (this.connected) return 'Live';
             if (this.unreachable) return 'Node Unreachable';
-            if (this.polled) return 'Polling';
+            if (this.polled) return config.relayed ? 'Near Live' : 'Polling';
             return 'Reconnecting';
         },
 

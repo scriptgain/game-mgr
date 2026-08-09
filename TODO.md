@@ -22,6 +22,10 @@ lived on that box was never rotated. It can edit every zone on the account.
 Nothing blocking. Every defect found is fixed and every claim is tested. The
 list below is all deferred work, each item wanting its own plan.
 
+Cloud and billing are both waiting on a launch decision rather than on code,
+and Allen's position as of 2026-08-09 is that they are a long way off: the panel
+is free and self-hosters install it themselves. Nothing to build there yet.
+
 **gamemgr001 is destroyed** and nothing is blocked on hardware. Self-update was
 the last thing that needed a real machine and it is proven: the box walked 1.0.0
 to 1.1.0 to 1.1.1 on its own scheduler, checksum-verified, archiving each
@@ -34,8 +38,7 @@ previous install.
 | Item | Effort | Why not yet |
 |---|---|---|
 | Hosted Cloud product | XL | The panel is free. The paid thing is hosted GameMGR, and it does not exist. The site should say "Cloud, coming soon" and nothing else until it does. Not a gating problem: `Edition` already gates templates |
-| ARK Workshop placement | L | Items land in `steamapps/workshop/content/...`, but ARK wants them unpacked into `ShooterGame/Content/Mods` with `.z` expanded. Needs a real ARK server, a 15 GB download. CS2 and Garry's Mod work today |
-| Reverse-mode transport | L | Schema, UI and config all exist; the tunnel does not. Real networking, 1-2 days |
+| ARK: Survival **Evolved** template | L | A DIFFERENT GAME from the ASA we support, and the only reason the Workshop unpacker matters: ASE reads mods from `ShooterGame/Content/Mods` with `.z` files expanded, not from `steamapps/workshop/content/`. Nothing today is broken by this. **ASA mods are done** and work by a different mechanism entirely: Wildcard locked distribution, so every ASA mod is `allowModDistribution: false` and the server fetches its own from a `MOD_IDS` list. CS2 and Garry's Mod read straight out of the workshop directory and work today |
 | Billing and ordering | XL | Needs a product plan first |
 | Modpacks, plugin dependency resolution | — | Deliberately out of scope in the approved mod plan |
 
@@ -101,6 +104,17 @@ previous install.
   "Stoped the server"
 - **Self-update works, proven twice unattended**, 1.0.0 to 1.1.0 to 1.1.1. The
   release channel is live on scriptgain.com
+- **Reverse mode works.** A node behind NAT is now genuinely usable: the panel
+  parks each call in `node_calls`, the daemon's own long poll collects it and
+  serves it against the SAME mux a direct node exposes, so every daemon
+  capability works over the tunnel without a second implementation. Proved on
+  the dev stack's second real daemon with its transport flipped to reverse and
+  no address to dial at all: created a Paper server, installed it with live
+  progress, started it, read the console, edited and uploaded files, took a
+  227 MB backup, installed ViaVersion from Modrinth, deleted the server. Calls
+  round-trip in about 120 ms. Three things do not fit and say so instead of
+  failing oddly: SFTP, backup downloads, and uploads over 8 MB. Migrating OFF a
+  reverse node is refused up front for the same reason
 - **The API reference documents request bodies**, generated from the validation
   rules rather than from a hand-written copy of them: 33 of 44 write endpoints,
   with the other 11 named in a test as genuinely taking none. Doing it found
@@ -114,4 +128,8 @@ previous install.
   whole life. Verify the ARTIFACT, hashed and cache-busted, never just the
   manifest
 
-Current: **331 tests**, **100 routes clean** in `make health`. Panel version **1.1.1**.
+Current: **345 tests**, **100 routes clean** in `make health`. Panel version **1.1.1**.
+
+The dev stack's `node2` is left in **reverse** mode with a stopped server on it,
+so the tunnel is exercised by ordinary use rather than only by its tests. Flip
+it back with `connection_mode = direct` and an fqdn of `node2:8942`.

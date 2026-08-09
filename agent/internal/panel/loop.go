@@ -16,19 +16,28 @@ const MaxBackoff = 5 * time.Minute
 // when the panel does not answer. It never returns an error and never touches a
 // server: an unreachable panel is a reporting outage, not an outage.
 func Heartbeat(ctx context.Context, c *Client, interval time.Duration, sample func(context.Context) Metrics) {
-	heartbeat(ctx, c, interval, sample, time.After)
+	HeartbeatWith(ctx, c, interval, sample, nil)
+}
+
+// HeartbeatWith is Heartbeat plus a look at what the panel answered. Used for
+// the one thing the panel tells a node this way: whether it is in reverse mode.
+// The callback runs on every successful beat, not only on a change, so the
+// caller decides what counts as a change.
+func HeartbeatWith(ctx context.Context, c *Client, interval time.Duration, sample func(context.Context) Metrics, onResult func(HeartbeatResult)) {
+	heartbeat(ctx, c, interval, sample, time.After, onResult)
 }
 
 // after is injected so the tests can observe the delays the loop asks for
 // without spending them.
-func heartbeat(ctx context.Context, c *Client, interval time.Duration, sample func(context.Context) Metrics, after func(time.Duration) <-chan time.Time) {
+func heartbeat(ctx context.Context, c *Client, interval time.Duration, sample func(context.Context) Metrics, after func(time.Duration) <-chan time.Time, onResult func(HeartbeatResult)) {
 	if interval <= 0 {
 		interval = 30 * time.Second
 	}
 
 	failures := 0
 	for {
-		if err := c.Heartbeat(ctx, sample(ctx)); err != nil {
+		result, err := c.Heartbeat(ctx, sample(ctx))
+		if err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -42,6 +51,10 @@ func heartbeat(ctx context.Context, c *Client, interval time.Duration, sample fu
 				log.Printf("panel reachable again after %d failed %s", failures, plural("heartbeat", failures))
 			}
 			failures = 0
+
+			if onResult != nil {
+				onResult(result)
+			}
 		}
 
 		select {

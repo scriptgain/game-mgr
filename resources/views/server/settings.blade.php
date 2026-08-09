@@ -119,7 +119,19 @@
                  host for a login that will be refused is worse than no card. --}}
             @can('check', [$server, 'file.sftp'])
                 <x-card title="File Access" icon="folder">
-                    @if ($server->node?->sftp_enabled)
+                    @if ($server->node?->connection_mode === 'reverse')
+                        {{-- The daemon may well have SFTP running and report it
+                             happily. It is still unreachable: nothing on this
+                             node accepts an inbound connection, which is the
+                             entire reason it is in reverse mode. Printing a
+                             host here would be printing one nobody can use. --}}
+                        <x-alert type="info" title="This Node Is Not Reachable For SFTP">
+                            It connects out to the panel rather than accepting connections, so an SFTP client has
+                            nothing to dial. Use the
+                            <a href="{{ route('server.files', $server) }}" class="font-medium underline">file manager</a>,
+                            which reaches this node the same way the panel does.
+                        </x-alert>
+                    @elseif ($server->node?->sftp_enabled)
                         <div class="space-y-4">
                             <x-copy-field label="Host" :value="$server->sftpHost()" />
                             <x-copy-field label="Username" :value="$server->sftpUsername(auth()->user())" />

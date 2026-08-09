@@ -33,4 +33,37 @@ return [
     // Enroll tokens are single use and expire quickly; they only ever buy the
     // daemon its long-lived credential.
     'enroll_token_ttl' => 3600,
+
+    /*
+     * Reverse mode: a node behind NAT that dials the panel instead of being
+     * dialled. Work is parked in node_calls and the daemon's own long poll
+     * collects it.
+     *
+     * WHAT IT COSTS, because it is the honest headline of this feature: one
+     * PHP-FPM worker per reverse node while its poll is parked, plus one more
+     * for the duration of each call the panel makes. A handful of nodes on a
+     * self-hosted panel is nothing. A hundred is a worker pool, and the answer
+     * there is direct nodes, not a bigger pool.
+     */
+    'reverse' => [
+        // How long a daemon's poll may wait before being told to come back.
+        // Long enough that an idle node costs one request every half minute,
+        // short enough to sit inside any sane proxy read timeout.
+        'poll_hold' => (int) env('NODE_REVERSE_POLL_HOLD', 25),
+
+        // How often both sides look at the row. 100ms is imperceptible on a
+        // button press and cheap on an indexed primary key.
+        'poll_interval_ms' => (int) env('NODE_REVERSE_POLL_INTERVAL_MS', 100),
+
+        // The largest body that can travel inside a parked row, in bytes. A
+        // reverse node has no other channel, so an upload has to fit in the
+        // database. 8 MB covers the config files people actually edit and
+        // refuses the modpack that would otherwise be base64 in three places
+        // at once.
+        'max_payload' => (int) env('NODE_REVERSE_MAX_PAYLOAD', 8 * 1024 * 1024),
+
+        // How long finished calls stay before the prune drops them. They are
+        // only useful while somebody is waiting; the hour is for debugging.
+        'prune_after' => (int) env('NODE_REVERSE_PRUNE_AFTER', 3600),
+    ],
 ];

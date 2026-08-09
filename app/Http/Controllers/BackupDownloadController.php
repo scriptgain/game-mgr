@@ -23,6 +23,18 @@ class BackupDownloadController extends Controller
         $record = $server->backups()->where('uuid', $backup)->firstOrFail();
         abort_unless($record->is_successful, 404);
 
+        // A reverse node has no channel wide enough for an archive: the only
+        // way to it is a parked call, and a backup is routinely tens of
+        // gigabytes. Said plainly and early, because the alternative is a
+        // download that starts and then fails at an unpredictable size.
+        abort_if(
+            $server->node?->connection_mode === 'reverse',
+            409,
+            'This node connects out to the panel rather than accepting connections, so backups cannot be '
+            .'downloaded through it. Restore the backup onto the server and take the files from there, or '
+            .'move the server to a directly reachable node.',
+        );
+
         $stream = NodeClient::for($server->node)->downloadBackup($server, $record->uuid);
         abort_if($stream === null, 502, 'The node could not produce that backup.');
 

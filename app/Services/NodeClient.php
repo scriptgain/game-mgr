@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Node;
 use App\Models\Server;
+use App\Services\Node\DirectTransport;
+use App\Services\Node\Transport;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -18,10 +20,19 @@ use Illuminate\Support\Facades\Log;
  * When config('node.fake') is on and a daemon is unreachable, synthetic data is
  * returned instead. That keeps every screen exercisable while the real runtime
  * drivers are still being written, and it is what the local dev stack uses.
+ *
+ * HOW IT REACHES THE NODE is not this class's business. A direct node is
+ * dialled and a reverse node behind NAT has the work parked for its own poll to
+ * collect, and both come back through App\Services\Node\Transport answering the
+ * same way: a response, or null for "did not answer". Every method here was
+ * written against that convention before reverse mode existed, which is why
+ * adding it changed almost nothing below.
  */
 class NodeClient
 {
     public function __construct(private Node $node) {}
+
+    private ?Transport $transport = null;
 
     public static function for(Node $node): self
     {
@@ -36,14 +47,18 @@ class NodeClient
         return $this->get('/api/system');
     }
 
-    /** Is the daemon answering right now? Costs one short request. */
+    /**
+     * Is the daemon answering right now? Costs one short request.
+     *
+     * Only ever asked of a direct node: `nodes:poll` judges a reverse node on
+     * how recently it called in, because dialling one is the thing that cannot
+     * be done. Answered here anyway, over whichever transport it has, so a
+     * caller that asks about a reverse node gets the truth rather than a false
+     * "offline".
+     */
     public function ping(): bool
     {
-        try {
-            return $this->http()->timeout(3)->get($this->node->daemonUrl('/healthz'))->successful();
-        } catch (\Throwable $e) {
-            return false;
-        }
+        return (bool) $this->transport()->send('GET', '/healthz', timeout: 3)?->ok();
     }
 
     // --------------------------------------------------------------- server
@@ -105,8 +120,17 @@ class NodeClient
      * needs the one open port; in production the browser goes straight to the
      * node with a short-lived token.
      */
-    public function streamUrl(Server $server): string
+    public function streamUrl(Server $server): ?string
     {
+        // Null for a reverse node. There is no socket to hold open to a box
+        // behind somebody's router, so the console falls back to polling the
+        // panel, which reaches the node over the tunnel like everything else.
+        // The console already had that fallback for a node whose SSE never
+        // opened; this just tells it not to try first.
+        if (! $this->transport() instanceof DirectTransport) {
+            return null;
+        }
+
         $query = http_build_query($this->serverQuery($server));
 
         return url("/daemon/api/servers/{$server->uuid}/stream?".$query);
@@ -123,18 +147,16 @@ class NodeClient
 
     public function readFile(Server $server, string $path): ?string
     {
-        try {
-            $res = $this->http()->get(
-                $this->node->daemonUrl("/api/servers/{$server->uuid}/files/contents"),
-                $this->serverQuery($server) + ['path' => $path],
-            );
+        // Not get(): a file's contents are the body, and decoding them as JSON
+        // would turn every config file that happens to start with a brace into
+        // an array and everything else into null.
+        $res = $this->transport()->send(
+            'GET',
+            "/api/servers/{$server->uuid}/files/contents",
+            $this->serverQuery($server) + ['path' => $path],
+        );
 
-            return $res->successful() ? $res->body() : null;
-        } catch (\Throwable $e) {
-            $this->note($e);
-
-            return null;
-        }
+        return $res?->ok() ? $res->body : null;
     }
 
     public function writeFile(Server $server, string $path, string $content): bool
@@ -164,47 +186,28 @@ class NodeClient
      */
     public function upload(Server $server, string $path, $body, int $maxBytes, ?int $bytes = null): array
     {
-        try {
-            $request = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
-                ->withOptions([
-                    'connect_timeout' => 10,
-                    // A large file over a slow link is minutes, not seconds, so
-                    // the ten second default every other call uses would abort
-                    // exactly the uploads this exists for.
-                    'read_timeout' => (int) config('node.upload_timeout', 3600),
-                    'timeout' => (int) config('node.upload_timeout', 3600),
-                ])
-                ->withBody($body, 'application/octet-stream');
+        $res = $this->transport()->sendRaw(
+            'POST',
+            "/api/servers/{$server->uuid}/files/upload",
+            $this->serverQuery($server) + ['path' => $path, 'max_bytes' => $maxBytes],
+            $body,
+            $bytes,
+        );
 
-            // Guzzle cannot measure a stream it did not open, and without a
-            // length it falls back to chunked. The daemon copes either way, but
-            // a declared length lets it refuse an oversized upload before the
-            // bytes are sent rather than after.
-            if ($bytes !== null) {
-                $request = $request->withHeaders(['Content-Length' => (string) $bytes]);
-            }
-
-            $query = http_build_query($this->serverQuery($server) + [
-                'path' => $path,
-                'max_bytes' => $maxBytes,
-            ]);
-
-            $res = $request->post($this->node->daemonUrl("/api/servers/{$server->uuid}/files/upload").'?'.$query);
-
-            if ($res->successful()) {
-                return (array) $res->json();
-            }
-
-            // The daemon's own wording, which is more specific than anything
-            // that could be invented here, and 413 in particular is a message
-            // the person uploading can act on.
-            return ['ok' => false, 'error' => (string) ($res->json('error') ?: 'The node refused the upload (HTTP '.$res->status().').')];
-        } catch (\Throwable $e) {
-            $this->note($e);
-
+        if ($res === null) {
             return ['ok' => false, 'error' => 'Lost contact with the node during the upload.'];
         }
+
+        if ($res->ok()) {
+            return (array) $res->json();
+        }
+
+        // The daemon's own wording, which is more specific than anything that
+        // could be invented here, and 413 in particular is a message the person
+        // uploading can act on. A reverse node's size refusal arrives the same
+        // way, so there is one path for "too big" rather than two.
+        return ['ok' => false, 'error' => (string) (($res->json()['error'] ?? null)
+            ?: 'The node refused the upload (HTTP '.$res->status.').')];
     }
 
     public function deleteFiles(Server $server, array $paths): bool
@@ -237,18 +240,17 @@ class NodeClient
      */
     public function downloadBackup(Server $server, string $backupUuid)
     {
-        try {
-            $response = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
-                ->withOptions(['stream' => true, 'connect_timeout' => 10, 'read_timeout' => 3600])
-                ->get($this->node->daemonUrl("/api/servers/{$server->uuid}/backups/{$backupUuid}"));
+        $transport = $this->transport();
 
-            return $response->successful() ? $response->toPsrResponse()->getBody() : null;
-        } catch (\Throwable $e) {
-            $this->note($e);
-
+        // A reverse node has no way to hand over forty gigabytes: the only
+        // channel to it is a parked row. Null here is what the caller already
+        // renders as "the node could not provide this backup", and the file
+        // manager's message names the reason.
+        if (! $transport instanceof DirectTransport) {
             return null;
         }
+
+        return $transport->stream("/api/servers/{$server->uuid}/backups/{$backupUuid}");
     }
 
     /**
@@ -387,23 +389,34 @@ class NodeClient
      */
     public function destroy(Server $server): bool
     {
-        try {
-            $response = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
-                ->timeout(60)
-                ->delete($this->node->daemonUrl("/api/servers/{$server->uuid}"), [
-                    'server' => $server->daemonPayload(),
-                ]);
-
-            return $response->successful();
-        } catch (\Throwable $e) {
-            report($e);
-
-            return false;
-        }
+        return (bool) $this->transport()->send(
+            'DELETE',
+            "/api/servers/{$server->uuid}",
+            body: ['server' => $server->daemonPayload()],
+            timeout: 60,
+        )?->ok();
     }
 
+    /**
+     * Run an install and report every line of it as it happens.
+     *
+     * Two shapes, because an install is the one call that streams for hours.
+     * A direct node holds an SSE connection open. A reverse node cannot, so the
+     * daemon posts its output back in batches against the parked call and this
+     * reads them as they land: the same callback, the same progress bar, a
+     * second or two behind.
+     */
     public function install(Server $server, callable $onLine, int $maxSeconds = 21600, bool $wipe = false): bool
+    {
+        $transport = $this->transport();
+
+        return $transport instanceof DirectTransport
+            ? $this->installDirect($transport, $server, $onLine, $maxSeconds, $wipe)
+            : $this->installRelayed($server, $onLine, $maxSeconds, $wipe);
+    }
+
+    /** The streaming install, unchanged: hold the SSE open and read lines. */
+    private function installDirect(DirectTransport $transport, Server $server, callable $onLine, int $maxSeconds, bool $wipe): bool
     {
         try {
             $response = Http::withToken($this->daemonToken())
@@ -479,47 +492,97 @@ class NodeClient
         }
     }
 
+    /**
+     * The reverse case: park the install, then follow the progress it appends.
+     *
+     * Polled once a second rather than the transport's 100ms. An install is
+     * minutes to hours and its output is already batched by the daemon, so a
+     * tighter loop would be thousands of extra queries to learn nothing.
+     */
+    private function installRelayed(Server $server, callable $onLine, int $maxSeconds, bool $wipe): bool
+    {
+        $call = \App\Models\NodeCall::park(
+            $this->node,
+            'POST',
+            "/api/servers/{$server->uuid}/install",
+            [],
+            json_encode(['server' => $server->daemonPayload(), 'wipe' => $wipe]),
+            $maxSeconds,
+        );
+
+        $read = 0;
+        $failed = false;
+        $deadline = time() + $maxSeconds;
+
+        while (time() < $deadline) {
+            $row = \App\Models\NodeCall::select(['state', 'progress', 'response_status'])->find($call->id);
+
+            if (! $row) {
+                $onLine('error', 'The install record went away while it was running.');
+
+                return false;
+            }
+
+            $progress = (string) $row->progress;
+            if (strlen($progress) > $read) {
+                // Only whole lines. A batch can land mid-line, and half a
+                // SteamCMD progress line parsed as a percentage is a progress
+                // bar that jumps backwards.
+                $fresh = substr($progress, $read);
+                $lastBreak = strrpos($fresh, "\n");
+                if ($lastBreak !== false) {
+                    $read += $lastBreak + 1;
+                    foreach (explode("\n", substr($fresh, 0, $lastBreak)) as $line) {
+                        if ($line === '') {
+                            continue;
+                        }
+                        [$event, $data] = array_pad(explode("\t", $line, 2), 2, '');
+                        // Same rule as the streaming path: an install that
+                        // emits an error event failed, whatever status the SSE
+                        // response itself carried. Without this a reverse
+                        // install that died would be recorded as successful,
+                        // because SSE answers 200 before it knows.
+                        if ($event === 'error') {
+                            $failed = true;
+                        }
+                        $onLine($event ?: 'message', $data);
+                    }
+                }
+            }
+
+            if ($row->state === 'done') {
+                return ! $failed
+                    && (int) $row->response_status >= 200
+                    && (int) $row->response_status < 300;
+            }
+
+            sleep(1);
+        }
+
+        $onLine('error', 'The install ran past '.$maxSeconds.' seconds and was abandoned.');
+
+        return false;
+    }
+
     // ------------------------------------------------------------- internals
 
-    private function http()
+    private function transport(): Transport
     {
-        return Http::withToken($this->daemonToken())
-            ->timeout((int) config('node.timeout', 10))
-            ->acceptJson()
-            // Self-signed certificates are the norm on a freshly installed
-            // node, and the bearer token is what actually authenticates the
-            // call. Verification is enforced once a node has a real cert.
-            ->withoutVerifying();
+        return $this->transport ??= Transport::for($this->node);
     }
 
     private function get(string $path, array $query = []): ?array
     {
-        try {
-            $res = $this->http()->get($this->node->daemonUrl($path), $query);
+        $res = $this->transport()->send('GET', $path, $query);
 
-            return $res->successful() ? (array) $res->json() : null;
-        } catch (\Throwable $e) {
-            $this->note($e);
-
-            return null;
-        }
+        return $res?->ok() ? (array) $res->json() : null;
     }
 
     private function post(string $path, array $body = [], ?int $timeout = null): ?array
     {
-        try {
-            $client = $this->http();
-            if ($timeout !== null) {
-                $client = $client->timeout($timeout);
-            }
-            $res = $client->post($this->node->daemonUrl($path), $body);
+        $res = $this->transport()->send('POST', $path, body: $body, timeout: $timeout);
 
-            return $res->successful() ? (array) $res->json() : null;
-        } catch (\Throwable $e) {
-            $this->note($e);
-
-            return null;
-        }
+        return $res?->ok() ? (array) $res->json() : null;
     }
 
     /**

@@ -27,6 +27,9 @@ class ConsoleController extends ServerController
             'server' => $server,
             'backlog' => NodeClient::for($server->node)->logs($server, 150),
             'streamUrl' => NodeClient::for($server->node)->streamUrl($server),
+            // No stream to hold open to a node behind NAT; the console polls
+            // instead and labels itself honestly.
+            'relayed' => $server->node?->connection_mode === 'reverse',
         ]);
     }
 

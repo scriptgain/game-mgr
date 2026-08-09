@@ -62,6 +62,12 @@ func (s *Server) currentToken() string {
 	return token
 }
 
+// CurrentToken is currentToken for the reverse poller, which serves calls
+// against this same handler and has to present the same credential the panel
+// would have sent over a socket. Read through the atomic, not captured once:
+// enrollment can swap the token after the poller has started.
+func (s *Server) CurrentToken() string { return s.currentToken() }
+
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 

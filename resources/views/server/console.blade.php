@@ -3,6 +3,7 @@
 
     <div x-data="gameConsole({
             streamUrl: @js($streamUrl),
+            relayed: @js($relayed),
             pollUrl: @js(route('server.stats', $server)),
             backlog: @js($backlog),
             memory: {{ (int) $server->memory }},

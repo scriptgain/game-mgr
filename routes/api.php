@@ -189,6 +189,15 @@ Route::prefix('node')->name('api.node.')->group(function () {
         // that guards the web file manager.
         Route::post('sftp/authenticate', [\App\Http\Controllers\Api\NodeApiController::class, 'sftpAuthenticate']);
         Route::get('servers', [\App\Http\Controllers\Api\NodeApiController::class, 'servers']);
+
+        /*
+         * Reverse mode. A node behind NAT holds a long poll on the first of
+         * these, does the work against its own HTTP API, and reports back on
+         * the others. Every one is scoped to the calling node.
+         */
+        Route::get('calls', [\App\Http\Controllers\Api\NodeCallController::class, 'next']);
+        Route::post('calls/{uuid}/progress', [\App\Http\Controllers\Api\NodeCallController::class, 'progress']);
+        Route::post('calls/{uuid}/result', [\App\Http\Controllers\Api\NodeCallController::class, 'result']);
         Route::post('servers/{uuid}/state', [\App\Http\Controllers\Api\NodeApiController::class, 'state']);
     });
 });

@@ -78,7 +78,7 @@ func TestHeartbeatBacksOffRatherThanHotLooping(t *testing.T) {
 		return ch
 	}
 
-	heartbeat(ctx, New(srv.URL, "token"), interval, func(context.Context) Metrics { return Metrics{} }, after)
+	heartbeat(ctx, New(srv.URL, "token"), interval, func(context.Context) Metrics { return Metrics{} }, after, nil)
 
 	if len(waits) < 6 {
 		t.Fatalf("the loop asked for %d waits before it stopped, want at least 6", len(waits))
@@ -122,7 +122,7 @@ func TestHeartbeatHoldsTheIntervalWhileHealthy(t *testing.T) {
 		return ch
 	}
 
-	heartbeat(ctx, New(srv.URL, "token"), interval, func(context.Context) Metrics { return Metrics{} }, after)
+	heartbeat(ctx, New(srv.URL, "token"), interval, func(context.Context) Metrics { return Metrics{} }, after, nil)
 
 	for i, got := range waits {
 		if got < interval-interval/10 || got > interval+interval/10 {

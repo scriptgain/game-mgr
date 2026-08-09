@@ -85,10 +85,24 @@ func (c *Client) Enroll(ctx context.Context, enrollToken string, facts Facts) (*
 	return &out, nil
 }
 
+// HeartbeatResult is what the panel says back. Small on purpose: the heartbeat
+// is the one call that always happens, so it is where the panel tells the node
+// things it needs to know without inventing a second channel for them.
+type HeartbeatResult struct {
+	// Whether this node is in reverse mode. The node does not decide this and
+	// does not read it from its own config: an admin flips it in the panel and
+	// the node finds out on its next beat, which matters because a reverse node
+	// is by definition one nobody can log into to edit a file.
+	Reverse bool `json:"reverse"`
+}
+
 // Heartbeat tells the panel the node is alive and hands over one metrics
 // sample. The panel's agent.auth middleware reads a plain bearer token.
-func (c *Client) Heartbeat(ctx context.Context, m Metrics) error {
-	return c.post(ctx, "/api/node/heartbeat", m, nil)
+func (c *Client) Heartbeat(ctx context.Context, m Metrics) (HeartbeatResult, error) {
+	var out HeartbeatResult
+	err := c.post(ctx, "/api/node/heartbeat", m, &out)
+
+	return out, err
 }
 
 func (c *Client) post(ctx context.Context, path string, body, out any) error {

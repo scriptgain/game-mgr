@@ -26,7 +26,7 @@
             <span class="font-medium text-slate-900 truncate">{{ $title }}</span>
             <span class="inline-flex items-center gap-1.5 text-xs shrink-0"
                   :class="connected ? 'text-emerald-600' : (unreachable ? 'text-rose-600' : (polled ? 'text-amber-600' : 'text-slate-400'))"
-                  data-tip="Live means the browser holds an event stream open to the node. Polling means the stream is unavailable and the panel is fetching output on your behalf. Node Unreachable means the panel could not reach the daemon either, so nothing on screen was measured.">
+                  data-tip="Live means the browser holds an event stream open to the node. Near Live means this node connects out to the panel rather than accepting connections, so output is fetched every couple of seconds instead of streamed. Polling means the stream is unavailable and the panel is fetching output on your behalf. Node Unreachable means the panel could not reach the daemon either, so nothing on screen was measured.">
                 <span class="relative flex h-1.5 w-1.5">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70"
                           x-show="connected" x-cloak></span>

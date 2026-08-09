@@ -131,7 +131,15 @@ class NodeApiController extends Controller
             'running_count' => (int) ($data['running'] ?? 0),
         ]);
 
-        return response()->json(['ok' => true]);
+        // The node learns its own transport mode from the panel rather than
+        // from a config file it was installed with. Switching a node to reverse
+        // in the admin screen then takes effect within one heartbeat, with no
+        // re-enrollment and nothing to edit on a box that may be in somebody's
+        // house behind a router nobody can reach.
+        return response()->json([
+            'ok' => true,
+            'reverse' => $node->connection_mode === 'reverse',
+        ]);
     }
 
     /** Everything this node should be running, with full startup detail. */

@@ -37,7 +37,12 @@ class Housekeeping extends Command
             ->where('created_at', '<', now()->subHours(6))
             ->update(['failure_reason' => 'Abandoned: the node never reported a result.', 'completed_at' => now()]);
 
-        $this->info("Trimmed {$m} server metrics, {$n} node metrics, {$p} player events, {$a} audit rows. Marked {$stuck} stuck backups as failed.");
+        // Reverse-mode call rows. Only useful while somebody is waiting on
+        // one, so what is left here is finished work and calls whose deadline
+        // passed without an answer.
+        $c = \App\Models\NodeCall::prune();
+
+        $this->info("Trimmed {$m} server metrics, {$n} node metrics, {$p} player events, {$a} audit rows, {$c} node calls. Marked {$stuck} stuck backups as failed.");
 
         return self::SUCCESS;
     }

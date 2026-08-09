@@ -71,6 +71,19 @@
                         Reverse mode is what makes a machine on a domestic connection usable without port forwarding or
                         a static address, which is the case Pterodactyl has no answer for at all.
                     </p>
+                    <p>
+                        Work is parked for the daemon and collected by its own outbound poll, so a Start behaves the
+                        way it does on a directly reachable node. Three things do not fit down that connection, and
+                        the panel says so rather than failing oddly: <strong>SFTP</strong> needs something to dial and
+                        there is nothing, <strong>backup downloads</strong> are far too large for it, and
+                        <strong>uploads</strong> are capped at 8 MB. The file manager, the console and every other
+                        control work normally.
+                    </p>
+                    <p>
+                        It costs the panel one PHP-FPM worker per reverse node while its poll is parked, and one more
+                        for the length of each call. That is nothing for the handful of nodes a self-hosted panel
+                        has and it does not scale to hundreds, where the answer is directly reachable nodes.
+                    </p>
                 </div>
             </x-card>
         </div>

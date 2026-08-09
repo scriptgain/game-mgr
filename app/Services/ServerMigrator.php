@@ -46,6 +46,19 @@ class ServerMigrator
         if ($server->power_state !== 'offline') {
             return 'Stop the server first. A migration copies its files, and copying them while it is writing to them produces a world nobody wants.';
         }
+        // A migration works by having the TARGET fetch the archive through the
+        // panel, which streams it from the source node. A reverse source has no
+        // channel wide enough for that: the only way to it is a parked call.
+        // Refused here, with the reason, rather than failing halfway through
+        // with "could not fetch the archive" and a server in limbo.
+        //
+        // A reverse TARGET is fine. It does the fetching, and dialling out is
+        // the one thing it can do.
+        if ($server->node?->connection_mode === 'reverse') {
+            return $server->node->name.' connects out to the panel rather than accepting connections, so its files '
+                .'cannot be streamed to another node. Move the server off this node by hand, or give the node a '
+                .'reachable address first.';
+        }
         if (! $target->supports($server->runtime)) {
             return $target->name.' cannot run '.$server->runtime.' servers.';
         }
