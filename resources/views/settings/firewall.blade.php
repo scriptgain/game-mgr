@@ -93,15 +93,14 @@
                             <thead>
                                 <tr>
                                     <th class="w-10">
-                                        <button type="button" role="switch"
-                                            :aria-checked="(allIds.length > 0 && selected.length === allIds.length).toString()"
-                                            @click="selected = (allIds.length > 0 && selected.length === allIds.length) ? [] : [...allIds]"
-                                            :class="(allIds.length > 0 && selected.length === allIds.length) ? 'bg-brand-600' : 'bg-slate-300'"
-                                            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors align-middle disabled:opacity-40"
-                                            :disabled="allIds.length === 0" aria-label="Select all sessions">
-                                            <span :class="(allIds.length > 0 && selected.length === allIds.length) ? 'translate-x-6' : 'translate-x-1'"
-                                                class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"></span>
-                                        </button>
+                                        <label class="vx-switch">
+                                            <input type="checkbox"
+                                                :checked="allIds.length > 0 && selected.length === allIds.length"
+                                                :disabled="allIds.length === 0"
+                                                @change="selected = $event.target.checked ? [...allIds] : []">
+                                            <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                            <span class="sr-only">Select All Sessions</span>
+                                        </label>
                                     </th>
                                     <th>User</th><th>IP Address</th><th>Browser</th><th>Last Active</th><th class="text-right">Action</th>
                                 </tr>
@@ -112,15 +111,12 @@
                                     <tr>
                                         <td>
                                             @if (! $isCurrent)
-                                                <button type="button" role="switch"
-                                                    :aria-checked="selected.includes('{{ $s->id }}').toString()"
-                                                    @click="selected.includes('{{ $s->id }}') ? selected.splice(selected.indexOf('{{ $s->id }}'), 1) : selected.push('{{ $s->id }}'); confirming = false"
-                                                    :class="selected.includes('{{ $s->id }}') ? 'bg-brand-600' : 'bg-slate-300'"
-                                                    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors align-middle"
-                                                    aria-label="Select session">
-                                                    <span :class="selected.includes('{{ $s->id }}') ? 'translate-x-6' : 'translate-x-1'"
-                                                        class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"></span>
-                                                </button>
+                                                <label class="vx-switch">
+                                                    <input type="checkbox" :checked="selected.includes('{{ $s->id }}')"
+                                                        @change="selected.includes('{{ $s->id }}') ? selected.splice(selected.indexOf('{{ $s->id }}'), 1) : selected.push('{{ $s->id }}'); confirming = false">
+                                                    <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                                    <span class="sr-only">Select This Session</span>
+                                                </label>
                                             @endif
                                         </td>
                                         <td>
@@ -228,15 +224,14 @@
                             <thead>
                                 <tr>
                                     <th class="w-10">
-                                        <button type="button" role="switch"
-                                            :aria-checked="(allIds.length > 0 && selected.length === allIds.length).toString()"
-                                            @click="selected = (allIds.length > 0 && selected.length === allIds.length) ? [] : [...allIds]"
-                                            :class="(allIds.length > 0 && selected.length === allIds.length) ? 'bg-brand-600' : 'bg-slate-300'"
-                                            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors align-middle disabled:opacity-40"
-                                            :disabled="allIds.length === 0" aria-label="Select all bans">
-                                            <span :class="(allIds.length > 0 && selected.length === allIds.length) ? 'translate-x-6' : 'translate-x-1'"
-                                                class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"></span>
-                                        </button>
+                                        <label class="vx-switch">
+                                            <input type="checkbox"
+                                                :checked="allIds.length > 0 && selected.length === allIds.length"
+                                                :disabled="allIds.length === 0"
+                                                @change="selected = $event.target.checked ? [...allIds] : []">
+                                            <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                            <span class="sr-only">Select All Bans</span>
+                                        </label>
                                     </th>
                                     <th>IP Address</th><th>Reason</th><th>Status</th><th>Banned By</th><th>When</th><th class="text-right">Action</th>
                                 </tr>
@@ -245,15 +240,12 @@
                                 @foreach ($bans as $ban)
                                     <tr>
                                         <td>
-                                            <button type="button" role="switch"
-                                                :aria-checked="selected.includes({{ $ban->id }}).toString()"
-                                                @click="selected.includes({{ $ban->id }}) ? selected.splice(selected.indexOf({{ $ban->id }}), 1) : selected.push({{ $ban->id }}); confirming = false"
-                                                :class="selected.includes({{ $ban->id }}) ? 'bg-brand-600' : 'bg-slate-300'"
-                                                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors align-middle"
-                                                aria-label="Select ban {{ $ban->ip }}">
-                                                <span :class="selected.includes({{ $ban->id }}) ? 'translate-x-6' : 'translate-x-1'"
-                                                    class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"></span>
-                                            </button>
+                                            <label class="vx-switch">
+                                                <input type="checkbox" :checked="selected.includes({{ $ban->id }})"
+                                                    @change="selected.includes({{ $ban->id }}) ? selected.splice(selected.indexOf({{ $ban->id }}), 1) : selected.push({{ $ban->id }}); confirming = false">
+                                                <span class="vx-switch-track"><span class="vx-switch-knob"></span></span>
+                                                <span class="sr-only">Select Ban {{ $ban->ip }}</span>
+                                            </label>
                                         </td>
                                         <td class="font-mono text-xs">{{ $ban->ip }}</td>
                                         <td class="text-slate-500">{{ $ban->reason ?: 'Not Set' }}</td>
