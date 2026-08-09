@@ -17,48 +17,22 @@ restart is needed; opcache there revalidates every 2 seconds.
 
 ## Next up
 
-### 1. Recreate a Docker container whose spec changed  ·  M  ·  ~2 hrs
-`agent/internal/runtime/docker/docker.go`
+### 1. Publish 1.1.0 so self-update can be proven  ·  S  ·  ~15 min, mostly waiting
 
-Start builds the right container spec and then starts whatever container already
-exists, so a container is frozen at whatever it was created with. Consequences
-already hit: the Mumble startup fix needed a Reinstall before it took, and every
-container built before 2026-08-09 still publishes only its primary port.
+**The feed itself is LIVE.** `https://scriptgain.com/releases/gamemgr/latest.json`
+exists and serves 1.0.0. A scriptgain session built `GameMgrReleaseController`
+(per-version paths, `SHA256SUMS`, release notes) and deployed it, so the 404 that
+made self-update impossible on every install ever made is gone.
 
-Compare `Config.Cmd`, `Config.Image`, `Config.Env` and `HostConfig.PortBindings`
-against the desired spec on Start; if they differ, remove and recreate. Data is
-in the bind mount so nothing is lost. Only when stopped, and never delete before
-the replacement is known good.
+What is left is publishing **1.1.0**, which is built and staged in the scriptgain
+repo at `storage/app/dist/gamemgr/1.1.0/` (tarball, SHA256SUMS, NOTES.md).
+`storage/app/.gitignore` is `*`, so it cannot ride a git deploy: it has to reach
+cp1 the same way 1.0.0 did. **Handed to the scriptgain session.**
 
-Only Docker has this. The native runtimes rewrite their launcher every start.
-
-### 2. Prove a real Workshop fetch on hardware  ·  M  ·  ~1 hr
-Only ever tested against a faked node; steamcmd has never actually run.
-
-`InstallWorkshopItem` calls `EnsureDir` then `workshop_download_item`, so **the
-game does not need installing first** and there is no 30 GB download.
-
-1. `systemctl stop gamemgr-queue` on gamemgr001 so the CS2 app install queues
-   and never runs
-2. Create a CS2 server (template 12, app 730) through the panel
-3. Install a Workshop item by id from the Mods tab
-4. Check `/var/lib/gamemgr/volumes/<uuid>/steamapps/workshop/content/730/<id>`
-   and that the mods row has `verified = false`
-5. Delete the server, start the queue worker
-
-### 3. Publish a release so self-update works  ·  M  ·  ~2-3 hrs
-`UpdateService` polls `https://scriptgain.com/releases/gamemgr/latest.json`,
-which has always been a **404**. Self-update has never run once, which is a
-headline feature of a free self-hosted panel that does not exist.
-
-`deploy/build-release.sh` already emits the exact manifest it reads. Follow the
-DeskMGR `/download` pattern on scriptgain.com rather than inventing a mechanism.
-
-**Split:** I prepare and commit; **Allen presses Deploy in GitMGR** (repo 40,
-branch master). No SSH to cp1.
-
-Before release 2: a tarball with `vendor/` is tens of megabytes and does not
-belong in the storefront repo forever. StorageMGR is the obvious home.
+gamemgr001 is deliberately left on **1.0.0** so that the moment 1.1.0 is
+published, its Updates page shows the banner and Update Now becomes the first
+real end-to-end proof that self-update works. That is the last thing keeping
+that box alive.
 
 ---
 
@@ -123,5 +97,15 @@ belong in the storefront repo forever. StorageMGR is the obvious home.
   that fails if the page misses an endpoint the document declares
 - `/settings/firewall` and `/settings/audit` were complete and unreachable;
   they are in the settings menu now
+- **A Docker container is rebuilt when its spec changes.** Start used to launch
+  whatever container already existed, so editing a startup, an image or a
+  variable did nothing until a Reinstall. Proved on gamemgr001: changed Mumble's
+  max users, pressed Start, container came back with the new value. Any
+  container built before this heals itself on its next start, which also repairs
+  the ones still publishing a single port
+- **A real Workshop fetch ran on hardware**: steamcmd pulled a CS2 item onto
+  gamemgr001 in 10.5s. The game does NOT need installing first
+- The account page went from 1931px to 1293px, and power actions no longer log
+  "Stoped the server"
 
-Current: **311 tests**, **101 routes clean** in `make health`.
+Current: **311 tests**, **101 routes clean** in `make health`. Panel version **1.1.0**.
