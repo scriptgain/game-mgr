@@ -339,13 +339,21 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 		NetworkMode:  "bridge",
 	}
 
-	if s.Port > 0 {
-		for _, proto := range []string{"tcp", "udp"} {
-			key := strconv.Itoa(s.Port) + "/" + proto
+	// Every allocation the panel gave this server, not just the primary one.
+	//
+	// Publishing s.Port alone is right for a one-port game and silently wrong
+	// for everything else: TeamSpeak's ServerQuery on 10011 and file transfer
+	// on 30033 were reserved, listed in the UI and opened in the firewall, and
+	// then never mapped, so the only thing that worked was voice. The protocol
+	// comes from the allocation now rather than being assumed to be both, so a
+	// UDP-only game stops claiming a TCP port it never listens on.
+	for _, p := range s.PublishedPorts() {
+		for _, proto := range p.Protocols() {
+			key := strconv.Itoa(p.Port) + "/" + proto
 			config.ExposedPorts[key] = struct{}{}
 			host.PortBindings[key] = []dockerapi.PortBinding{{
 				HostIP:   "0.0.0.0",
-				HostPort: strconv.Itoa(s.Port),
+				HostPort: strconv.Itoa(p.Port),
 			}}
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -91,6 +92,18 @@ type Server struct {
 	QueryPortOffset int    `json:"query_port_offset"`
 	DefaultProtocol string `json:"default_protocol"`
 
+	// Every address this server holds, not just the primary one.
+	//
+	// The panel has always sent this and the daemon never read it, so a
+	// container was published on Port alone. For a one-port game that is the
+	// same thing; for TeamSpeak it meant 9987 worked while ServerQuery on
+	// 10011 and file transfer on 30033 were allocated, shown in the UI and
+	// opened in ufw, and then not mapped into the container at all.
+	//
+	// Empty means an older panel that does not send it, in which case Port is
+	// still the whole truth.
+	Ports []AllocatedPort `json:"ports"`
+
 	// SteamCMD.
 	SteamAppID     int    `json:"steam_app_id"`
 	SteamAnonymous bool   `json:"steam_anonymous"`
@@ -98,6 +111,68 @@ type Server struct {
 
 	// LinuxGSM.
 	LGSMShortname string `json:"lgsm_shortname"`
+}
+
+// AllocatedPort is one address the panel has reserved for a server.
+//
+// Protocol is tcp, udp or both, and "both" is a real value here rather than a
+// missing one: Mumble genuinely needs 64738 on each, TCP for control and text
+// and UDP for voice, and opening one leaves a server that connects but where
+// nobody can hear anybody.
+type AllocatedPort struct {
+	Port     int      `json:"port"`
+	Protocol string   `json:"protocol"`
+	Roles    []string `json:"roles"`
+	Primary  bool     `json:"primary"`
+}
+
+// Protocols expands Protocol into the concrete ones to publish or open.
+// Anything unrecognised, including the empty string, means both: an unreachable
+// server is a worse outcome than one extra mapping.
+func (p AllocatedPort) Protocols() []string {
+	switch strings.ToLower(strings.TrimSpace(p.Protocol)) {
+	case "tcp":
+		return []string{"tcp"}
+	case "udp":
+		return []string{"udp"}
+	}
+
+	return []string{"tcp", "udp"}
+}
+
+// PublishedPorts is every port a container should expose, primary first.
+//
+// Falls back to the primary allocation alone when the panel sent no list,
+// which is what an older panel produces and what every single-port game needs
+// anyway.
+func (s Server) PublishedPorts() []AllocatedPort {
+	if len(s.Ports) == 0 {
+		if s.Port <= 0 {
+			return nil
+		}
+
+		return []AllocatedPort{{Port: s.Port, Protocol: s.DefaultProtocol, Primary: true}}
+	}
+
+	out := make([]AllocatedPort, 0, len(s.Ports))
+	seen := map[int]bool{}
+
+	for _, p := range s.Ports {
+		if p.Port < 1 || p.Port > 65535 || seen[p.Port] {
+			continue
+		}
+		seen[p.Port] = true
+		out = append(out, p)
+	}
+
+	// The allocation the panel calls primary is what SERVER_PORT and every
+	// address in the UI say, so it is published first and never dropped, even
+	// if it somehow failed to appear in the list.
+	if s.Port > 0 && !seen[s.Port] {
+		out = append([]AllocatedPort{{Port: s.Port, Protocol: s.DefaultProtocol, Primary: true}}, out...)
+	}
+
+	return out
 }
 
 // Driver is what a runtime backend must provide. Every method takes a context
