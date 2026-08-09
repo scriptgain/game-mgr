@@ -25,5 +25,15 @@ final readonly class CatalogueProject
         public ?string $icon = null,
         /** The project's page, for the times a file cannot be fetched. */
         public ?string $url = null,
+        /**
+         * Can this panel fetch it at all?
+         *
+         * False for a SpigotMC resource that is external or premium, which is
+         * not an edge case: EssentialsX, the most-installed plugin on the site,
+         * is hosted on GitHub and SpigotMC only carries the link. A browse list
+         * that offers Install on those is offering a button that fails, so the
+         * answer rides on the hit and the row links out instead.
+         */
+        public bool $installable = true,
     ) {}
 }

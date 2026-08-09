@@ -103,6 +103,11 @@
                         <div class="shrink-0">
                             @if (in_array($result->id, $installed, true))
                                 <x-badge color="success"><x-icon name="check" class="w-3.5 h-3.5" /> Installed</x-badge>
+                            @elseif (! $result->installable)
+                                {{-- Hosted off-site or paid. A link, never an
+                                     install button that is going to fail. --}}
+                                <x-button href="{{ $result->url }}" target="_blank" rel="noopener"
+                                          variant="secondary" size="sm" icon="link">Get It Yourself</x-button>
                             @elseif (auth()->user()->can('check', [$server, 'mod.install']))
                                 <form method="POST" action="{{ route('server.mods.store', $server) }}">
                                     @csrf

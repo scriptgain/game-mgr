@@ -108,6 +108,9 @@ class ModInstaller
             'latest_version' => $version->number,
             'path' => $placed['path'],
             'bytes' => $placed['bytes'],
+            // What was true for THIS file, not what is usually true of the
+            // source. A catalogue could start or stop publishing hashes.
+            'verified' => $version->file?->verified() ?? false,
             'enabled' => true,
             'installed_at' => now(),
             'checked_at' => now(),
@@ -213,6 +216,7 @@ class ModInstaller
             'latest_version' => $number,
             'path' => $placed['path'],
             'bytes' => $placed['bytes'],
+            'verified' => $version->file?->verified() ?? false,
             'installed_at' => now(),
             'checked_at' => now(),
         ]);

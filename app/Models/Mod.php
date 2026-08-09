@@ -22,13 +22,14 @@ class Mod extends Model
 
     protected $fillable = [
         'server_id', 'source', 'remote_id', 'name', 'slug', 'author', 'summary',
-        'version', 'latest_version', 'path', 'bytes', 'enabled', 'installed_at', 'checked_at',
+        'version', 'latest_version', 'path', 'bytes', 'verified', 'enabled', 'installed_at', 'checked_at',
     ];
 
     protected function casts(): array
     {
         return [
             'enabled' => 'boolean',
+            'verified' => 'boolean',
             'installed_at' => 'datetime',
             'checked_at' => 'datetime',
         ];

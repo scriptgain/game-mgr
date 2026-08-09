@@ -15,6 +15,28 @@ return [
     // the others simply behave better with it.
     'contact' => env('GAMEMGR_MODS_CONTACT', 'support@scriptgain.com'),
 
+    'spigot' => [
+        // SpigotMC has no API; Spiget indexes it and does. No key, no auth.
+        //
+        // The catch is stated in SpigetSource and surfaced in the UI rather
+        // than buried here: Spiget publishes no checksums, and a resource that
+        // is external or premium cannot be fetched at all. EssentialsX, the
+        // most-installed plugin on the site, is one of those.
+        'enabled' => filter_var(env('GAMEMGR_SPIGOT', true), FILTER_VALIDATE_BOOL),
+
+        'base' => env('GAMEMGR_SPIGOT_URL', 'https://api.spiget.org'),
+
+        'timeout' => (float) env('GAMEMGR_SPIGOT_TIMEOUT', 6),
+
+        'download_timeout' => (float) env('GAMEMGR_SPIGOT_DOWNLOAD_TIMEOUT', 120),
+
+        'ttl' => [
+            'search' => 300,
+            'project' => 3600,
+            'versions' => 900,
+        ],
+    ],
+
     'hangar' => [
         'enabled' => filter_var(env('GAMEMGR_HANGAR', true), FILTER_VALIDATE_BOOL),
 

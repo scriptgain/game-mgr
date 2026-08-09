@@ -72,7 +72,16 @@
                 <span class="block text-xs text-slate-400 truncate">{{ $mod->path }}</span>
                 @endif
                 </td>
-                <td><x-badge color="neutral">{{ $mod->sourceLabel() }}</x-badge></td>
+                <td>
+                    <x-badge color="neutral">{{ $mod->sourceLabel() }}</x-badge>
+                    {{-- Said out loud, because the alternative is implying a
+                         check that never happened. SpigotMC publishes no
+                         checksums, so a file from there is exactly as
+                         trustworthy as the connection that carried it. --}}
+                    @unless ($mod->verified)
+                        <span class="mt-1 block text-xs text-amber-700" title="This source publishes no checksum, so the download could not be verified against one.">Unverified download</span>
+                    @endunless
+                </td>
                 <td class="tabular text-slate-500">
                 {{ $mod->version }}
                 @if ($mod->hasUpdate())

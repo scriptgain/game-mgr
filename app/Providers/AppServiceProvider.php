@@ -25,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\Mods\ModSourceRegistry::class, fn ($app) => new \App\Services\Mods\ModSourceRegistry([
             $app->make(\App\Services\Mods\Sources\ModrinthSource::class),
             $app->make(\App\Services\Mods\Sources\HangarSource::class),
+            $app->make(\App\Services\Mods\Sources\SpigetSource::class),
         ]));
     }
 
