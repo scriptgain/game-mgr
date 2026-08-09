@@ -28,6 +28,8 @@
 @endphp
 
 <x-layouts.app :title="$title">
+    @include('admin.servers._created')
+
     {{-- One Alpine scope for the whole page: the header dot, the power buttons,
          the vitals and the console all read the same live state, so they can
          never disagree about whether the server is running. The component is

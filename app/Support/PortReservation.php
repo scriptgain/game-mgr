@@ -65,6 +65,32 @@ final class PortReservation
     }
 
     /**
+     * The same facts as flash(), kept apart so a screen can lay them out.
+     *
+     * Four separate things are worth telling somebody who just pressed Create:
+     * where it is installing, what to connect to, which ports were taken and
+     * why, and whether the node had to gain a port to make it possible. As one
+     * sentence they read as noise; as rows they read as a receipt.
+     */
+    public function facts(): array
+    {
+        return [
+            'address' => $this->address(),
+            'ip' => $this->ip,
+            'dedicated' => $this->dedicated,
+            'canonical' => $this->fromPortSet ? $this->isCanonical() : null,
+            'canonical_port' => $this->canonicalGamePort,
+            'shift' => $this->shift,
+            'ports' => array_map(fn ($spec) => [
+                'port' => $spec['port'],
+                'protocol' => $spec['protocol'],
+                'roles' => $spec['roles'],
+            ], $this->ports),
+            'notes' => $this->notes,
+        ];
+    }
+
+    /**
      * What to tell the person who pressed Create.
      *
      * A shifted set is never reported as a plain success. The number a player

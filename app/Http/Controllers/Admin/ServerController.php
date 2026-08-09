@@ -237,8 +237,16 @@ class ServerController extends Controller
         // never told to fetch anything and no game files ever arrive.
         InstallServer::dispatch($server->id);
 
+        // The facts go to the session as structured data rather than as one
+        // long sentence: the server page lays them out as a receipt. flash()
+        // stays for anywhere that only has room for a line.
         $status = 'Server created. It will install on '.$node->name.'.';
         if ($plan) {
+            // Both, deliberately. The panel lays the facts out as a receipt,
+            // and the sentence stays for anywhere that only has room for one.
+            session()->flash('created_server', [
+                'node' => $node->name,
+            ] + $plan->facts());
             $status .= ' '.$plan->flash();
         }
 
