@@ -2,11 +2,14 @@
 
 namespace App\Services\Mods\Sources;
 
+use App\Models\Server;
 use App\Models\Setting;
 use App\Services\Mods\Catalogue\CatalogueFile;
 use App\Services\Mods\Catalogue\CatalogueProject;
 use App\Services\Mods\Catalogue\CatalogueVersion;
+use App\Models\Mod;
 use App\Services\Mods\Contracts\ModSource;
+use App\Services\Mods\Contracts\VariableManagedSource;
 use App\Services\Mods\ModTarget;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Str;
@@ -39,7 +42,7 @@ use Illuminate\Support\Str;
  * Authentication is an `x-api-key` header, verified against the live API: no
  * key and an invalid key both answer 403 "API Key missing or invalid".
  */
-final class CurseForgeSource extends HttpSource implements ModSource
+final class CurseForgeSource extends HttpSource implements ModSource, VariableManagedSource
 {
     /** CurseForge's own game id for Minecraft. */
     private const GAME_MINECRAFT = 432;
@@ -127,23 +130,35 @@ final class CurseForgeSource extends HttpSource implements ModSource
             || str_ends_with($host, '.forgecdn.net');
     }
 
-    /** Every Minecraft loader, and the plugin side of Bukkit too. */
+    /**
+     * Any game this template names a CurseForge id for.
+     *
+     * It used to be "does this server run a Minecraft loader", which quietly
+     * excluded the one non-Minecraft template that has declared CurseForge
+     * since the catalogue was written.
+     */
     public function supports(ModTarget $target): bool
     {
-        return $target->loader !== null;
+        if ($target->curseForgeGameId <= 0) {
+            return false;
+        }
+
+        return $target->curseForgeIsMinecraft() ? $target->loader !== null : true;
     }
 
     public function search(string $query, ModTarget $target, int $limit = 20): ?array
     {
         $body = $this->fetch(
-            'search:'.md5($query.'|'.$limit.'|'.$target->loader.'|'.$target->gameVersion),
+            'search:'.md5($query.'|'.$limit.'|'.$target->curseForgeGameId.'|'.$target->loader.'|'.$target->gameVersion),
             '/v1/mods/search',
             array_filter([
-                'gameId' => self::GAME_MINECRAFT,
-                'classId' => $this->classFor($target),
+                'gameId' => $target->curseForgeGameId,
+                // classId, gameVersion and modLoaderType describe Minecraft.
+                // Sending them for another game filters everything out.
+                'classId' => $target->curseForgeIsMinecraft() ? $this->classFor($target) : null,
                 'searchFilter' => $query,
-                'gameVersion' => $target->gameVersion,
-                'modLoaderType' => $this->loaderFor($target),
+                'gameVersion' => $target->curseForgeIsMinecraft() ? $target->gameVersion : null,
+                'modLoaderType' => $target->curseForgeIsMinecraft() ? $this->loaderFor($target) : null,
                 'pageSize' => max(1, min(25, $limit)),
                 'sortField' => 6,      // total downloads
                 'sortOrder' => 'desc',
@@ -157,7 +172,7 @@ final class CurseForgeSource extends HttpSource implements ModSource
         $out = [];
 
         foreach ((array) ($body['data'] ?? []) as $hit) {
-            if (is_array($hit) && ($project = $this->toProject($hit)) !== null) {
+            if (is_array($hit) && ($project = $this->toProject($hit, $target->curseForgeIsMinecraft())) !== null) {
                 $out[] = $project;
             }
         }
@@ -190,8 +205,8 @@ final class CurseForgeSource extends HttpSource implements ModSource
             'versions:'.$id.':'.$target->loader.':'.$target->gameVersion,
             '/v1/mods/'.$id.'/files',
             array_filter([
-                'gameVersion' => $target->gameVersion,
-                'modLoaderType' => $this->loaderFor($target),
+                'gameVersion' => $target->curseForgeIsMinecraft() ? $target->gameVersion : null,
+                'modLoaderType' => $target->curseForgeIsMinecraft() ? $this->loaderFor($target) : null,
                 'pageSize' => 20,
             ], fn ($v) => $v !== null && $v !== ''),
         );
@@ -243,6 +258,91 @@ final class CurseForgeSource extends HttpSource implements ModSource
                 loaders: self::loadersOf($file),
             ),
         );
+    }
+
+    // ------------------------------------------------- the ARK-shaped install
+
+    /**
+     * Which variable carries the list.
+     *
+     * Only meaningful for a game that fetches its own mods. Minecraft installs
+     * still download a file, and this is never consulted for them.
+     */
+    public function listVariable(): string
+    {
+        return 'MOD_IDS';
+    }
+
+    /**
+     * Does this server take a list rather than a file?
+     *
+     * Asked of the TEMPLATE rather than assumed from the game, so a template
+     * that gains the variable later works without a code change.
+     */
+    public function managesByList(ModTarget $target): bool
+    {
+        return ! $target->curseForgeIsMinecraft() && $target->hasVariable($this->listVariable());
+    }
+
+    public function addToList(Server $server, CatalogueProject $project): array
+    {
+        $ids = self::idList($server, $this->listVariable());
+
+        if (in_array($project->id, $ids, true)) {
+            return ['ok' => false, 'error' => $project->name.' is already in this server\'s mod list.'];
+        }
+
+        $ids[] = $project->id;
+
+        if (! $this->writeList($server, $ids)) {
+            return ['ok' => false, 'error' => 'This template has no '.$this->listVariable().' variable to write to.'];
+        }
+
+        return ['ok' => true, 'list' => implode(',', $ids)];
+    }
+
+    public function removeFromList(Server $server, Mod $mod): array
+    {
+        $ids = array_values(array_diff(self::idList($server, $this->listVariable()), [(string) $mod->remote_id]));
+
+        if (! $this->writeList($server, $ids)) {
+            return ['ok' => false, 'error' => 'This template has no '.$this->listVariable().' variable to write to.'];
+        }
+
+        return ['ok' => true, 'list' => implode(',', $ids)];
+    }
+
+    /** @param array<int,string> $ids */
+    private function writeList(Server $server, array $ids): bool
+    {
+        $variable = $server->template?->variables->firstWhere('env_variable', $this->listVariable());
+
+        if ($variable === null) {
+            return false;
+        }
+
+        \App\Models\ServerVariable::updateOrCreate(
+            ['server_id' => $server->id, 'template_variable_id' => $variable->id],
+            ['value' => implode(',', $ids)],
+        );
+
+        return true;
+    }
+
+    /**
+     * The ids currently on the server, read from its own environment so a value
+     * set by hand on the Startup tab is respected rather than overwritten.
+     *
+     * @return array<int,string>
+     */
+    private static function idList(Server $server, string $variable): array
+    {
+        $raw = (string) ($server->environment()[$variable] ?? '');
+
+        return array_values(array_filter(
+            array_map('trim', explode(',', $raw)),
+            fn ($id) => $id !== '' && preg_match('/^\d+$/', $id) === 1,
+        ));
     }
 
     /** Bukkit plugins and mods are different classes and must not be mixed. */
@@ -297,7 +397,7 @@ final class CurseForgeSource extends HttpSource implements ModSource
         return array_values(array_unique($out));
     }
 
-    private function toProject(array $hit): ?CatalogueProject
+    private function toProject(array $hit, bool $minecraft = true): ?CatalogueProject
     {
         $id = self::text($hit['id'] ?? null);
 
@@ -316,9 +416,15 @@ final class CurseForgeSource extends HttpSource implements ModSource
             downloads: (int) ($hit['downloadCount'] ?? 0),
             icon: self::text($hit['logo']['thumbnailUrl'] ?? null),
             url: self::text($hit['links']['websiteUrl'] ?? null),
-            // Said in the list rather than at install time, so nobody clicks a
-            // button that was never going to work.
-            installable: (bool) ($hit['allowModDistribution'] ?? true),
+            /*
+             * allowModDistribution means "may a third party hand out the file",
+             * which is the right question when the panel is going to download
+             * one. For a game that fetches its own mods it is the wrong
+             * question entirely: every ASA mod has it switched off and every
+             * one of them installs perfectly well by id. So a non-Minecraft
+             * game is always installable here, and Minecraft still respects it.
+             */
+            installable: $minecraft ? (bool) ($hit['allowModDistribution'] ?? true) : true,
         );
     }
 

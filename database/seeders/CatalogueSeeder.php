@@ -394,6 +394,7 @@ class CatalogueSeeder extends Seeder
                         // belongs on the Paper family before the two that need
                         // a key or have no official API.
                         'mod_sources' => ['modrinth', 'hangar', 'spigot', 'curseforge'],
+                        'curseforge_game_id' => 432,
                         'update_command' => 'docker pull itzg/minecraft-server:latest',
                         'variables' => [
                             ['name' => 'Accept the Minecraft EULA', 'env_variable' => 'EULA', 'default_value' => 'TRUE', 'rules' => 'required|in:TRUE,true', 'description' => 'Mojang requires this. Without it the container prints the EULA notice and exits immediately, which reads as a crash loop.', 'user_viewable' => true, 'user_editable' => false],
@@ -473,6 +474,7 @@ class CatalogueSeeder extends Seeder
                         'rcon_port_offset' => 10,
                         'query_port_offset' => 0,
                         'mod_sources' => ['curseforge', 'modrinth'],
+                        'curseforge_game_id' => 432,
                         'update_command' => 'docker pull itzg/minecraft-server:latest',
                         'variables' => [
                             ['name' => 'Accept the Minecraft EULA', 'env_variable' => 'EULA', 'default_value' => 'TRUE', 'rules' => 'required|in:TRUE,true', 'description' => 'Mojang requires this. Without it the container prints the EULA notice and exits immediately.', 'user_viewable' => true, 'user_editable' => false],
@@ -877,7 +879,11 @@ class CatalogueSeeder extends Seeder
                         'query_port_offset' => 0,
                         // Survival Ascended mods come from CurseForge. The Steam
                         // Workshop is Survival Evolved, a different game.
+                        // 83374 is ARK: Survival Ascended on CurseForge, which
+                        // is where Wildcard moved ASA modding. Without this the
+                        // search ran against Minecraft.
                         'mod_sources' => ['curseforge'],
+                        'curseforge_game_id' => 83374,
                         'update_command' => 'docker pull acekorneya/asa_server:2_1_latest',
                         'variables' => [
                             ['name' => 'Session Name', 'env_variable' => 'SESSION_NAME', 'default_value' => 'A GameMGR ASA Server', 'rules' => 'required|string|max:60', 'description' => 'What the server calls itself in the in-game browser.', 'user_viewable' => true, 'user_editable' => true],

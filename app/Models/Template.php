@@ -33,7 +33,7 @@ class Template extends Model
         'uuid', 'game_id', 'name', 'author', 'description', 'runtime',
         'default_port', 'default_protocol',
         'docker_images', 'script_container', 'script_entry', 'data_path', 'script_install',
-        'steam_app_id', 'steam_anonymous', 'steam_branch', 'steam_beta_password',
+        'steam_app_id', 'steam_anonymous', 'steam_branch', 'steam_beta_password', 'curseforge_game_id',
         'lgsm_shortname', 'startup', 'update_command',
         'config_files', 'config_startup', 'config_stop', 'config_logs', 'config_schema', 'mcjars',
         'features', 'file_denylist', 'force_outgoing_ip',

@@ -99,7 +99,33 @@ class ModTarget
         public readonly array $sources,
         /** Which game's Workshop to search. Zero for anything not on Steam. */
         public readonly int $steamAppId = 0,
+        /**
+         * Which game to search on CurseForge.
+         *
+         * Not a constant, because CurseForge is not Minecraft-only and the
+         * client used to assume it was: an ARK server searching for a
+         * structures mod was shown Minecraft mods. Zero means this template
+         * does not use CurseForge.
+         */
+        public readonly int $curseForgeGameId = 0,
+        /** @var \Illuminate\Support\Collection<int,string> the template's variable names */
+        public readonly \Illuminate\Support\Collection $variables = new \Illuminate\Support\Collection,
     ) {}
+
+    /** CurseForge's own id for Minecraft, the only game with loaders and classes. */
+    public const CURSEFORGE_MINECRAFT = 432;
+
+    /** Does this server's template expose a given variable? */
+    public function hasVariable(string $name): bool
+    {
+        return $this->variables->contains($name);
+    }
+
+    /** Is the CurseForge search a Minecraft one, with loaders and plugin classes? */
+    public function curseForgeIsMinecraft(): bool
+    {
+        return $this->curseForgeGameId === self::CURSEFORGE_MINECRAFT;
+    }
 
     public static function for(Server $server): self
     {
@@ -115,6 +141,8 @@ class ModTarget
             gameVersion: self::detectGameVersion($server),
             sources: array_values(array_filter($sources, 'is_string')),
             steamAppId: (int) ($server->template?->steam_app_id ?? 0),
+            curseForgeGameId: (int) ($server->template?->curseforge_game_id ?? 0),
+            variables: collect($server->template?->variables ?? [])->pluck('env_variable'),
         );
     }
 

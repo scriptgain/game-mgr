@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Services\Mods\Catalogue\CatalogueVersion;
 use App\Services\Mods\Contracts\ModSource;
 use App\Services\Mods\Contracts\NodeInstalledSource;
+use App\Services\Mods\Contracts\VariableManagedSource;
 use App\Services\NodeClient;
 use Illuminate\Support\Str;
 
@@ -87,6 +88,14 @@ class ModInstaller
             return $this->installViaNode($server, $source, $project);
         }
 
+        // A game that fetches its own mods from a list of ids. ARK: Survival
+        // Ascended is the case: every ASA mod comes back with distribution
+        // switched off, so there is no file for anybody to download, and what
+        // the server takes is MOD_IDS.
+        if ($source instanceof VariableManagedSource && $source->managesByList($target)) {
+            return $this->installViaList($server, $source, $project);
+        }
+
         $version = $source->latestVersion($project->id, $target);
 
         if ($version === null) {
@@ -129,6 +138,49 @@ class ModInstaller
             'mod' => $mod,
             'message' => $mod->name.' '.$mod->version.' installed to '.$placed['path'].
                 '. Restart the server to load it.',
+        ];
+    }
+
+    /**
+     * The game fetches it, the panel just tells it to.
+     *
+     * @return array{ok:bool,error?:string,mod?:Mod,message?:string}
+     */
+    private function installViaList(Server $server, VariableManagedSource&ModSource $source, $project): array
+    {
+        $listed = $source->addToList($server, $project);
+
+        if (! $listed['ok']) {
+            return ['ok' => false, 'error' => (string) ($listed['error'] ?? 'That could not be added to the mod list.')];
+        }
+
+        $mod = Mod::create([
+            'server_id' => $server->id,
+            'source' => $source->key(),
+            'remote_id' => $project->id,
+            'name' => $project->name,
+            'slug' => $project->slug,
+            'author' => $project->author,
+            'summary' => Str::limit($project->summary, 480),
+            // There is no file and therefore no version: the server fetches
+            // whatever is current when it boots. Saying "1.0" here would be
+            // inventing a fact.
+            'version' => 'managed by the server',
+            'latest_version' => 'managed by the server',
+            'path' => $source->listVariable(),
+            'bytes' => 0,
+            // Nothing was downloaded, so nothing was checked.
+            'verified' => false,
+            'enabled' => true,
+            'installed_at' => now(),
+            'checked_at' => now(),
+        ]);
+
+        return [
+            'ok' => true,
+            'mod' => $mod,
+            'message' => $mod->name.' added to '.$source->listVariable().
+                '. Restart the server and it will download the mod itself.',
         ];
     }
 
@@ -201,10 +253,15 @@ class ModInstaller
 
         // The loader is only needed by the sources that have to choose between
         // plugins/ and mods/. It is a Minecraft idea, and requiring it up front
-        // refused every Workshop install on a Counter-Strike or ARK server,
-        // which have no loader and never will: steamcmd decides where a
-        // Workshop item goes, not us.
-        if (! $source instanceof NodeInstalledSource && $target->loader === null) {
+        // refused every Workshop install on a Counter-Strike server and every
+        // mod on an ARK one, neither of which has a loader or ever will. What
+        // matters is whether THIS install ends with a file we have to place:
+        // steamcmd decides where a Workshop item goes, and ARK's own server
+        // decides what to do with a list of ids.
+        $placesAFile = ! $source instanceof NodeInstalledSource
+            && ! ($source instanceof VariableManagedSource && $source->managesByList($target));
+
+        if ($placesAFile && $target->loader === null) {
             return 'GameMGR cannot tell which mod loader this server runs, so it will not guess where a file '.
                 'belongs. Set the server type on the Startup tab first.';
         }
@@ -326,6 +383,23 @@ class ModInstaller
     {
         $name = $mod->name;
         $path = (string) $mod->path;
+
+        // Listed rather than installed: the removal is an edit to the variable,
+        // and there is no file to delete.
+        $source = $this->sources->get((string) $mod->source);
+
+        if ($source instanceof VariableManagedSource && $path === $source->listVariable()) {
+            $result = $source->removeFromList($server, $mod);
+
+            if (! $result['ok']) {
+                return ['ok' => false, 'error' => (string) ($result['error'] ?? 'The mod list could not be changed.')];
+            }
+
+            $mod->delete();
+
+            return ['ok' => true, 'message' => $name.' removed from '.$source->listVariable().
+                '. Restart the server to unload it.'];
+        }
 
         if ($path !== '' && ! NodeClient::for($server->node)->deleteFiles($server, [$path])) {
             return ['ok' => false, 'error' => 'The node did not delete '.basename($path).', so '.$name.' is still installed.'];
