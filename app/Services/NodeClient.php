@@ -276,7 +276,44 @@ class NodeClient
      * $onLine receives (event, data) per event. Returns false if the daemon
      * refused the request or the stream ended in an error event.
      */
-    public function install(Server $server, callable $onLine, int $maxSeconds = 21600): bool
+    /**
+     * Install or reinstall, streaming the node's output back line by line.
+     *
+     * $wipe empties the data directory first. The node moves the old contents
+     * aside rather than deleting them and only drops them once the reinstall
+     * has succeeded, so a wipe that fails leaves the server as it was.
+     */
+    /**
+     * Remove a server from the node entirely: container and data directory.
+     *
+     * Nothing called this before it existed, which meant deleting a server in
+     * the panel removed the row, freed the allocations, and left the container
+     * and every byte of its files on the node forever. On a panel driven by
+     * billing that is a disk leak on a monthly schedule.
+     *
+     * Returns false rather than throwing when the node cannot be reached. The
+     * row still has to be deletable when a node is down, or a dead node means
+     * customers cannot be terminated; the caller reports what happened.
+     */
+    public function destroy(Server $server): bool
+    {
+        try {
+            $response = Http::withToken($this->daemonToken())
+                ->withoutVerifying()
+                ->timeout(60)
+                ->delete($this->node->daemonUrl("/api/servers/{$server->uuid}"), [
+                    'server' => $server->daemonPayload(),
+                ]);
+
+            return $response->successful();
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    public function install(Server $server, callable $onLine, int $maxSeconds = 21600, bool $wipe = false): bool
     {
         try {
             $response = Http::withToken($this->daemonToken())
@@ -293,6 +330,7 @@ class NodeClient
                 ->withHeaders(['Accept' => 'text/event-stream'])
                 ->post($this->node->daemonUrl("/api/servers/{$server->uuid}/install"), [
                     'server' => $server->daemonPayload(),
+                    'wipe' => $wipe,
                 ]);
 
             if (! $response->successful()) {

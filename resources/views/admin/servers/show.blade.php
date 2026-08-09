@@ -149,11 +149,27 @@
                     <x-confirm-action
                         name="reinstall-server-admin"
                         :action="route('admin.servers.reinstall', $server)"
+                        :fields="['wipe' => 0]"
                         tone="warn"
                         title="Reinstall {{ $server->name }}?"
-                        message="The install script runs again over this server. Game files are replaced; the data directory is kept."
+                        message="The install script runs again over this server. Game files are replaced. Worlds, configs and anything else in the data directory are kept."
                         confirm="Reinstall">
                         <x-icon-button icon="refresh" title="Reinstall Server" />
+                    </x-confirm-action>
+
+                    {{-- A second, separate button rather than a tickbox on the
+                         first. A checkbox inside a confirm dialog is read by
+                         nobody, and this one empties somebody's world. --}}
+                    <x-confirm-action
+                        name="reinstall-server-wipe"
+                        :action="route('admin.servers.reinstall', $server)"
+                        :fields="['wipe' => 1]"
+                        tone="danger"
+                        confirm-variant="danger"
+                        title="Wipe And Reinstall {{ $server->name }}?"
+                        message="Everything in the data directory goes: worlds, configs, plugins, saves. The node holds the old contents until the reinstall succeeds and puts them back if it fails, but once it succeeds they are gone."
+                        confirm="Wipe And Reinstall">
+                        <x-icon-button icon="trash" variant="danger" title="Wipe And Reinstall" />
                     </x-confirm-action>
 
                     <x-confirm-action

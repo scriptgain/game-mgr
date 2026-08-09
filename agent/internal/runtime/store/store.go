@@ -626,6 +626,44 @@ func (s Store) unpack(ctx context.Context, server runtime.Server, gz io.Reader) 
 	}
 }
 
+// SetAsideForReinstall moves a server's data out of the way before a wipe and
+// reinstall, returning a token to commit or roll back with.
+//
+// A move, not a delete, and this is the whole point. A wipe that removes the
+// directory and then fails to reinstall has destroyed a customer's world in
+// order to fix a problem with it, which is worse than the problem. Restore
+// learned this the same way and uses the same pattern.
+//
+// An empty token means there was nothing there to set aside, which is a normal
+// first install.
+func (s Store) SetAsideForReinstall(server runtime.Server) (string, error) {
+	safety, err := s.setAside(server, s.Dir(server))
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.EnsureDir(server); err != nil {
+		s.putBack(safety, s.Dir(server))
+
+		return "", err
+	}
+
+	return safety, nil
+}
+
+// CommitReinstall drops the set-aside copy, once the reinstall has succeeded and
+// the old state is genuinely expendable.
+func (s Store) CommitReinstall(safety string) {
+	if safety != "" {
+		_ = os.RemoveAll(safety)
+	}
+}
+
+// RollbackReinstall puts the old data back after a failed reinstall, so a wipe
+// that did not work leaves the server exactly as it was.
+func (s Store) RollbackReinstall(server runtime.Server, safety string) {
+	s.putBack(safety, s.Dir(server))
+}
+
 // setAside renames the server directory out of the way. A rename rather than a
 // copy, so a 40 GiB world costs nothing and cannot half-fail.
 func (s Store) setAside(server runtime.Server, dir string) (string, error) {

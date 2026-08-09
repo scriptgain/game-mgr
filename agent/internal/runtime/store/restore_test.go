@@ -141,3 +141,65 @@ func TestRestoreOntoNothing(t *testing.T) {
 		t.Fatalf("nothing was restored: %v", err)
 	}
 }
+
+// A wipe that deletes first and fails second has destroyed a customer's world
+// in order to fix a problem with it. So it moves the data aside and only drops
+// it once the reinstall has actually worked.
+func TestAFailedWipeReinstallPutsTheFilesBack(t *testing.T) {
+	root := t.TempDir()
+	store := New(root, nil)
+	server := testServer()
+
+	dir, err := store.EnsureDir(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "world", "level.dat"), "a world somebody cares about")
+
+	safety, err := store.SetAsideForReinstall(server)
+	if err != nil {
+		t.Fatalf("set aside: %v", err)
+	}
+	if safety == "" {
+		t.Fatal("nothing was set aside, so there is nothing to roll back to")
+	}
+
+	// The wipe really did clear the directory the installer will write into.
+	if _, err := os.Stat(filepath.Join(dir, "world", "level.dat")); !os.IsNotExist(err) {
+		t.Fatal("the data directory was not cleared")
+	}
+
+	// Now the install fails.
+	store.RollbackReinstall(server, safety)
+
+	body, err := os.ReadFile(filepath.Join(dir, "world", "level.dat"))
+	if err != nil || string(body) != "a world somebody cares about" {
+		t.Fatalf("the world did not come back: %q, %v", body, err)
+	}
+}
+
+// And when it succeeds, the old copy is not left behind filling the disk.
+func TestASuccessfulWipeDropsTheOldCopy(t *testing.T) {
+	root := t.TempDir()
+	store := New(root, nil)
+	server := testServer()
+
+	dir, err := store.EnsureDir(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "world", "level.dat"), "the old world")
+
+	safety, err := store.SetAsideForReinstall(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.CommitReinstall(safety)
+
+	if _, err := os.Stat(safety); !os.IsNotExist(err) {
+		t.Fatal("the set-aside copy survived a successful reinstall and is filling the disk")
+	}
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatal("the server directory is missing after a successful wipe")
+	}
+}

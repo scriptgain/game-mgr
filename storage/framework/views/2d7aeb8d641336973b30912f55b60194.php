@@ -391,14 +391,14 @@
 
                     <?php if (isset($component)) { $__componentOriginalc44eb547b9799a0e4f62294149f13577 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc44eb547b9799a0e4f62294149f13577 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.confirm-action','data' => ['name' => 'reinstall-server-admin','action' => route('admin.servers.reinstall', $server),'tone' => 'warn','title' => 'Reinstall '.e($server->name).'?','message' => 'The install script runs again over this server. Game files are replaced; the data directory is kept.','confirm' => 'Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.confirm-action','data' => ['name' => 'reinstall-server-admin','action' => route('admin.servers.reinstall', $server),'fields' => ['wipe' => 0],'tone' => 'warn','title' => 'Reinstall '.e($server->name).'?','message' => 'The install script runs again over this server. Game files are replaced. Worlds, configs and anything else in the data directory are kept.','confirm' => 'Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('confirm-action'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'reinstall-server-admin','action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('admin.servers.reinstall', $server)),'tone' => 'warn','title' => 'Reinstall '.e($server->name).'?','message' => 'The install script runs again over this server. Game files are replaced; the data directory is kept.','confirm' => 'Reinstall']); ?>
+<?php $component->withAttributes(['name' => 'reinstall-server-admin','action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('admin.servers.reinstall', $server)),'fields' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(['wipe' => 0]),'tone' => 'warn','title' => 'Reinstall '.e($server->name).'?','message' => 'The install script runs again over this server. Game files are replaced. Worlds, configs and anything else in the data directory are kept.','confirm' => 'Reinstall']); ?>
                         <?php if (isset($component)) { $__componentOriginal658398a0e73a18931bb7def04d911f42 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal658398a0e73a18931bb7def04d911f42 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['icon' => 'refresh','title' => 'Reinstall Server']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -409,6 +409,48 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['icon' => 'refresh','title' => 'Reinstall Server']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal658398a0e73a18931bb7def04d911f42)): ?>
+<?php $attributes = $__attributesOriginal658398a0e73a18931bb7def04d911f42; ?>
+<?php unset($__attributesOriginal658398a0e73a18931bb7def04d911f42); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal658398a0e73a18931bb7def04d911f42)): ?>
+<?php $component = $__componentOriginal658398a0e73a18931bb7def04d911f42; ?>
+<?php unset($__componentOriginal658398a0e73a18931bb7def04d911f42); ?>
+<?php endif; ?>
+                     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc44eb547b9799a0e4f62294149f13577)): ?>
+<?php $attributes = $__attributesOriginalc44eb547b9799a0e4f62294149f13577; ?>
+<?php unset($__attributesOriginalc44eb547b9799a0e4f62294149f13577); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc44eb547b9799a0e4f62294149f13577)): ?>
+<?php $component = $__componentOriginalc44eb547b9799a0e4f62294149f13577; ?>
+<?php unset($__componentOriginalc44eb547b9799a0e4f62294149f13577); ?>
+<?php endif; ?>
+
+                    
+                    <?php if (isset($component)) { $__componentOriginalc44eb547b9799a0e4f62294149f13577 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc44eb547b9799a0e4f62294149f13577 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.confirm-action','data' => ['name' => 'reinstall-server-wipe','action' => route('admin.servers.reinstall', $server),'fields' => ['wipe' => 1],'tone' => 'danger','confirmVariant' => 'danger','title' => 'Wipe And Reinstall '.e($server->name).'?','message' => 'Everything in the data directory goes: worlds, configs, plugins, saves. The node holds the old contents until the reinstall succeeds and puts them back if it fails, but once it succeeds they are gone.','confirm' => 'Wipe And Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('confirm-action'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'reinstall-server-wipe','action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('admin.servers.reinstall', $server)),'fields' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(['wipe' => 1]),'tone' => 'danger','confirm-variant' => 'danger','title' => 'Wipe And Reinstall '.e($server->name).'?','message' => 'Everything in the data directory goes: worlds, configs, plugins, saves. The node holds the old contents until the reinstall succeeds and puts them back if it fails, but once it succeeds they are gone.','confirm' => 'Wipe And Reinstall']); ?>
+                        <?php if (isset($component)) { $__componentOriginal658398a0e73a18931bb7def04d911f42 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal658398a0e73a18931bb7def04d911f42 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['icon' => 'trash','variant' => 'danger','title' => 'Wipe And Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('icon-button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['icon' => 'trash','variant' => 'danger','title' => 'Wipe And Reinstall']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal658398a0e73a18931bb7def04d911f42)): ?>

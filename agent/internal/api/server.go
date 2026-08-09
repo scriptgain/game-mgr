@@ -9,10 +9,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -313,7 +315,24 @@ func (s *Server) command(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// reinstaller is what a driver must offer for a wipe to be possible. All three
+// embed store.Store and so satisfy it; the assertion is there so a future
+// driver that does not cannot silently skip the wipe and report success.
+type reinstaller interface {
+	SetAsideForReinstall(gruntime.Server) (string, error)
+	CommitReinstall(string)
+	RollbackReinstall(gruntime.Server, string)
+}
+
 func (s *Server) install(w http.ResponseWriter, r *http.Request) {
+	// Read before decodeServer consumes the body.
+	var opts struct {
+		Wipe bool `json:"wipe"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_ = json.Unmarshal(raw, &opts)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+
 	srv, d, err := s.decodeServer(r)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
@@ -324,9 +343,40 @@ func (s *Server) install(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
+
+	// A wipe moves the old data aside rather than deleting it, and only drops it
+	// once the reinstall has actually worked. Deleting first and failing second
+	// would destroy a world in order to fix it.
+	safety := ""
+	if opts.Wipe {
+		re, ok := d.(reinstaller)
+		if !ok {
+			sse.Event("error", "this runtime cannot wipe a server's files")
+			return
+		}
+		sse.Event("line", "[gamemgr] wiping the data directory, the previous contents are held until this succeeds")
+		safety, err = re.SetAsideForReinstall(srv)
+		if err != nil {
+			sse.Event("error", "could not set the old files aside, so nothing was changed: "+err.Error())
+			return
+		}
+	}
+
 	if err := d.Install(r.Context(), srv, sse); err != nil {
+		if opts.Wipe {
+			if re, ok := d.(reinstaller); ok {
+				re.RollbackReinstall(srv, safety)
+				sse.Event("line", "[gamemgr] the reinstall failed, so the previous files have been put back")
+			}
+		}
 		sse.Event("error", err.Error())
 		return
+	}
+
+	if opts.Wipe {
+		if re, ok := d.(reinstaller); ok {
+			re.CommitReinstall(safety)
+		}
 	}
 	sse.Event("done", "install complete")
 }
