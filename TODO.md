@@ -17,22 +17,16 @@ restart is needed; opcache there revalidates every 2 seconds.
 
 ## Next up
 
-### 1. Publish 1.1.0 so self-update can be proven  ·  S  ·  ~15 min, mostly waiting
+Nothing blocking. Every defect found is fixed and every claim is tested. The
+list below is all deferred work, each item wanting its own plan.
 
-**The feed itself is LIVE.** `https://scriptgain.com/releases/gamemgr/latest.json`
-exists and serves 1.0.0. A scriptgain session built `GameMgrReleaseController`
-(per-version paths, `SHA256SUMS`, release notes) and deployed it, so the 404 that
-made self-update impossible on every install ever made is gone.
-
-What is left is publishing **1.1.0**, which is built and staged in the scriptgain
-repo at `storage/app/dist/gamemgr/1.1.0/` (tarball, SHA256SUMS, NOTES.md).
-`storage/app/.gitignore` is `*`, so it cannot ride a git deploy: it has to reach
-cp1 the same way 1.0.0 did. **Handed to the scriptgain session.**
-
-gamemgr001 is deliberately left on **1.0.0** so that the moment 1.1.0 is
-published, its Updates page shows the banner and Update Now becomes the first
-real end-to-end proof that self-update works. That is the last thing keeping
-that box alive.
+**gamemgr001 has no unique job left.** Self-update was the last thing needing
+real hardware and it is proven twice, unattended: the box walked 1.0.0 to 1.1.0
+to 1.1.1 on the scheduler because `update_auto = 1`, verifying the checksum and
+archiving the previous install each time. Destroy it whenever you like, and
+delete BOTH Cloudflare records (`gamemgr001.scriptgain.com` and the
+`*.lax1.play.scriptgain.com` wildcard). Note that it cannot be reused as a
+manual-update test box without turning `update_auto` off first.
 
 ---
 
@@ -107,5 +101,11 @@ that box alive.
   gamemgr001 in 10.5s. The game does NOT need installing first
 - The account page went from 1931px to 1293px, and power actions no longer log
   "Stoped the server"
+- **Self-update works, proven twice unattended**, 1.0.0 to 1.1.0 to 1.1.1. The
+  release channel is live on scriptgain.com
+- A CloudPanel vhost matches `.gz` as static, so the release tarball route
+  returned nginx's 404 and never reached PHP: 1.0.0 was undownloadable for its
+  whole life. Verify the ARTIFACT, hashed and cache-busted, never just the
+  manifest
 
 Current: **311 tests**, **101 routes clean** in `make health`. Panel version **1.1.0**.
