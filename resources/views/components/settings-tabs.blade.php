@@ -19,6 +19,7 @@
         ['System', [
             ['Licence', 'key', 'settings.licence.edit', 'settings.licence.*'],
             ['Updates', 'download', 'settings.updates.show', 'settings.updates.*'],
+            ['Telemetry', 'chart', 'settings.telemetry.edit', 'settings.telemetry.*'],
         ]],
     ];
     $groups = array_values(array_filter(array_map(function ($g) {

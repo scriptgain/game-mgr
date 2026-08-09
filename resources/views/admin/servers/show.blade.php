@@ -205,6 +205,7 @@
                         @else
                             <x-copy-field :value="$server->address()" />
                         @endif
+                        <x-domains-hint :server="$server" />
                     </div>
 
                     <div class="min-w-0">

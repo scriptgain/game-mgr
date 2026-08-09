@@ -325,6 +325,64 @@ class DnsTest extends TestCase
         $this->assertNotSame('1', Setting::get('domains_enabled'));
     }
 
+    /**
+     * A feature that is off should say so, not vanish.
+     *
+     * Phase one shipped complete and dormant, which meant a server page showed
+     * a bare address and no hint that a name was five minutes away. The line is
+     * for admins only: a customer cannot open Settings, and pointing them at a
+     * door they cannot open is worse than the address they already have.
+     */
+    public function test_a_server_says_where_names_are_switched_on_but_only_to_an_admin(): void
+    {
+        $this->configure(false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.servers.show', $this->server))
+            ->assertOk()
+            ->assertSee('Connection names are off', false)
+            ->assertSee(route('settings.domains.edit'), false)
+            // The direct address is still exactly where it was.
+            ->assertSee('45.63.49.152:8211');
+
+        $customer = User::create([
+            'name' => 'Customer', 'email' => 'customer@test.local',
+            'password' => 'secret1234', 'role' => 'user',
+        ]);
+        $this->server->update(['owner_id' => $customer->id]);
+
+        $this->actingAs($customer)
+            ->get(route('server.network', $this->server))
+            ->assertOk()
+            ->assertDontSee('Connection names are off', false)
+            ->assertSee('45.63.49.152:8211');
+    }
+
+    /** With names working, the prompt has nothing to say and stays away. */
+    public function test_the_prompt_disappears_once_a_server_has_a_name(): void
+    {
+        $this->configure(true);
+        (new WildcardManager)->refreshServerNames($this->node);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.servers.show', $this->server))
+            ->assertOk()
+            ->assertSee('alpha.lax1.play.example.com:8211')
+            ->assertDontSee('Connection names are off', false);
+    }
+
+    /** On, with a zone, but the node was never labelled: say that instead. */
+    public function test_an_unlabelled_node_is_named_as_the_reason(): void
+    {
+        $this->configure(true);
+        $this->node->update(['dns_label' => null]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.servers.show', $this->server))
+            ->assertOk()
+            ->assertSee('which has no label', false);
+    }
+
     // ------------------------------------------------------------ fixtures
 
     private function configure(bool $enabled, string $provider = 'null'): void

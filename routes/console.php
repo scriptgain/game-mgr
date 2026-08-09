@@ -26,6 +26,11 @@ Schedule::command('mods:check-updates')->hourly()->withoutOverlapping();
 // there is recorded against the node and repaired here.
 Schedule::command('gamemgr:dns-sync')->hourly()->withoutOverlapping();
 
+// Anonymous install counts, if the operator has left telemetry on. Hourly
+// rather than daily so a box that is powered off overnight still gets a turn;
+// the service refuses to send more than once a day, so this cannot flood.
+Schedule::command('telemetry:send')->hourly()->withoutOverlapping();
+
 // Nightly housekeeping: trim metric history, expired backups, old audit rows.
 Schedule::command('gamemgr:housekeeping')->dailyAt('03:30')->withoutOverlapping();
 

@@ -73,6 +73,7 @@
                     @else
                         <x-copy-field label="Game Address" :value="$server->address()" />
                     @endif
+                    <x-domains-hint :server="$server" />
                 </div>
             </x-card>
 

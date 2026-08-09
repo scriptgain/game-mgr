@@ -38,6 +38,10 @@
                 direct address keeps working throughout.
             </p>
         </x-card>
+    @else
+        {{-- Nothing about the page changes for a customer. An admin gets the one
+             line that says a name is available and where to switch it on. --}}
+        <div class="mb-6"><x-domains-hint :server="$server" /></div>
     @endif
 
     <x-card title="Network" icon="network"

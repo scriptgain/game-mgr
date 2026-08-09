@@ -259,6 +259,7 @@
     <main class="flex-1 py-8">
         <div class="{{ $maxWidth }} mx-auto px-4 sm:px-6 lg:px-8">
             <x-update-banner />
+            <x-telemetry-banner />
             @if (session('status'))
                 <div class="mb-6"><x-alert type="success">{{ session('status') }}</x-alert></div>
             @endif

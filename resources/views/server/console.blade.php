@@ -116,6 +116,7 @@
                 @else
                     <x-copy-field :value="$server->address()" label="Address" />
                 @endif
+                <x-domains-hint :server="$server" />
                 <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2">
                         <p class="text-slate-500">Runtime</p>

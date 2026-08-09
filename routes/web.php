@@ -19,6 +19,7 @@ use App\Http\Controllers\NodeInstallerController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SetupController;
+use App\Http\Controllers\TelemetryController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
@@ -280,6 +281,12 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('updates/check', [UpdateController::class, 'check'])->name('updates.check');
         Route::post('updates/apply', [UpdateController::class, 'apply'])->name('updates.apply');
         Route::post('updates/auto', [UpdateController::class, 'toggleAuto'])->name('updates.auto');
+
+        // Telemetry lives beside Licence and Updates because it is the same
+        // kind of thing: what this install tells the vendor about itself.
+        Route::get('telemetry', [TelemetryController::class, 'edit'])->name('telemetry.edit');
+        Route::put('telemetry', [TelemetryController::class, 'update'])->name('telemetry.update');
+        Route::post('telemetry/send', [TelemetryController::class, 'send'])->name('telemetry.send');
 
         Route::get('audit', [AuditLogController::class, 'index'])->name('audit.index');
         Route::delete('audit/selected', [AuditLogController::class, 'destroySelected'])->name('audit.destroy-selected');
