@@ -305,6 +305,17 @@ class ServerController extends Controller
             'nodeCheck' => $nodeCheck,
             'memoryFloor' => $this->memoryFloor($server),
             'clientLinks' => $this->clientLinks($server),
+            // Every other node, each carrying the reason it cannot take this
+            // server if it cannot. Worked out here rather than in the view so
+            // the screen shows the real reason instead of hiding the option and
+            // leaving somebody wondering why their node is missing.
+            'transferTargets' => Node::where('id', '!=', $server->node_id)
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Node $node) => [
+                    'node' => $node,
+                    'reason' => app(ServerMigrator::class)->reasonItCannotRun($server, $node),
+                ]),
         ]);
     }
 

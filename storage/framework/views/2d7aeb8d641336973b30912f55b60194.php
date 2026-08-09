@@ -1991,6 +1991,9 @@
 <?php unset($__componentOriginal6feca5f538f5448397e0ed369c078c27); ?>
 <?php endif; ?>
     </div>
+    <div class="mt-6">
+        <?php echo $__env->make('admin.servers._transfer', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+    </div>
  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal5863877a5171c196453bfa0bd807e410)): ?>

@@ -670,4 +670,7 @@
             </x-tab-pane>
         </x-tab-set>
     </div>
+    <div class="mt-6">
+        @include('admin.servers._transfer')
+    </div>
 </x-layouts.app>
