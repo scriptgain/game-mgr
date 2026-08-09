@@ -131,4 +131,50 @@ class FileController extends ServerApiController
 
         return $ok ? $this->done() : response()->json(['message' => 'The node refused the delete.'], 502);
     }
+
+    /**
+     * Compress files, and unpack them.
+     *
+     * file.archive has been a permission with nothing implementing it since the
+     * beginning: an administrator could grant it and it did nothing at all.
+     */
+    public function archive(Request $request, Server $server)
+    {
+        $data = $request->validate([
+            'paths' => ['required', 'array', 'min:1'],
+            'paths.*' => ['string'],
+            'target' => ['nullable', 'string'],
+        ]);
+
+        $this->guard($server, 'file.archive');
+        $this->refuseIfSuspended($server);
+
+        $target = $data['target'] ?: 'archive-'.now()->format('Ymd-His').'.tar.gz';
+
+        if (! NodeClient::for($server->node)->archive($server, $data['paths'], $target)) {
+            return response()->json(['message' => 'The node could not build that archive.'], 502);
+        }
+
+        AuditLog::record('file.archive', 'Compressed '.count($data['paths']).' path(s) on "'.$server->name.'" over the API', $server, $server->id);
+
+        return response()->json(['object' => 'file', 'attributes' => ['path' => $target]], 201);
+    }
+
+    public function extract(Request $request, Server $server)
+    {
+        $data = $request->validate(['path' => ['required', 'string']]);
+
+        $this->guard($server, 'file.archive');
+        $this->refuseIfSuspended($server);
+
+        if (! NodeClient::for($server->node)->extract($server, $data['path'])) {
+            return response()->json([
+                'message' => 'The node could not open that archive. It has to be a .zip, .tar or .tar.gz, and nothing inside it may point outside the server.',
+            ], 502);
+        }
+
+        AuditLog::record('file.archive', 'Extracted '.$data['path'].' on "'.$server->name.'" over the API', $server, $server->id);
+
+        return $this->done();
+    }
 }

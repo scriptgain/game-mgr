@@ -17,6 +17,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -82,6 +84,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/servers/{uuid}/files/upload", s.auth(http.HandlerFunc(s.filesUpload)))
 	mux.Handle("POST /api/servers/{uuid}/files/delete", s.auth(http.HandlerFunc(s.filesDelete)))
 	mux.Handle("POST /api/servers/{uuid}/files/rename", s.auth(http.HandlerFunc(s.filesRename)))
+	mux.Handle("GET /api/servers/{uuid}/backups/{backup}", s.auth(http.HandlerFunc(s.backupDownload)))
+	mux.Handle("POST /api/servers/{uuid}/files/archive", s.auth(http.HandlerFunc(s.filesArchive)))
+	mux.Handle("POST /api/servers/{uuid}/files/extract", s.auth(http.HandlerFunc(s.filesExtract)))
 	mux.Handle("POST /api/servers/{uuid}/files/mkdir", s.auth(http.HandlerFunc(s.filesMkdir)))
 	mux.Handle("POST /api/servers/{uuid}/backup", s.auth(http.HandlerFunc(s.backup)))
 	mux.Handle("POST /api/servers/{uuid}/restore", s.auth(http.HandlerFunc(s.restore)))
@@ -686,6 +691,94 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := d.Restore(r.Context(), srv, body.BackupUUID); err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// backupDownload streams a backup off the node.
+//
+// Streamed with http.ServeFile rather than read and written, so a forty
+// gigabyte backup costs this daemon a file handle rather than forty gigabytes
+// of memory, and range requests work for anything resuming a download.
+func (s *Server) backupDownload(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+	backup := r.PathValue("backup")
+
+	// Both are path segments, so neither is allowed to contain a separator: a
+	// backup id of "../../etc/passwd" would otherwise be a file read.
+	if strings.ContainsAny(uuid, "/\\.") || strings.ContainsAny(backup, "/\\") || strings.Contains(backup, "..") {
+		writeErr(w, http.StatusBadRequest, "bad identifier")
+		return
+	}
+
+	path := filepath.Join(s.cfg.Root, ".backups", store.Short(uuid), backup+".tar.gz")
+	info, err := os.Stat(path)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, "no such backup")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/gzip")
+	w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+	http.ServeFile(w, r, path)
+}
+
+// archiver is what a driver must offer for compression to be possible. All
+// three embed store.Store and so satisfy it.
+type archiver interface {
+	Archive(context.Context, gruntime.Server, []string, string) error
+	Extract(context.Context, gruntime.Server, string) error
+}
+
+func (s *Server) filesArchive(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		serverBody
+		Paths  []string `json:"paths"`
+		Target string   `json:"target"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_ = json.Unmarshal(raw, &body)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+
+	srv, d, err := s.decodeServer(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	a, ok := d.(archiver)
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "this runtime cannot compress files")
+		return
+	}
+	if err := a.Archive(r.Context(), srv, body.Paths, body.Target); err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "target": body.Target})
+}
+
+func (s *Server) filesExtract(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		serverBody
+		Path string `json:"path"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_ = json.Unmarshal(raw, &body)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+
+	srv, d, err := s.decodeServer(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	a, ok := d.(archiver)
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "this runtime cannot extract archives")
+		return
+	}
+	if err := a.Extract(r.Context(), srv, body.Path); err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}

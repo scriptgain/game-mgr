@@ -59,6 +59,12 @@ Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('ins
 // Public, opt-in status page for a single server. Deliberately outside auth.
 Route::get('/status/{slug}', [Client\StatusPageController::class, 'show'])->name('status.show');
 
+// A backup download, authorised by its signature rather than by a session, so
+// the link works in a download manager. The node serves the bytes; this only
+// checks that the backup belongs to the server the link names.
+Route::get('backups/{server}/{backup}', [\App\Http\Controllers\BackupDownloadController::class, 'show'])
+    ->middleware('signed')->name('backups.download');
+
 // Single sign-on from a billing system. Outside the auth middleware because
 // the whole point is that nobody is signed in yet; the signature and a
 // single-use nonce are what make it safe.

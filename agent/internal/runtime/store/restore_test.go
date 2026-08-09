@@ -1,6 +1,8 @@
 package store
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"os"
 	"path/filepath"
@@ -201,5 +203,79 @@ func TestASuccessfulWipeDropsTheOldCopy(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatal("the server directory is missing after a successful wipe")
+	}
+}
+
+// An archive is a list of paths chosen by whoever built it, and
+// "../../etc/cron.d/x" is a perfectly legal name inside one. This is the guard
+// that makes extraction safe to offer at all.
+func TestExtractRefusesToEscapeTheServerDirectory(t *testing.T) {
+	root := t.TempDir()
+	store := New(root, nil)
+	server := testServer()
+
+	dir, err := store.EnsureDir(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A tarball whose single entry climbs out of the directory.
+	archive := filepath.Join(dir, "nasty.tar.gz")
+	f, err := os.Create(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gz := gzip.NewWriter(f)
+	tw := tar.NewWriter(gz)
+	body := []byte("owned")
+	_ = tw.WriteHeader(&tar.Header{Name: "../../escaped.txt", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg})
+	_, _ = tw.Write(body)
+	_ = tw.Close()
+	_ = gz.Close()
+	_ = f.Close()
+
+	// Contained rather than refused is also acceptable; what is not acceptable
+	// is a file appearing outside the server's directory.
+	_ = store.Extract(context.Background(), server, "nasty.tar.gz")
+
+	outside := filepath.Join(root, "escaped.txt")
+	if _, err := os.Stat(outside); err == nil {
+		t.Fatal("an archive entry escaped the server directory")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(root), "escaped.txt")); err == nil {
+		t.Fatal("an archive entry escaped even further")
+	}
+}
+
+// The ordinary case: compress some files, get them back.
+func TestArchiveAndExtractRoundTrip(t *testing.T) {
+	root := t.TempDir()
+	store := New(root, nil)
+	server := testServer()
+
+	dir, err := store.EnsureDir(server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "world", "level.dat"), "a world")
+	write(t, filepath.Join(dir, "server.properties"), "level-name=world")
+
+	if err := store.Archive(context.Background(), server, []string{"world", "server.properties"}, "backup.tar.gz"); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "backup.tar.gz")); err != nil {
+		t.Fatalf("no archive was written: %v", err)
+	}
+
+	// Remove the originals, then unpack.
+	_ = os.RemoveAll(filepath.Join(dir, "world"))
+	_ = os.Remove(filepath.Join(dir, "server.properties"))
+
+	if err := store.Extract(context.Background(), server, "backup.tar.gz"); err != nil {
+		t.Fatalf("extract: %v", err)
+	}
+
+	if body, err := os.ReadFile(filepath.Join(dir, "world", "level.dat")); err != nil || string(body) != "a world" {
+		t.Fatalf("the world did not come back: %q, %v", body, err)
 	}
 }

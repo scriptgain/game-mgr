@@ -117,12 +117,15 @@ Route::prefix('client')->name('api.client.')->middleware('api.token:client')->gr
     Route::post('servers/{server}/files/write', [App\Http\Controllers\Api\Client\FileController::class, 'write'])->name('servers.files.write');
     Route::post('servers/{server}/files/mkdir', [App\Http\Controllers\Api\Client\FileController::class, 'mkdir'])->name('servers.files.mkdir');
     Route::post('servers/{server}/files/rename', [App\Http\Controllers\Api\Client\FileController::class, 'rename'])->name('servers.files.rename');
+    Route::post('servers/{server}/files/archive', [App\Http\Controllers\Api\Client\FileController::class, 'archive'])->name('servers.files.archive');
+    Route::post('servers/{server}/files/extract', [App\Http\Controllers\Api\Client\FileController::class, 'extract'])->name('servers.files.extract');
     Route::delete('servers/{server}/files', [App\Http\Controllers\Api\Client\FileController::class, 'destroy'])->name('servers.files.destroy');
 
     Route::get('servers/{server}/backups', [App\Http\Controllers\Api\Client\BackupController::class, 'index'])->name('servers.backups.index');
     Route::post('servers/{server}/backups', [App\Http\Controllers\Api\Client\BackupController::class, 'store'])->name('servers.backups.store');
     Route::post('servers/{server}/backups/{backup}/restore', [App\Http\Controllers\Api\Client\BackupController::class, 'restore'])->name('servers.backups.restore');
     Route::post('servers/{server}/backups/{backup}/lock', [App\Http\Controllers\Api\Client\BackupController::class, 'lock'])->name('servers.backups.lock');
+    Route::get('servers/{server}/backups/{backup}/download', [App\Http\Controllers\Api\Client\BackupController::class, 'download'])->name('servers.backups.download');
     Route::delete('servers/{server}/backups/{backup}', [App\Http\Controllers\Api\Client\BackupController::class, 'destroy'])->name('servers.backups.destroy');
 
     Route::get('servers/{server}/subusers', [App\Http\Controllers\Api\Client\SubuserController::class, 'index'])->name('servers.subusers.index');
@@ -147,6 +150,7 @@ Route::prefix('client')->name('api.client.')->middleware('api.token:client')->gr
     Route::delete('servers/{server}/mods/{mod}', [App\Http\Controllers\Api\Client\ModController::class, 'destroy'])->name('servers.mods.destroy');
 
     Route::get('servers/{server}/worlds', [App\Http\Controllers\Api\Client\WorldController::class, 'index'])->name('servers.worlds.index');
+    Route::post('servers/{server}/worlds/upload', [App\Http\Controllers\Api\Client\WorldController::class, 'upload'])->name('servers.worlds.upload');
     Route::post('servers/{server}/worlds/{world}/activate', [App\Http\Controllers\Api\Client\WorldController::class, 'activate'])->name('servers.worlds.activate');
     Route::delete('servers/{server}/worlds/{world}', [App\Http\Controllers\Api\Client\WorldController::class, 'destroy'])->name('servers.worlds.destroy');
 

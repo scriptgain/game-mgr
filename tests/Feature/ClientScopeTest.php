@@ -160,4 +160,68 @@ class ClientScopeTest extends TestCase
             $this->assertContains($permission, $known, $path.' guards on '.$permission.', which is not in the matrix');
         }
     }
+
+    /**
+     * The three permissions that existed in the matrix with nothing anywhere
+     * implementing them. An administrator could tick these boxes and grant
+     * nothing at all; now each has an endpoint that demands it.
+     */
+    public function test_the_formerly_dead_permissions_are_now_honoured(): void
+    {
+        $friend = $this->user('archivist@test.local');
+        Subuser::create([
+            'server_id' => $this->server->id,
+            'user_id' => $friend->id,
+            'permissions' => ['file.read'],
+        ]);
+
+        // Holding file.read but not file.archive: refused.
+        $this->as($friend, 'POST', $this->url('files/archive'), ['paths' => ['world']])
+            ->assertForbidden();
+        $this->as($friend, 'POST', $this->url('files/extract'), ['path' => 'x.tar.gz'])
+            ->assertForbidden();
+        $this->as($friend, 'POST', $this->url('worlds/upload').'?name=w')
+            ->assertForbidden();
+
+        // The owner holds everything, so the endpoints exist and are reachable.
+        $this->assertNotSame(403, $this->as($this->owner, 'POST', $this->url('files/archive'), ['paths' => ['world']])->status());
+        $this->assertNotSame(403, $this->as($this->owner, 'POST', $this->url('files/extract'), ['path' => 'x.tar.gz'])->status());
+    }
+
+    /** Every permission the matrix declares is demanded by something. */
+    /**
+     * No permission may exist that nothing honours.
+     *
+     * Scans for the string anywhere in a controller rather than only for a
+     * literal guard() call, because several are reached through a match() on
+     * the requested action and one is checked by the node API rather than by a
+     * client screen. The point is whether granting it does anything, not how
+     * the check is spelled.
+     */
+    public function test_no_permission_in_the_matrix_is_dead(): void
+    {
+        $haystack = '';
+        foreach ([
+            'Http/Controllers/Api/Client',
+            'Http/Controllers/Client',
+            'Http/Controllers/Api',
+            'Models',
+        ] as $dir) {
+            foreach (glob(app_path($dir.'/*.php')) as $file) {
+                $haystack .= file_get_contents($file);
+            }
+        }
+
+        $dead = [];
+        foreach (Subuser::allPermissions() as $permission) {
+            // Subuser::MATRIX itself declares them, so a permission only counts
+            // as honoured if it appears somewhere that is not the declaration.
+            if (substr_count($haystack, "'".$permission."'") < 2) {
+                $dead[] = $permission;
+            }
+        }
+
+        $this->assertSame([], $dead,
+            'these permissions can be granted and do nothing: '.implode(', ', $dead));
+    }
 }

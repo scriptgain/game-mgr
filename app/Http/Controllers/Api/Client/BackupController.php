@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Services\NodeClient;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Backup for one server, as its owner sees them.
@@ -98,5 +99,36 @@ class BackupController extends ServerApiController
         $record->update(['is_locked' => ! $record->is_locked]);
 
         return $this->one($record->fresh(), BackupResource::class);
+    }
+
+    /**
+     * A link to download a backup.
+     *
+     * A signed URL rather than streaming the bytes through here. A backup is
+     * routinely tens of gigabytes, and proxying that through the panel ties up
+     * a PHP worker for the length of somebody's download, on a box whose job is
+     * serving pages. The node already has the file and can serve it.
+     *
+     * Signed and short lived because the URL is the credential: it will end up
+     * in browser history and in whatever the customer pastes it into.
+     */
+    public function download(Server $server, $backup)
+    {
+        $this->guard($server, 'backup.download');
+
+        $record = $server->backups()->findOrFail($backup);
+        abort_unless($record->is_successful, 409, 'That backup did not complete, so there is nothing to download.');
+
+        $url = URL::temporarySignedRoute('backups.download', now()->addMinutes(15), [
+            'server' => $server->uuid_short,
+            'backup' => $record->uuid,
+        ]);
+
+        AuditLog::record('backup.download', 'Issued a download link for a backup of "'.$server->name.'" over the API', $server, $server->id);
+
+        return [
+            'object' => 'signed_url',
+            'attributes' => ['url' => $url, 'expires_in' => 900, 'bytes' => $record->bytes],
+        ];
     }
 }

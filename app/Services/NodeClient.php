@@ -228,6 +228,58 @@ class NodeClient
         return (bool) ($res['ok'] ?? false);
     }
 
+    /**
+     * Open a stream on a backup held by the node.
+     *
+     * Returned as a stream, not a string. These are routinely tens of
+     * gigabytes and reading one into a variable is how a panel runs out of
+     * memory serving a file it never needed to hold.
+     */
+    public function downloadBackup(Server $server, string $backupUuid)
+    {
+        try {
+            $response = Http::withToken($this->daemonToken())
+                ->withoutVerifying()
+                ->withOptions(['stream' => true, 'connect_timeout' => 10, 'read_timeout' => 3600])
+                ->get($this->node->daemonUrl("/api/servers/{$server->uuid}/backups/{$backupUuid}"));
+
+            return $response->successful() ? $response->toPsrResponse()->getBody() : null;
+        } catch (\Throwable $e) {
+            $this->note($e);
+
+            return null;
+        }
+    }
+
+    /** Compress paths into one archive inside the server's own directory. */
+    public function archive(Server $server, array $paths, string $target): bool
+    {
+        $res = $this->post("/api/servers/{$server->uuid}/files/archive", [
+            'server' => $server->daemonPayload(),
+            'paths' => array_values($paths),
+            'target' => $target,
+        ], 600);
+
+        return (bool) ($res['ok'] ?? false);
+    }
+
+    /**
+     * Unpack an archive where it sits.
+     *
+     * The node refuses any entry that would land outside the server's own
+     * directory, because an archive is a list of paths chosen by whoever built
+     * it and "../../etc/cron.d/x" is a legal name inside one.
+     */
+    public function extract(Server $server, string $path): bool
+    {
+        $res = $this->post("/api/servers/{$server->uuid}/files/extract", [
+            'server' => $server->daemonPayload(),
+            'path' => $path,
+        ], 600);
+
+        return (bool) ($res['ok'] ?? false);
+    }
+
     public function makeDir(Server $server, string $path): bool
     {
         $res = $this->post("/api/servers/{$server->uuid}/files/mkdir", [

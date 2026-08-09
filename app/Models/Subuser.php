@@ -51,7 +51,6 @@ class Subuser extends Model
         'Databases' => [
             'database.read' => 'See databases',
             'database.create' => 'Create a database',
-            'database.update' => 'Rotate a password',
             'database.delete' => 'Delete a database',
         ],
         'Configuration' => [
