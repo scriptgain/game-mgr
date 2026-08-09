@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
@@ -278,6 +280,8 @@ func (d *Driver) ensureContainer(ctx context.Context, s runtime.Server) (string,
 		}
 	}
 
+	d.handOverData(ctx, s, path)
+
 	return d.api.CreateContainer(ctx, name, d.config(s, path))
 }
 
@@ -362,10 +366,75 @@ func (d *Driver) recreate(ctx context.Context, s runtime.Server, id string) (str
 		}
 	}
 
+	d.handOverData(ctx, s, path)
+
 	return d.api.CreateContainer(ctx, container(s), d.config(s, path))
 }
 
+/*
+ * Make the data directory writable by whoever the image actually runs as.
+ *
+ * Three kinds of image, and only one of them was working:
+ *
+ *   Runs as ROOT, prepares its own data and drops privileges. Told who to
+ *   become through UID/GID or PUID/PGID. Nothing to do here.
+ *
+ *   Runs as a uid we can ask it to change, the linuxserver.io convention. PUID
+ *   and PGID cover it, and those are sent now.
+ *
+ *   PINS its own non-root user and ignores both. acekorneya/asa_server runs as
+ *   pok, uid 7777. The directory belongs to the node's game account, so ARK
+ *   died on "Permission denied" before downloading a byte.
+ *
+ * The obvious fix for the third case, running the container as our uid instead,
+ * is wrong: it cannot execute the image's own scripts, which are owned by the
+ * image's user. Tried, and it fails a step later with the same words. So the
+ * directory is handed to the image's user instead, which is the only party that
+ * has to write it.
+ *
+ * Best effort throughout. A node where this cannot be determined behaves
+ * exactly as it did before rather than refusing to start anything.
+ */
+func (d *Driver) handOverData(ctx context.Context, s runtime.Server, path string) {
+	if s.Image == "" || path == "" {
+		return
+	}
+
+	user, err := d.api.ImageUser(ctx, s.Image)
+	if err != nil || user == "" || user == "root" || user == "0" || strings.HasPrefix(user, "0:") {
+		return
+	}
+
+	uid, gid, err := d.api.ImageUserID(ctx, s.Image, user)
+	if err != nil || uid == 0 {
+		log.Printf("server %s: could not resolve the image's user %q, leaving the data directory as it is: %v",
+			s.UUID, user, err)
+
+		return
+	}
+
+	if err := chownTree(path, uid, gid); err != nil {
+		log.Printf("server %s: could not hand %s to uid %d: %v", s.UUID, path, uid, err)
+
+		return
+	}
+
+	log.Printf("server %s: data directory handed to the image's own user %s (%d:%d)", s.UUID, user, uid, gid)
+}
+
+// chownTree hands a directory and everything under it to one uid and gid.
+func chownTree(root string, uid, gid int) error {
+	return filepath.Walk(root, func(name string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		return os.Lchown(name, uid, gid)
+	})
+}
+
 func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig {
+	// The user is resolved by the callers that have a context; see userFor.
 	keys := make([]string, 0, len(s.Environment))
 	for k := range s.Environment {
 		keys = append(keys, k)
@@ -385,10 +454,13 @@ func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig
 	// start as root to prepare /data and drop privileges themselves; forcing
 	// the user would break that setup before it ran.
 	if d.runAs != nil {
-		env = append(env,
-			"UID="+strconv.FormatUint(uint64(d.runAs.Uid), 10),
-			"GID="+strconv.FormatUint(uint64(d.runAs.Gid), 10),
-		)
+		uid := strconv.FormatUint(uint64(d.runAs.Uid), 10)
+		gid := strconv.FormatUint(uint64(d.runAs.Gid), 10)
+		// Two dialects for one question. itzg's images read UID and GID;
+		// linuxserver.io's and many game images read PUID and PGID. Sending
+		// only the first meant an image following the other convention never
+		// adopted our uid, and then could not write its own directory.
+		env = append(env, "UID="+uid, "GID="+gid, "PUID="+uid, "PGID="+gid)
 	}
 
 	env = append(env,

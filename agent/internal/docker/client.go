@@ -8,6 +8,7 @@
 package docker
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"context"
@@ -18,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -240,6 +242,107 @@ func (c *Client) ImageExists(ctx context.Context, image string) bool {
 	_, _ = io.Copy(io.Discard, res.Body)
 
 	return true
+}
+
+// ImageUser is the user an image declares it runs as, or "" for root.
+//
+// It decides who has to own the server's directory. An image that starts as
+// root prepares its data and drops privileges itself, and is told which uid to
+// become. An image that pins a non-root user of its own cannot do either, so
+// the container has to be run as the host's game account instead or it cannot
+// write the directory that was bind mounted into it.
+func (c *Client) ImageUser(ctx context.Context, image string) (string, error) {
+	res, err := c.do(ctx, http.MethodGet, "/images/"+url.PathEscape(image)+"/json", nil, nil)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	var out struct {
+		Config struct {
+			User string `json:"User"`
+		} `json:"Config"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(out.Config.User), nil
+}
+
+// ImageUserID resolves the NUMERIC uid and gid an image runs as.
+//
+// Needed because Config.User is usually a NAME. acekorneya/asa_server says
+// "pok", and the only place that maps to 7777 is the image's own /etc/passwd.
+//
+// Read without running anything: a container is created and never started, its
+// /etc/passwd is pulled through the archive endpoint, and the container is
+// removed. Starting the image to ask it a question would mean running a game
+// server to find out who it is.
+func (c *Client) ImageUserID(ctx context.Context, image, user string) (int, int, error) {
+	if uid, gid, ok := numericUser(user); ok {
+		return uid, gid, nil
+	}
+
+	id, err := c.CreateContainer(ctx, "", ContainerConfig{Image: image, Entrypoint: []string{"/bin/true"}})
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { _ = c.RemoveContainer(context.WithoutCancel(ctx), id, true) }()
+
+	res, err := c.do(ctx, http.MethodGet, "/containers/"+id+"/archive", url.Values{"path": {"/etc/passwd"}}, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer res.Body.Close()
+
+	name := strings.SplitN(user, ":", 2)[0]
+	tr := tar.NewReader(io.LimitReader(res.Body, 1<<20))
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			return 0, 0, fmt.Errorf("no %q in the image's /etc/passwd", name)
+		}
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		scanner := bufio.NewScanner(tr)
+		for scanner.Scan() {
+			// name:x:uid:gid:...
+			parts := strings.Split(scanner.Text(), ":")
+			if len(parts) < 4 || parts[0] != name {
+				continue
+			}
+			uid, err1 := strconv.Atoi(parts[2])
+			gid, err2 := strconv.Atoi(parts[3])
+			if err1 != nil || err2 != nil {
+				return 0, 0, fmt.Errorf("unreadable passwd entry for %q", name)
+			}
+
+			return uid, gid, nil
+		}
+	}
+}
+
+// numericUser handles the images that state a uid outright.
+func numericUser(user string) (int, int, bool) {
+	parts := strings.SplitN(user, ":", 2)
+
+	uid, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+
+	gid := uid
+	if len(parts) == 2 {
+		if parsed, err := strconv.Atoi(parts[1]); err == nil {
+			gid = parsed
+		}
+	}
+
+	return uid, gid, true
 }
 
 // ---------------------------------------------------------------- containers
