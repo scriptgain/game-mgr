@@ -70,9 +70,17 @@ class ApiDocsTest extends TestCase
 
                 $summary = $operation['summary'];
 
-                foreach ([' a a', ' a e', ' a i', ' a o', ' a u'] as $slip) {
+                foreach ([' a a', ' a e', ' a i', ' a o'] as $slip) {
                     $this->assertStringNotContainsString($slip, ' '.strtolower($summary),
                         "\"$summary\" needs 'an', not 'a' ($path)");
+                }
+
+                // The other direction, which is the easy one to get wrong once
+                // the first is fixed: "an user" and "an uuid" both read as
+                // typos because the article follows the sound, not the letter.
+                foreach ([' an us', ' an uni', ' an uu'] as $slip) {
+                    $this->assertStringNotContainsString($slip, ' '.strtolower($summary),
+                        "\"$summary\" needs 'a', not 'an' ($path)");
                 }
 
                 $this->assertStringNotContainsString('for one record', $summary,

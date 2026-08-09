@@ -116,9 +116,18 @@ class OpenApiController extends Controller
             return self::ACTIONS[$subject];
         }
 
+        // Acronyms read as letters, so they take the article their SOUND wants
+        // and they are not lowercased into "a sso".
+        if (isset(self::ACRONYMS[$noun])) {
+            $noun = self::ACRONYMS[$noun];
+            $subject = $noun;
+        }
+
         // "Delete a allocation" is the kind of thing that makes generated
-        // documentation look generated.
-        $a = in_array($noun[0] ?? '', ['a', 'e', 'i', 'o', 'u'], true) ? 'an ' : 'a ';
+        // documentation look generated. So is "Create an user": the article
+        // follows the SOUND, and a leading u is only a vowel sound when it is
+        // not the "yoo" of user, unit or uuid.
+        $a = self::takesAn($noun) ? 'an ' : 'a ';
 
         return match ($method) {
             'GET' => str_ends_with($uri, '}')
@@ -166,6 +175,29 @@ class OpenApiController extends Controller
         'test' => 'Send a test message',
         'sync' => 'Reconcile with the provider',
     ];
+
+    /** Path words that are initialisms, with the casing a reader expects. */
+    private const ACRONYMS = ['sso' => 'SSO', 'api' => 'API', 'rcon' => 'RCON', 'sftp' => 'SFTP', 'dns' => 'DNS'];
+
+    /**
+     * Does this word want "an"?
+     *
+     * By sound, not by spelling. A leading vowel usually means yes, except the
+     * "yoo" words (user, unit, uuid) which take "a", and an initialism read as
+     * letters where F, H, L, M, N, R, S and X all begin with a vowel sound.
+     */
+    private static function takesAn(string $noun): bool
+    {
+        if ($noun === strtoupper($noun) && ctype_alpha($noun)) {
+            return in_array($noun[0], ['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X'], true);
+        }
+
+        if (preg_match('/^(us|uni|uu|eu|one)/i', $noun) === 1) {
+            return false;
+        }
+
+        return in_array(strtolower($noun[0] ?? ''), ['a', 'e', 'i', 'o', 'u'], true);
+    }
 
     /** " on one server" and the like, so a nested route says whose it is. */
     private function ownerSuffix(string $uri): string

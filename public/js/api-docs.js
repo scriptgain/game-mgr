@@ -55,3 +55,56 @@
     if (e.key === 'Escape') { box.value = ''; apply(''); }
   });
 })();
+
+/*
+ * Scrollspy: which resource the reader is currently inside.
+ *
+ * An IntersectionObserver rather than a scroll handler, so nothing runs on
+ * every frame while somebody flings through a hundred endpoints. The rail is
+ * scrolled to follow only when the active item has actually left view, because
+ * yanking a list somebody is reading is worse than letting it fall behind.
+ *
+ * Like the filter, this is an enhancement. With it blocked the rail is still a
+ * complete list of working links; nothing simply lights up.
+ */
+(function () {
+  'use strict';
+
+  var targets = Array.prototype.slice.call(document.querySelectorAll('[data-spy]'));
+  if (!targets.length || !('IntersectionObserver' in window)) return;
+
+  var links = {};
+  Array.prototype.forEach.call(document.querySelectorAll('[data-spy-link]'), function (a) {
+    links[a.getAttribute('data-spy-link')] = a;
+  });
+
+  var rail = document.querySelector('.rail-list');
+  var current = null;
+
+  function light(id) {
+    if (id === current || !links[id]) return;
+    if (current && links[current]) links[current].classList.remove('on');
+    current = id;
+    links[id].classList.add('on');
+
+    if (!rail) return;
+    var a = links[id].getBoundingClientRect();
+    var r = rail.getBoundingClientRect();
+    if (a.top < r.top || a.bottom > r.bottom) {
+      links[id].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) light(entry.target.getAttribute('data-spy'));
+    });
+  }, {
+    // A band across the top of the screen: a heading counts as "where you are"
+    // when it reaches the top, not when it first peeks in at the foot.
+    rootMargin: '0px 0px -70% 0px',
+    threshold: 0,
+  });
+
+  targets.forEach(function (t) { observer.observe(t); });
+})();

@@ -28,9 +28,12 @@ class ApiDocsController extends Controller
     {
         $spec = $openapi->document();
 
+        $scopes = $this->group($spec);
+
         return view('api-docs', [
             'spec' => $spec,
-            'scopes' => $this->group($spec),
+            'scopes' => $scopes,
+            'total' => collect($scopes)->flatten(1)->flatten(1)->count(),
             'baseUrl' => rtrim((string) config('app.url'), '/'),
         ]);
     }
@@ -81,6 +84,44 @@ class ApiDocsController extends Controller
         }
 
         return $out;
+    }
+
+    /**
+     * An icon per resource, from the panel's own set.
+     *
+     * Named rather than derived: a wrong icon is worse than none, and there is
+     * no rule that turns "watchdog-rules" into a shield. Anything unmapped gets
+     * a neutral one instead of an empty gap in the rail.
+     */
+    private const ICONS = [
+        'Activity' => 'clock',
+        'Backups' => 'archive',
+        'Channels' => 'bell',
+        'Database Hosts' => 'database',
+        'Databases' => 'database',
+        'Files' => 'folder',
+        'Games' => 'controller',
+        'Locations' => 'map',
+        'Me' => 'key',
+        'Mods' => 'puzzle',
+        'Mounts' => 'folder',
+        'Network' => 'network',
+        'Nodes' => 'cloud',
+        'Players' => 'user-group',
+        'Resources' => 'cpu',
+        'Schedules' => 'clock',
+        'Servers' => 'server',
+        'Subusers' => 'users',
+        'Templates' => 'cube',
+        'Users' => 'users',
+        'Watchdog Rules' => 'shield',
+        'Webhooks' => 'bolt',
+        'Worlds' => 'globe',
+    ];
+
+    public static function iconFor(string $resource): string
+    {
+        return self::ICONS[$resource] ?? 'link';
     }
 
     /** Path segments that are things done TO a server, not things it has. */
