@@ -19,11 +19,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
@@ -40,41 +38,11 @@ type Driver struct {
 	sup *supervise.Supervisor
 	// The account LinuxGSM runs as when this daemon is root. LinuxGSM refuses
 	// to run as root, and it is right to: it downloads and executes game code.
-	runAs *credential
+	runAs *supervise.Credential
 }
 
-type credential struct {
-	name string
-	uid  uint32
-	gid  uint32
-}
-
-func New(root string, sup *supervise.Supervisor) *Driver {
-	return &Driver{Store: store.New(root), sup: sup, runAs: unprivilegedUser()}
-}
-
-// unprivilegedUser finds an account to drop to. Only relevant when the daemon
-// itself is root; a daemon already running as a normal user just uses its own
-// identity, which is the expected setup on a real node.
-func unprivilegedUser() *credential {
-	if os.Geteuid() != 0 {
-		return nil
-	}
-	for _, name := range []string{"gamemgr", "linuxgsm", "nobody"} {
-		u, err := user.Lookup(name)
-		if err != nil {
-			continue
-		}
-		uid, err1 := strconv.Atoi(u.Uid)
-		gid, err2 := strconv.Atoi(u.Gid)
-		if err1 != nil || err2 != nil || uid == 0 {
-			continue
-		}
-
-		return &credential{name: name, uid: uint32(uid), gid: uint32(gid)}
-	}
-
-	return nil
+func New(root string, sup *supervise.Supervisor, runAs *supervise.Credential) *Driver {
+	return &Driver{Store: store.New(root, runAs), sup: sup, runAs: runAs}
 }
 
 // prepare applies the unprivileged identity and the environment LinuxGSM needs.
@@ -85,28 +53,10 @@ func (d *Driver) prepare(cmd *exec.Cmd) {
 		return
 	}
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{Uid: d.runAs.uid, Gid: d.runAs.gid},
-	}
+	cmd.SysProcAttr = d.runAs.SysProcAttr()
 	// Without a HOME it belongs to, LinuxGSM writes its config into whatever
 	// root's home is and then cannot read it back as the game user.
-	cmd.Env = append(cmd.Env, "HOME=/home/"+d.runAs.name, "USER="+d.runAs.name)
-}
-
-// own hands the server directory to the account LinuxGSM will run as. Without
-// it every download fails on permissions, having been created by root.
-func (d *Driver) own(dir string) error {
-	if d.runAs == nil {
-		return nil
-	}
-
-	return filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		return os.Chown(path, int(d.runAs.uid), int(d.runAs.gid))
-	})
+	cmd.Env = append(cmd.Env, "HOME="+d.runAs.Home(), "USER="+d.runAs.Name)
 }
 
 func (d *Driver) Name() string { return "linuxgsm" }
@@ -161,9 +111,9 @@ func (d *Driver) Install(ctx context.Context, s runtime.Server, w io.Writer) err
 	fmt.Fprintf(w, "[gamemgr] data directory %s\n", dir)
 
 	if d.runAs != nil {
-		fmt.Fprintf(w, "[gamemgr] running LinuxGSM as %s, since it refuses to run as root\n", d.runAs.name)
-		if err := d.own(dir); err != nil {
-			return fmt.Errorf("hand the directory to %s: %w", d.runAs.name, err)
+		fmt.Fprintf(w, "[gamemgr] running LinuxGSM as %s, since it refuses to run as root\n", d.runAs.Name)
+		if err := d.OwnTree(dir); err != nil {
+			return fmt.Errorf("hand the directory to %s: %w", d.runAs.Name, err)
 		}
 	}
 
@@ -242,10 +192,12 @@ func (d *Driver) Start(ctx context.Context, s runtime.Server) error {
 	if _, err := d.shortname(s); err != nil {
 		return err
 	}
-	// Ownership is re-applied on every start, not just at install: a backup
-	// restore or a file written through the panel lands as root and LinuxGSM
-	// then cannot read its own configuration.
-	if err := d.own(d.Dir(s)); err != nil {
+	// Belt and braces. Every path that writes into a server directory now hands
+	// what it created to the game account, so this should find nothing to do;
+	// it stays because it costs a metadata walk and it is what kept LinuxGSM
+	// working for the whole time restores were silently leaving root-owned
+	// files behind.
+	if err := d.OwnTree(d.Dir(s)); err != nil {
 		return err
 	}
 

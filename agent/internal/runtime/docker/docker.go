@@ -37,16 +37,11 @@ type Driver struct {
 	runAs *supervise.Credential
 }
 
-func New(socket, root string) *Driver {
-	d := &Driver{Store: store.New(root), api: dockerapi.New(socket)}
-	// The same account the native runtimes use, so one node has one answer to
-	// "who owns a server's files" regardless of how that server runs.
-	if cred := supervise.Unprivileged(); cred != nil {
-		d.runAs = cred
-		d.Store.RunAs = cred
-	}
-
-	return d
+// New builds the Docker driver. The credential is the node's one game account,
+// resolved in main, so a container's uid and the host directory's owner are the
+// same answer to the same question rather than two independent guesses.
+func New(socket, root string, runAs *supervise.Credential) *Driver {
+	return &Driver{Store: store.New(root, runAs), api: dockerapi.New(socket), runAs: runAs}
 }
 
 func (d *Driver) Name() string { return "docker" }

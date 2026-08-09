@@ -16,11 +16,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/scriptgain/gamemgr-node/internal/runtime"
@@ -41,59 +39,15 @@ type Driver struct {
 	// steamcmd runs unprivileged, and the download has nowhere to write. On a
 	// real node it looked like a hang, with an empty data directory, no error,
 	// and steamcmd sitting there burning a few seconds of CPU.
-	runAs *credential
+	runAs *supervise.Credential
 }
 
-type credential struct {
-	name string
-	uid  uint32
-	gid  uint32
-}
-
-func New(binary, root string, sup *supervise.Supervisor) *Driver {
+func New(binary, root string, sup *supervise.Supervisor, runAs *supervise.Credential) *Driver {
 	if binary == "" {
 		binary = "steamcmd"
 	}
 
-	return &Driver{Store: store.New(root), binary: binary, sup: sup, runAs: unprivilegedUser()}
-}
-
-// unprivilegedUser mirrors the LinuxGSM driver: only relevant when the daemon
-// is root, and a daemon already running as a normal user keeps its own identity.
-func unprivilegedUser() *credential {
-	if os.Geteuid() != 0 {
-		return nil
-	}
-	for _, name := range []string{"gamemgr", "steam", "nobody"} {
-		u, err := user.Lookup(name)
-		if err != nil {
-			continue
-		}
-		uid, err1 := strconv.Atoi(u.Uid)
-		gid, err2 := strconv.Atoi(u.Gid)
-		if err1 != nil || err2 != nil || uid == 0 {
-			continue
-		}
-
-		return &credential{name: name, uid: uint32(uid), gid: uint32(gid)}
-	}
-
-	return nil
-}
-
-// own hands the server directory to the account steamcmd downloads as.
-func (d *Driver) own(dir string) error {
-	if d.runAs == nil {
-		return nil
-	}
-
-	return filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		return os.Chown(path, int(d.runAs.uid), int(d.runAs.gid))
-	})
+	return &Driver{Store: store.New(root, runAs), binary: binary, sup: sup, runAs: runAs}
 }
 
 func (d *Driver) Name() string { return "steamcmd" }
@@ -119,11 +73,11 @@ func (d *Driver) Install(ctx context.Context, s runtime.Server, w io.Writer) err
 	}
 	fmt.Fprintf(w, "[gamemgr] data directory %s\n", dir)
 
-	// Before anything downloads: the directory was created by root and
-	// steamcmd runs unprivileged, so without this the install writes nothing
-	// and reports nothing.
-	if err := d.own(dir); err != nil {
-		return fmt.Errorf("hand the data directory to %s: %w", d.runAs.name, err)
+	// EnsureDir has already handed the directory over. This sweep is for a
+	// reinstall, where the directory is full of files from the last one that
+	// steamcmd is about to overwrite as an unprivileged user.
+	if err := d.OwnTree(dir); err != nil {
+		return fmt.Errorf("hand the data directory to the game account: %w", err)
 	}
 
 	if s.SteamAppID <= 0 {
@@ -165,17 +119,8 @@ func (d *Driver) runSteamCMD(ctx context.Context, s runtime.Server, dir string, 
 	cmd := exec.CommandContext(ctx, d.binary, "+runscript", script)
 	cmd.Dir = dir
 	if d.runAs != nil {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Credential: &syscall.Credential{Uid: d.runAs.uid, Gid: d.runAs.gid},
-		}
-		// Without this steamcmd inherits root's HOME and announces
-		// "Redirecting stderr to /root/Steam/logs/stderr.txt" while running as
-		// somebody who cannot write there.
-		home := "/home/" + d.runAs.name
-		if _, err := os.Stat(home); err != nil {
-			home = dir
-		}
-		cmd.Env = append(os.Environ(), "HOME="+home)
+		cmd.SysProcAttr = d.runAs.SysProcAttr()
+		cmd.Env = append(os.Environ(), "HOME="+d.runAs.Home())
 	}
 
 	pipe, err := cmd.StdoutPipe()
@@ -280,13 +225,8 @@ func (d *Driver) writeRunscript(s runtime.Server, dir string) (string, error) {
 	// created by root, so without this it reports "Failed to load script file"
 	// and exits having downloaded nothing. Ownership moves, the mode does not:
 	// this file holds a Steam password for the length of the install.
-	if d.runAs != nil {
-		if err := os.Chown(runtimeDir, int(d.runAs.uid), int(d.runAs.gid)); err != nil {
-			return "", fmt.Errorf("hand the runtime directory to %s: %w", d.runAs.name, err)
-		}
-		if err := os.Chown(script, int(d.runAs.uid), int(d.runAs.gid)); err != nil {
-			return "", fmt.Errorf("hand the runscript to %s: %w", d.runAs.name, err)
-		}
+	if err := d.OwnTree(runtimeDir); err != nil {
+		return "", fmt.Errorf("hand the runscript to the game account: %w", err)
 	}
 
 	return script, nil

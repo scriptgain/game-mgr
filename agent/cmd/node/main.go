@@ -37,7 +37,9 @@ import (
 	"github.com/scriptgain/gamemgr-node/internal/runtime/docker"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/linuxgsm"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/steamcmd"
+	"github.com/scriptgain/gamemgr-node/internal/runtime/store"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/stub"
+	nodesftp "github.com/scriptgain/gamemgr-node/internal/sftp"
 	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
 
@@ -56,17 +58,24 @@ func main() {
 	// declined. The supervisor therefore carries the account, and every tmux
 	// call it makes uses the same one, because a session is only visible to the
 	// uid that created it.
-	if cred := supervise.Unprivileged(); cred != nil {
-		sup.RunAs(cred)
-		log.Printf("native servers run as %q", cred.Name)
+	//
+	// Resolved here and nowhere else. This one value answers both "who runs a
+	// game" and "who owns a game's files", and it is passed to every driver
+	// rather than looked up by each of them: four independent lookups with
+	// three different candidate lists is how the same ownership bug got fixed
+	// five times without ever being fixed.
+	runAs := supervise.Unprivileged()
+	if runAs != nil {
+		sup.RunAs(runAs)
+		log.Printf("native servers run as %q (uid %d), and every server file is owned by it", runAs.Name, runAs.Uid)
 	} else if os.Geteuid() == 0 {
 		log.Printf("warning: running as root with no unprivileged account to drop to; games that refuse root will not start")
 	}
 
 	drivers := gruntime.Registry{
-		"docker":   docker.New(cfg.DockerSocket, cfg.Root),
-		"steamcmd": steamcmd.New("", cfg.Root, sup),
-		"linuxgsm": linuxgsm.New(cfg.Root, sup),
+		"docker":   docker.New(cfg.DockerSocket, cfg.Root, runAs),
+		"steamcmd": steamcmd.New("", cfg.Root, sup, runAs),
+		"linuxgsm": linuxgsm.New(cfg.Root, sup, runAs),
 	}
 	// The stub is only registered when asked for by name. Registering it
 	// unconditionally would make a misconfigured production node quietly serve
@@ -95,6 +104,16 @@ func main() {
 		log.Printf("warning: could not create the data root %s: %v", cfg.Root, err)
 	}
 
+	// One panel client, shared. Enrollment adopts the long-lived token on this
+	// same value, so the SFTP listener starts working the moment the node is
+	// enrolled rather than at the next restart.
+	client := panel.New(cfg.PanelURL, cfg.Token)
+
+	sftpServer := startSFTP(cfg, runAs, client)
+	if sftpServer != nil {
+		defer sftpServer.Close()
+	}
+
 	node := api.New(cfg, drivers, version, sup, fw)
 	srv := &http.Server{
 		Addr:              cfg.Listen,
@@ -110,7 +129,7 @@ func main() {
 	// unreachable still has to boot, still has to answer its own API, and above
 	// all must keep running the game servers it already has.
 	panelCtx, closePanel := context.WithCancel(context.Background())
-	go link(panelCtx, cfg, drivers, node, sup)
+	go link(panelCtx, cfg, drivers, node, sup, client, sftpServer)
 
 	go func() {
 		log.Printf("gamemgr-node %s listening on %s as %q", version, cfg.Listen, cfg.Name)
@@ -146,20 +165,58 @@ func main() {
 	_ = srv.Shutdown(ctx)
 }
 
+// startSFTP brings up file access, or explains why it did not.
+//
+// Never fatal. A node whose SFTP listener cannot start still runs every game on
+// it and still answers the panel's own file manager, so this reports the problem
+// and gets out of the way rather than taking the node down over a feature the
+// games do not need.
+func startSFTP(cfg config.Config, runAs *supervise.Credential, client *panel.Client) *nodesftp.Server {
+	if cfg.SFTPListen == "" {
+		log.Printf("sftp: disabled (NODE_SFTP_LISTEN is empty)")
+
+		return nil
+	}
+	// Every login is checked by the panel, because this daemon holds no
+	// accounts. Without a panel there is nobody to ask, and a listener that
+	// could never authenticate anybody is worse than no listener: it is an open
+	// port that looks like a way in.
+	if cfg.PanelURL == "" {
+		log.Printf("sftp: not started, because there is no NODE_PANEL_URL to check logins against")
+
+		return nil
+	}
+
+	server, err := nodesftp.New(cfg.SFTPListen, cfg.SFTPHostKey, store.New(cfg.Root, runAs), client)
+	if err != nil {
+		log.Printf("sftp: not started: %v", err)
+
+		return nil
+	}
+
+	go func() {
+		log.Printf("sftp: listening on %s, host key %s", cfg.SFTPListen, server.Fingerprint())
+		if err := server.Serve(); err != nil {
+			log.Printf("sftp: stopped: %v", err)
+		}
+	}()
+
+	return server
+}
+
 // link keeps this node's side of the panel relationship: enroll once if it has
 // never been enrolled, then heartbeat for as long as the daemon runs.
 //
 // Nothing in here is fatal and nothing in here touches a server. Every failure
 // is logged and retried, because the alternative - a daemon that exits when the
 // panel is down - would take a node full of running games with it.
-func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, node *api.Server, sup *supervise.Supervisor) {
+func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, node *api.Server, sup *supervise.Supervisor, client *panel.Client, sftpServer *nodesftp.Server) {
 	if cfg.PanelURL == "" {
 		log.Printf("no NODE_PANEL_URL: this node will not enroll or heartbeat, and only answers calls the panel makes to it")
 
 		return
 	}
 
-	client := panel.New(cfg.PanelURL, cfg.Token)
 	interval := time.Duration(cfg.HeartbeatInterval) * time.Second
 
 	if cfg.Token == "" {
@@ -184,6 +241,12 @@ func link(ctx context.Context, cfg config.Config, drivers gruntime.Registry, nod
 	sampler := panel.NewSampler(cfg.Root, version, func(ctx context.Context) int {
 		return running(ctx, dockerClient, sup)
 	})
+	// Only claimed once the listener is really up. The panel shows a customer
+	// their SFTP host and username off the back of this, so a node that could
+	// not start it must not advertise it.
+	if sftpServer != nil {
+		sampler.ReportSFTP(true, sftpServer.Fingerprint())
+	}
 
 	panel.Heartbeat(ctx, client, interval, sampler.Sample)
 }

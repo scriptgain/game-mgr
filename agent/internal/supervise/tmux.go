@@ -49,13 +49,50 @@ func RuntimeDir(dir string) string {
 	return filepath.Join(filepath.Dir(dir), ".runtime", filepath.Base(dir))
 }
 
-// Credential is the account native servers run as. Exported because both
-// native drivers need the same one and a tmux session is only visible to the
-// uid that created it.
+// Credential is the account a node's game servers run as, and the account
+// every file belonging to a game server is owned by.
+//
+// There is exactly one of these per node and it is resolved exactly once, in
+// main. It used to be resolved independently by four different places with
+// three different candidate lists, which is how the same ownership bug was
+// fixed five separate times: each driver had its own opinion about who the
+// game user was, and any path that forgot to ask produced a root-owned file
+// that the game could not read.
 type Credential struct {
 	Name string
 	Uid  uint32
 	Gid  uint32
+}
+
+// SysProcAttr is how a child process is launched as this account. The single
+// construction site for all of them: tmux, steamcmd and the LinuxGSM scripts
+// all went through their own copy of this before.
+func (c *Credential) SysProcAttr() *syscall.SysProcAttr {
+	if c == nil {
+		return nil
+	}
+
+	return &syscall.SysProcAttr{
+		Credential: &syscall.Credential{Uid: c.Uid, Gid: c.Gid},
+	}
+}
+
+// Home is a directory this account can actually write to.
+//
+// Load-bearing for more than tidiness. Without it steamcmd inherits root's HOME
+// and announces "Redirecting stderr to /root/Steam/logs/stderr.txt" while
+// running as somebody who cannot write there, and LinuxGSM writes its config
+// into root's home and then cannot read it back.
+func (c *Credential) Home() string {
+	if c == nil {
+		return ""
+	}
+	home := "/home/" + c.Name
+	if _, err := os.Stat(home); err != nil {
+		return os.TempDir()
+	}
+
+	return home
 }
 
 type Supervisor struct {
@@ -135,14 +172,8 @@ func (s *Supervisor) apply(cmd *exec.Cmd) {
 	if s.runAs == nil {
 		return
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{Uid: s.runAs.Uid, Gid: s.runAs.Gid},
-	}
-	home := "/home/" + s.runAs.Name
-	if _, err := os.Stat(home); err != nil {
-		home = os.TempDir()
-	}
-	cmd.Env = append(os.Environ(), "HOME="+home)
+	cmd.SysProcAttr = s.runAs.SysProcAttr()
+	cmd.Env = append(os.Environ(), "HOME="+s.runAs.Home())
 }
 
 func (s *Supervisor) Running(ctx context.Context, session string) bool {

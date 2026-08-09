@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // What this protects: the enroll token env var was NODE_ENROL_TOKEN before the
 // rename to US English. A node.env written by an older installer still spells it
@@ -30,5 +33,26 @@ func TestLoadEnrollTokenFallsBackToTheOldName(t *testing.T) {
 				t.Fatalf("EnrollToken = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// An operator turns file access off by setting the variable to nothing. env()
+// treats empty as unset and hands back the default, so this one deliberately
+// does not use it: the difference is a node that was meant to have no SFTP
+// listener quietly opening one on 2022.
+func TestAnEmptySFTPListenMeansOffNotDefault(t *testing.T) {
+	t.Setenv("NODE_SFTP_LISTEN", "")
+	if got := Load().SFTPListen; got != "" {
+		t.Fatalf("SFTPListen = %q, want empty: an explicitly empty value means off", got)
+	}
+
+	t.Setenv("NODE_SFTP_LISTEN", ":2222")
+	if got := Load().SFTPListen; got != ":2222" {
+		t.Fatalf("SFTPListen = %q, want :2222", got)
+	}
+
+	os.Unsetenv("NODE_SFTP_LISTEN")
+	if got := Load().SFTPListen; got != ":2022" {
+		t.Fatalf("SFTPListen = %q, want the :2022 default when unset", got)
 	}
 }

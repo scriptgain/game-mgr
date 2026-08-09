@@ -28,7 +28,7 @@ func write(t *testing.T, path, body string) {
 // created since it was taken is gone." The code now matches the promise.
 func TestRestoreReplacesRatherThanMerges(t *testing.T) {
 	root := t.TempDir()
-	store := New(root)
+	store := New(root, nil)
 	server := testServer()
 	ctx := context.Background()
 
@@ -80,7 +80,7 @@ func TestRestoreReplacesRatherThanMerges(t *testing.T) {
 // archive terminal.
 func TestAFailedRestoreLeavesTheServerIntact(t *testing.T) {
 	root := t.TempDir()
-	store := New(root)
+	store := New(root, nil)
 	server := testServer()
 	ctx := context.Background()
 
@@ -117,7 +117,7 @@ func TestAFailedRestoreLeavesTheServerIntact(t *testing.T) {
 // A restore against a server with no directory yet must still work.
 func TestRestoreOntoNothing(t *testing.T) {
 	root := t.TempDir()
-	store := New(root)
+	store := New(root, nil)
 	server := testServer()
 	ctx := context.Background()
 

@@ -41,6 +41,15 @@ type Config struct {
 	// try to enroll again with a token the panel has already spent and the node
 	// would come back unenrolled.
 	ConfigFile string
+	// Where SFTP listens, for example ":2022". Empty turns it off entirely,
+	// which is the right answer for a node whose customers only ever use the
+	// panel's file manager and a listener that answers passwords on the public
+	// internet is one more thing to attack.
+	SFTPListen string
+	// The node's SSH host key. Generated on first run and then kept, because a
+	// key that changed on every restart would give every client the warning
+	// that normally means the connection is being intercepted.
+	SFTPHostKey string
 }
 
 func Load() Config {
@@ -62,12 +71,26 @@ func Load() Config {
 		HeartbeatInterval: envInt("NODE_HEARTBEAT", 30),
 		MaxUploadMiB:      envInt("NODE_MAX_UPLOAD", 4096),
 		ConfigFile:        env("NODE_CONFIG_FILE", "/etc/gamemgr-node/node.env"),
+		// Not env(), which treats an empty value as absent and would hand back
+		// the default. "NODE_SFTP_LISTEN=" in the config file is how an operator
+		// turns file access off, and it has to mean off rather than :2022.
+		SFTPListen:  lookup("NODE_SFTP_LISTEN", ":2022"),
+		SFTPHostKey: env("NODE_SFTP_HOST_KEY", "/etc/gamemgr-node/ssh_host_ed25519_key"),
 	}
 	return c
 }
 
 func env(k, def string) string {
 	if v, ok := os.LookupEnv(k); ok && v != "" {
+		return v
+	}
+	return def
+}
+
+// lookup is env() without the "empty means unset" rule: a variable that is
+// present and empty is an explicit empty value.
+func lookup(k, def string) string {
+	if v, ok := os.LookupEnv(k); ok {
 		return v
 	}
 	return def
