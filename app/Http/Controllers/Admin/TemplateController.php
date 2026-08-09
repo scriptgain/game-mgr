@@ -48,9 +48,14 @@ class TemplateController extends Controller
 
     public function store(Request $request)
     {
+        // Everything is validated before anything is written, so a bad variable
+        // cannot leave a half-built template behind.
         $ports = $this->validatedPorts($request);
-        $template = Template::create($this->validated($request));
+        $variables = $this->validatedVariables($request);
+
+        $template = Template::create($this->validated($request) + $this->validatedDocuments($request));
         $this->syncPorts($template, $ports);
+        $this->syncVariables($template, $variables, $request->boolean('variables_submitted'));
 
         return redirect()->route('admin.templates.show', $template)->with('status', 'Template created.');
     }
@@ -108,8 +113,11 @@ class TemplateController extends Controller
     public function update(Request $request, Template $template)
     {
         $ports = $this->validatedPorts($request);
-        $template->update($this->validated($request, $template));
+        $variables = $this->validatedVariables($request);
+
+        $template->update($this->validated($request, $template) + $this->validatedDocuments($request));
         $this->syncPorts($template, $ports);
+        $this->syncVariables($template, $variables, $request->boolean('variables_submitted'));
 
         return redirect()->route('admin.templates.show', $template)->with('status', 'Template updated.');
     }
@@ -348,5 +356,196 @@ class TemplateController extends Controller
         }
 
         return $data;
+    }
+    // ------------------------------------------------------------ variables
+
+    /**
+     * Variables as the form now posts them.
+     *
+     * They used to be their own screen with their own add and delete actions,
+     * which meant authoring a template was two screens and a round trip per
+     * variable. That screen still exists and still works; this is the same data
+     * arriving as part of the form it belongs to.
+     */
+    private function validatedVariables(Request $request): array
+    {
+        // The form always sends this marker, so an empty set really means the
+        // last variable was deleted rather than that nothing was submitted.
+        // Without it, removing every row in the browser would silently leave
+        // them all in place, which looks exactly like a save that did not work.
+        if (! $request->boolean('variables_submitted')) {
+            return [];
+        }
+
+        $data = $request->validate([
+            'variables' => ['nullable', 'array', 'max:60'],
+            'variables.*.name' => ['required', 'string', 'max:120'],
+            'variables.*.env_variable' => ['required', 'string', 'max:80', 'regex:/^[A-Z][A-Z0-9_]*$/'],
+            'variables.*.description' => ['nullable', 'string', 'max:500'],
+            'variables.*.default_value' => ['nullable', 'string', 'max:500'],
+            'variables.*.rules' => ['required', 'string', 'max:255'],
+            'variables.*.user_viewable' => ['nullable', 'boolean'],
+            'variables.*.user_editable' => ['nullable', 'boolean'],
+        ], [
+            'variables.*.env_variable.regex' => 'An environment variable must be upper case and start with a letter, for example MINECRAFT_VERSION.',
+            'variables.*.name.required' => 'Every variable needs a name.',
+            'variables.*.rules.required' => 'Every variable needs validation rules. Use nullable|string if it does not matter.',
+        ]);
+
+        $rows = array_values($data['variables'] ?? []);
+
+        // Two variables writing the same environment variable is not a
+        // preference, it is one of them silently winning at install time.
+        $seen = [];
+        foreach ($rows as $row) {
+            $env = $row['env_variable'];
+            if (isset($seen[$env])) {
+                throw ValidationException::withMessages([
+                    'variables' => 'Two variables both write '.$env.'. Each one has to be different, or only one of them reaches the server.',
+                ]);
+            }
+            $seen[$env] = true;
+        }
+
+        return $rows;
+    }
+
+    private function syncVariables(Template $template, array $rows, bool $submitted = true): void
+    {
+        if (! $submitted) {
+            return;
+        }
+
+        $sort = 0;
+        $keep = [];
+        foreach ($rows as $row) {
+            $variable = $template->variables()->updateOrCreate(
+                ['env_variable' => $row['env_variable']],
+                [
+                    'name' => $row['name'],
+                    'description' => $row['description'] ?? null,
+                    'default_value' => $row['default_value'] ?? null,
+                    'rules' => $row['rules'],
+                    'user_viewable' => (bool) ($row['user_viewable'] ?? false),
+                    'user_editable' => (bool) ($row['user_editable'] ?? false),
+                    'sort' => $sort++,
+                ],
+            );
+            $keep[] = $variable->id;
+        }
+
+        // A row removed in the browser is a row deleted here. Servers already
+        // built keep the value they were given: their variables are their own
+        // rows, not references to these.
+        $template->variables()->whereNotIn('id', $keep)->delete();
+    }
+
+    // --------------------------------------------------------------- config
+
+    /**
+     * The config schema, as files each holding settings.
+     *
+     * This is what gives a customer a Config tab instead of a text editor, and
+     * until now it could only be set by importing somebody else's egg.
+     */
+    private function validatedSchema(Request $request): ?array
+    {
+        if (! $request->boolean('schema_submitted')) {
+            return null;
+        }
+
+        $data = $request->validate([
+            'schema' => ['nullable', 'array', 'max:20'],
+            'schema.*.file' => ['required', 'string', 'max:255'],
+            'schema.*.format' => ['required', 'in:properties,yaml,json,ini'],
+            'schema.*.label' => ['nullable', 'string', 'max:120'],
+            'schema.*.settings' => ['nullable', 'array', 'max:200'],
+            'schema.*.settings.*.key' => ['required', 'string', 'max:160'],
+            'schema.*.settings.*.name' => ['nullable', 'string', 'max:160'],
+            'schema.*.settings.*.default' => ['nullable', 'string', 'max:500'],
+            'schema.*.settings.*.rules' => ['nullable', 'string', 'max:255'],
+            'schema.*.settings.*.section' => ['nullable', 'string', 'max:120'],
+            'schema.*.settings.*.user_viewable' => ['nullable', 'boolean'],
+            'schema.*.settings.*.user_editable' => ['nullable', 'boolean'],
+        ], [
+            'schema.*.file.required' => 'Every config file needs a path, for example server.properties.',
+            'schema.*.settings.*.key.required' => 'Every setting needs the key it writes in the file.',
+        ]);
+
+        $out = [];
+        foreach (array_values($data['schema'] ?? []) as $file) {
+            $settings = [];
+            foreach (array_values($file['settings'] ?? []) as $setting) {
+                $settings[] = array_filter([
+                    'key' => $setting['key'],
+                    'name' => $setting['name'] ?? null,
+                    'default' => $setting['default'] ?? null,
+                    'rules' => $setting['rules'] ?: 'nullable|string',
+                    'section' => $setting['section'] ?? null,
+                ], fn ($v) => $v !== null && $v !== '') + [
+                    // Kept outside array_filter: false is a meaningful answer
+                    // here and filtering would turn "hidden" into "visible".
+                    'user_viewable' => (bool) ($setting['user_viewable'] ?? false),
+                    'user_editable' => (bool) ($setting['user_editable'] ?? false),
+                ];
+            }
+
+            $out[] = array_filter([
+                'file' => ltrim($file['file'], '/'),
+                'format' => $file['format'],
+                'label' => $file['label'] ?? null,
+            ], fn ($v) => $v !== null && $v !== '') + ['settings' => $settings];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The three documents this form can now author, as columns to write.
+     *
+     * Each returns null when the form did not carry it at all, and a null is
+     * dropped rather than written: an API caller that posts only a name must
+     * not blank a template's whole config schema as a side effect.
+     */
+    private function validatedDocuments(Request $request): array
+    {
+        return array_filter([
+            'config_schema' => $this->validatedSchema($request),
+            'config_files' => $this->validatedJson($request, 'config_files_raw', 'The config files document'),
+            'mcjars' => $this->validatedJson($request, 'mcjars_raw', 'The MCJars document'),
+        ], fn ($v) => $v !== null);
+    }
+
+    /**
+     * A JSON document typed into a textarea.
+     *
+     * Machine formats, both of them: config_files arrives from an imported egg
+     * and mcjars from the MCJars API. Nobody writes them by hand, so the only
+     * thing worth checking is that what was pasted parses.
+     */
+    private function validatedJson(Request $request, string $field, string $label): ?array
+    {
+        if (! $request->has($field)) {
+            return null;
+        }
+
+        $raw = trim((string) $request->input($field));
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw ValidationException::withMessages([
+                $field => $label.' is not valid JSON: '.json_last_error_msg(),
+            ]);
+        }
+        if (! is_array($decoded)) {
+            throw ValidationException::withMessages([
+                $field => $label.' has to be a JSON object or array.',
+            ]);
+        }
+
+        return $decoded;
     }
 }
