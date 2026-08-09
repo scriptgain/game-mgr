@@ -27,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
             $app->make(\App\Services\Mods\Sources\HangarSource::class),
             $app->make(\App\Services\Mods\Sources\SpigetSource::class),
             $app->make(\App\Services\Mods\Sources\CurseForgeSource::class),
+            $app->make(\App\Services\Mods\Sources\WorkshopSource::class),
         ]));
     }
 

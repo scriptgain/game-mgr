@@ -116,6 +116,26 @@ func (d *Driver) runSteamCMD(ctx context.Context, s runtime.Server, dir string, 
 
 	fmt.Fprintf(w, "[steamcmd] app_update %d%s\n", s.SteamAppID, branchNote(s.SteamBranch))
 
+	return d.runScriptFile(ctx, script, dir, w)
+}
+
+// loginLine is the one place credentials are turned into a steamcmd command,
+// so the workshop runscript cannot accidentally grow its own weaker version.
+func (d *Driver) loginLine(s runtime.Server) (string, error) {
+	if s.SteamAnonymous {
+		return "login anonymous", nil
+	}
+
+	user := strings.TrimSpace(s.Environment["STEAM_USER"])
+	if user == "" {
+		return "", fmt.Errorf("this template needs a Steam account, so set STEAM_USER and STEAM_PASS on it")
+	}
+
+	return "login " + user + " " + s.Environment["STEAM_PASS"], nil
+}
+
+// runScriptFile executes a prepared runscript and condenses its output.
+func (d *Driver) runScriptFile(ctx context.Context, script, dir string, w io.Writer) error {
 	cmd := exec.CommandContext(ctx, d.binary, "+runscript", script)
 	cmd.Dir = dir
 	if d.runAs != nil {
@@ -178,13 +198,9 @@ func (d *Driver) runSteamCMD(ctx context.Context, s runtime.Server, dir string, 
 // the download runs, which for a large game is hours. A 0600 file readable only
 // by the account steamcmd runs as keeps it off argv entirely.
 func (d *Driver) writeRunscript(s runtime.Server, dir string) (string, error) {
-	login := "login anonymous"
-	if !s.SteamAnonymous {
-		user := strings.TrimSpace(s.Environment["STEAM_USER"])
-		if user == "" {
-			return "", fmt.Errorf("this template needs a Steam account, so set STEAM_USER and STEAM_PASS on it")
-		}
-		login = "login " + user + " " + s.Environment["STEAM_PASS"]
+	login, err := d.loginLine(s)
+	if err != nil {
+		return "", err
 	}
 
 	update := "app_update " + strconv.Itoa(s.SteamAppID)

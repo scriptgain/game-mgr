@@ -121,6 +121,9 @@ class ModController extends ServerController
             'catalogue' => $catalogue,
             'usable' => $usable,
             'source' => $source,
+            // The Workshop can always install by id and can only SEARCH with a
+            // key, so the screen offers the box that actually works.
+            'byId' => $source instanceof \App\Services\Mods\Sources\WorkshopSource && ! $source->canSearch(),
             'unusable' => $this->registry->unusable($target),
             'installed' => $server->mods()->pluck('remote_id')->filter()->all(),
         ]);
@@ -137,10 +140,26 @@ class ModController extends ServerController
             // there, and the source is checked against the template rather than
             // trusted, so it cannot reach a catalogue this server may not use.
             'source' => ['required', 'string', 'max:32', 'alpha_dash'],
-            'project' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9!@$()`.+,_"\-]+$/'],
+            // The Workshop is the one source people paste a whole URL for, so
+            // it gets a longer field and is reduced to its id below. Everywhere
+            // else a project id is a project id, and anything that is not one
+            // is refused here rather than sent to a third party.
+            'project' => $request->input('source') === 'workshop'
+                ? ['required', 'string', 'max:255']
+                : ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9!@$()`.+,_"\-]+$/'],
         ], [
             'project.regex' => 'That is not a catalogue project id.',
         ]);
+
+        if ($data['source'] === 'workshop') {
+            $id = \App\Services\Mods\Sources\WorkshopSource::cleanId($data['project']);
+
+            if ($id === null) {
+                return back()->with('error', 'That is not a Workshop item. Paste the item id, or the whole address of its Workshop page.');
+            }
+
+            $data['project'] = $id;
+        }
 
         $server->load('node', 'template.game', 'template.variables');
         $result = $this->installer->install($server, ModTarget::for($server), $data['source'], $data['project']);

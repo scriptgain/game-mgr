@@ -28,6 +28,7 @@ import (
 	"github.com/scriptgain/gamemgr-node/internal/config"
 	"github.com/scriptgain/gamemgr-node/internal/firewall"
 	gruntime "github.com/scriptgain/gamemgr-node/internal/runtime"
+	"github.com/scriptgain/gamemgr-node/internal/runtime/steamcmd"
 	"github.com/scriptgain/gamemgr-node/internal/runtime/store"
 	"github.com/scriptgain/gamemgr-node/internal/supervise"
 )
@@ -85,6 +86,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/servers/{uuid}/files/delete", s.auth(http.HandlerFunc(s.filesDelete)))
 	mux.Handle("POST /api/servers/{uuid}/files/rename", s.auth(http.HandlerFunc(s.filesRename)))
 	mux.Handle("POST /api/servers/{uuid}/backups/fetch", s.auth(http.HandlerFunc(s.backupFetch)))
+	mux.Handle("POST /api/servers/{uuid}/workshop/install", s.auth(http.HandlerFunc(s.workshopInstall)))
 	mux.Handle("GET /api/servers/{uuid}/backups/{backup}", s.auth(http.HandlerFunc(s.backupDownload)))
 	mux.Handle("POST /api/servers/{uuid}/files/archive", s.auth(http.HandlerFunc(s.filesArchive)))
 	mux.Handle("POST /api/servers/{uuid}/files/extract", s.auth(http.HandlerFunc(s.filesExtract)))
@@ -915,4 +917,66 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func writeErr(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]any{"error": msg})
+}
+
+// workshopInstall fetches one Steam Workshop item onto this node.
+//
+// The odd one out among the catalogues, and deliberately so: Valve serves
+// Workshop content only to an authenticated Steam client, so the panel cannot
+// download it and stream it here the way it does a Modrinth jar. steamcmd on
+// this node does the fetching and the panel never touches the bytes, which also
+// means there is no checksum to verify: the transport IS Steam.
+//
+// Only the steamcmd driver can do this. A Docker or LinuxGSM server asking gets
+// a plain refusal rather than a 500.
+func (s *Server) workshopInstall(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		serverBody
+		AppID  int `json:"app_id"`
+		ItemID int `json:"item_id"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_ = json.Unmarshal(raw, &body)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+
+	srv, d, err := s.decodeServer(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	installer, ok := asWorkshopInstaller(d)
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "this server does not run on steamcmd, so it has no Steam client to fetch a Workshop item with")
+		return
+	}
+
+	var log bytes.Buffer
+	path, err := installer.InstallWorkshopItem(r.Context(), srv, body.AppID, body.ItemID, &log)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "path": path, "log": log.String()})
+}
+
+// asWorkshopInstaller peels the wrappers a driver may be behind. The firewall
+// Guard embeds the driver rather than being one, so a direct type assertion on
+// the outermost value finds nothing.
+func asWorkshopInstaller(d gruntime.Driver) (steamcmd.WorkshopInstaller, bool) {
+	for range 4 {
+		if installer, ok := d.(steamcmd.WorkshopInstaller); ok {
+			return installer, true
+		}
+
+		unwrapper, ok := d.(interface{ Unwrap() gruntime.Driver })
+		if !ok {
+			return nil, false
+		}
+
+		d = unwrapper.Unwrap()
+	}
+
+	return nil, false
 }

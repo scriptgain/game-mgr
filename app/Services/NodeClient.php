@@ -270,6 +270,25 @@ class NodeClient
         return (bool) ($res['ok'] ?? false);
     }
 
+    /**
+     * Have the node fetch a Steam Workshop item with steamcmd.
+     *
+     * Long timeout on purpose: a Workshop item can be a texture pack or it can
+     * be several gigabytes, and Steam is not quick about either.
+     *
+     * @return array{ok:bool,path?:string,error?:string}
+     */
+    public function workshopInstall(Server $server, int $appId, int $itemId): array
+    {
+        $res = $this->post("/api/servers/{$server->uuid}/workshop/install", [
+            'server' => $server->daemonPayload(),
+            'app_id' => $appId,
+            'item_id' => $itemId,
+        ], 3600);
+
+        return is_array($res) ? $res + ['ok' => (bool) ($res['ok'] ?? false)] : ['ok' => false];
+    }
+
     /** Compress paths into one archive inside the server's own directory. */
     public function archive(Server $server, array $paths, string $target): bool
     {

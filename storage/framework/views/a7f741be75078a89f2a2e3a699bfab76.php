@@ -700,6 +700,26 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php $component = $__componentOriginalc2d5772b82fc71dd792b40d519e4e3f1; ?>
 <?php unset($__componentOriginalc2d5772b82fc71dd792b40d519e4e3f1); ?>
 <?php endif; ?>
+            <?php if (isset($component)) { $__componentOriginal9822ccd6e048f78602099ea4e520dea5 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9822ccd6e048f78602099ea4e520dea5 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.telemetry-banner','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('telemetry-banner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9822ccd6e048f78602099ea4e520dea5)): ?>
+<?php $attributes = $__attributesOriginal9822ccd6e048f78602099ea4e520dea5; ?>
+<?php unset($__attributesOriginal9822ccd6e048f78602099ea4e520dea5); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9822ccd6e048f78602099ea4e520dea5)): ?>
+<?php $component = $__componentOriginal9822ccd6e048f78602099ea4e520dea5; ?>
+<?php unset($__componentOriginal9822ccd6e048f78602099ea4e520dea5); ?>
+<?php endif; ?>
             <?php if(session('status')): ?>
                 <div class="mb-6"><?php if (isset($component)) { $__componentOriginal5194778a3a7b899dcee5619d0610f5cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf = $attributes; } ?>

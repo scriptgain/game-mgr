@@ -15,6 +15,25 @@ return [
     // the others simply behave better with it.
     'contact' => env('GAMEMGR_MODS_CONTACT', 'support@scriptgain.com'),
 
+    'workshop' => [
+        // Installing by id needs no key at all, which is the normal path.
+        // A Steam Web API key only adds the search box, and like the CurseForge
+        // key it is entered on Settings, Mods rather than living here.
+        'enabled' => filter_var(env('GAMEMGR_WORKSHOP', true), FILTER_VALIDATE_BOOL),
+
+        'base' => env('GAMEMGR_WORKSHOP_URL', 'https://api.steampowered.com'),
+
+        'api_key' => env('GAMEMGR_STEAM_KEY'),
+
+        'timeout' => (float) env('GAMEMGR_WORKSHOP_TIMEOUT', 8),
+
+        'ttl' => [
+            'search' => 300,
+            'project' => 900,
+            'versions' => 900,
+        ],
+    ],
+
     'curseforge' => [
         // The key is NOT read from here in normal use: it is entered on
         // Settings, Mods and stored encrypted, the same as the Cloudflare

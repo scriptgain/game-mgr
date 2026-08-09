@@ -37,6 +37,25 @@
             </div>
         @endif
 
+        @if ($byId ?? false)
+            {{-- No Steam key, so there is no search endpoint to call. Installing
+                 by id needs none and is how people arrive anyway: they find an
+                 item on the Workshop site and come back with the link. --}}
+            <div class="px-5 py-4 border-b border-slate-100">
+                <form method="POST" action="{{ route('server.mods.store', $server) }}"
+                      class="flex flex-wrap items-center gap-2">
+                    @csrf
+                    <input type="hidden" name="source" value="workshop">
+                    <x-input name="project" class="flex-1 min-w-[18rem]"
+                             placeholder="Workshop item id, or paste its whole address" />
+                    <x-button type="submit" icon="download" size="sm">Install</x-button>
+                </form>
+                <p class="mt-2 text-sm text-slate-500">
+                    Steam only lets a search happen with an API key. Add one in Settings, Mods and a search box appears
+                    here; until then, paste the item and it installs the same way.
+                </p>
+            </div>
+        @else
         <div class="px-5 py-4 border-b border-slate-100">
             <form method="GET" class="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="source" value="{{ $source?->key() }}">
@@ -70,8 +89,12 @@
                 </div>
             @endif
         </div>
+        @endif
 
-        @if (! $catalogue['ok'])
+        @if ($byId ?? false)
+            <x-empty-state icon="cube" title="Install By Id"
+                           description="Paste a Workshop item above. It is fetched by steamcmd on the node itself, because Steam will not hand its content to anything else." />
+        @elseif (! $catalogue['ok'])
             <x-empty-state icon="search" title="Nothing To Search"
                            description="The catalogue is unavailable, so there is nothing to search right now. Installed mods are still listed on the Mods tab." />
         @elseif ($query === '')

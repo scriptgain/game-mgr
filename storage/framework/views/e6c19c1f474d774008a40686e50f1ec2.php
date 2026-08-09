@@ -131,14 +131,14 @@
         <?php if($mods->isEmpty()): ?>
             <?php if (isset($component)) { $__componentOriginal074a021b9d42f490272b5eefda63257c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal074a021b9d42f490272b5eefda63257c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'puzzle','title' => 'No Mods Installed','description' => 'Search Modrinth and install with one click, instead of hunting for a jar and dragging it into the file manager.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.empty-state','data' => ['icon' => 'puzzle','title' => 'No Mods Installed','description' => 'Search the catalogues this server can use and install with one click, instead of hunting for a jar and dragging it into the file manager.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('empty-state'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['icon' => 'puzzle','title' => 'No Mods Installed','description' => 'Search Modrinth and install with one click, instead of hunting for a jar and dragging it into the file manager.']); ?>
+<?php $component->withAttributes(['icon' => 'puzzle','title' => 'No Mods Installed','description' => 'Search the catalogues this server can use and install with one click, instead of hunting for a jar and dragging it into the file manager.']); ?>
                  <?php $__env->slot('action', null, []); ?> 
                     <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('check', [$server, 'mod.install'])): ?>
                         <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
@@ -252,7 +252,8 @@
                 <span class="block text-xs text-slate-400 truncate"><?php echo e($mod->path); ?></span>
                 <?php endif; ?>
                 </td>
-                <td><?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>
+                <td>
+                    <?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal2ddbc40e602c342e508ac696e52f8719 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.badge','data' => ['color' => 'neutral']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('badge'); ?>
@@ -270,7 +271,12 @@
 <?php if (isset($__componentOriginal2ddbc40e602c342e508ac696e52f8719)): ?>
 <?php $component = $__componentOriginal2ddbc40e602c342e508ac696e52f8719; ?>
 <?php unset($__componentOriginal2ddbc40e602c342e508ac696e52f8719); ?>
-<?php endif; ?></td>
+<?php endif; ?>
+                    
+                    <?php if (! ($mod->verified)): ?>
+                        <span class="mt-1 block text-xs text-amber-700" title="This source publishes no checksum, so the download could not be verified against one.">Unverified download</span>
+                    <?php endif; ?>
+                </td>
                 <td class="tabular text-slate-500">
                 <?php echo e($mod->version); ?>
 

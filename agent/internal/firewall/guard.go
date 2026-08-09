@@ -58,6 +58,12 @@ func Wrap(d runtime.Driver, fw *Manager) runtime.Driver {
 	return &Guard{Driver: d, fw: fw}
 }
 
+// Unwrap exposes the driver underneath, so a caller looking for a capability
+// only one driver has (fetching a Workshop item, say) can still find it through
+// the wrapper. Without this the firewall Guard silently hides every interface
+// it does not itself implement.
+func (g *Guard) Unwrap() runtime.Driver { return g.Driver }
+
 func (g *Guard) Install(ctx context.Context, s runtime.Server, w io.Writer) error {
 	if err := g.Driver.Install(ctx, s, w); err != nil {
 		return err

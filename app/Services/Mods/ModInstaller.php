@@ -6,6 +6,7 @@ use App\Models\Mod;
 use App\Models\Server;
 use App\Services\Mods\Catalogue\CatalogueVersion;
 use App\Services\Mods\Contracts\ModSource;
+use App\Services\Mods\Contracts\NodeInstalledSource;
 use App\Services\NodeClient;
 use Illuminate\Support\Str;
 
@@ -79,6 +80,13 @@ class ModInstaller
             return ['ok' => false, 'error' => $project->name.' is already installed.'];
         }
 
+        // A source whose files the panel never touches, the Steam Workshop
+        // being the only one: steamcmd on the node does the fetching, so there
+        // is no URL to download and no checksum to check.
+        if ($source instanceof NodeInstalledSource) {
+            return $this->installViaNode($server, $source, $project);
+        }
+
         $version = $source->latestVersion($project->id, $target);
 
         if ($version === null) {
@@ -125,6 +133,46 @@ class ModInstaller
     }
 
     /**
+     * The node fetches it, the panel records it.
+     *
+     * @return array{ok:bool,error?:string,mod?:Mod,message?:string}
+     */
+    private function installViaNode(Server $server, NodeInstalledSource&ModSource $source, $project): array
+    {
+        $placed = $source->installOnNode($server, $project);
+
+        if (! $placed['ok']) {
+            return ['ok' => false, 'error' => (string) ($placed['error'] ?? 'The node could not install that.')];
+        }
+
+        $mod = Mod::create([
+            'server_id' => $server->id,
+            'source' => $source->key(),
+            'remote_id' => $project->id,
+            'name' => $project->name,
+            'slug' => $project->slug,
+            'author' => $project->author,
+            'summary' => Str::limit($project->summary, 480),
+            'version' => (string) ($placed['version'] ?? $project->slug),
+            'latest_version' => (string) ($placed['version'] ?? $project->slug),
+            'path' => (string) ($placed['path'] ?? ''),
+            'bytes' => 0,
+            // The panel never saw the bytes, so it cannot claim to have checked
+            // them. Steam is the transport and Steam is the verification.
+            'verified' => false,
+            'enabled' => true,
+            'installed_at' => now(),
+            'checked_at' => now(),
+        ]);
+
+        return [
+            'ok' => true,
+            'mod' => $mod,
+            'message' => $mod->name.' downloaded to '.$mod->path.'. Restart the server to load it.',
+        ];
+    }
+
+    /**
      * The source, or the sentence explaining why it cannot be used.
      *
      * One place, so asking and doing can never disagree: the browse screen
@@ -132,11 +180,6 @@ class ModInstaller
      */
     private function usable(ModTarget $target, string $key): ModSource|string
     {
-        if ($target->loader === null) {
-            return 'GameMGR cannot tell which mod loader this server runs, so it will not guess where a file '.
-                'belongs. Set the server type on the Startup tab first.';
-        }
-
         if (! in_array($key, $target->sources, true)) {
             return 'This template does not list '.(Mod::SOURCES[$key] ?? $key).' as a mod source, '.
                 'so nothing can be installed from it.';
@@ -154,6 +197,16 @@ class ModInstaller
 
         if (! $source->supports($target)) {
             return $source->label().' has nothing for a '.$target->loaderLabel.' server.';
+        }
+
+        // The loader is only needed by the sources that have to choose between
+        // plugins/ and mods/. It is a Minecraft idea, and requiring it up front
+        // refused every Workshop install on a Counter-Strike or ARK server,
+        // which have no loader and never will: steamcmd decides where a
+        // Workshop item goes, not us.
+        if (! $source instanceof NodeInstalledSource && $target->loader === null) {
+            return 'GameMGR cannot tell which mod loader this server runs, so it will not guess where a file '.
+                'belongs. Set the server type on the Startup tab first.';
         }
 
         return $source;

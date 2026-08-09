@@ -347,6 +347,26 @@
 <?php unset($__componentOriginal4689e078d981419fe3d32c3868109c4f); ?>
 <?php endif; ?>
                 <?php endif; ?>
+                <?php if (isset($component)) { $__componentOriginal107746a8d759680c0e5c90a3accdf6d8 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal107746a8d759680c0e5c90a3accdf6d8 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.domains-hint','data' => ['server' => $server]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('domains-hint'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['server' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($server)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal107746a8d759680c0e5c90a3accdf6d8)): ?>
+<?php $attributes = $__attributesOriginal107746a8d759680c0e5c90a3accdf6d8; ?>
+<?php unset($__attributesOriginal107746a8d759680c0e5c90a3accdf6d8); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal107746a8d759680c0e5c90a3accdf6d8)): ?>
+<?php $component = $__componentOriginal107746a8d759680c0e5c90a3accdf6d8; ?>
+<?php unset($__componentOriginal107746a8d759680c0e5c90a3accdf6d8); ?>
+<?php endif; ?>
                 <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2">
                         <p class="text-slate-500">Runtime</p>

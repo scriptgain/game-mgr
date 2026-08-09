@@ -97,6 +97,8 @@ class ModTarget
         public readonly ?string $gameVersion,
         /** @var array<int,string> */
         public readonly array $sources,
+        /** Which game's Workshop to search. Zero for anything not on Steam. */
+        public readonly int $steamAppId = 0,
     ) {}
 
     public static function for(Server $server): self
@@ -112,6 +114,7 @@ class ModTarget
             directory: $profile['directory'] ?? null,
             gameVersion: self::detectGameVersion($server),
             sources: array_values(array_filter($sources, 'is_string')),
+            steamAppId: (int) ($server->template?->steam_app_id ?? 0),
         );
     }
 
