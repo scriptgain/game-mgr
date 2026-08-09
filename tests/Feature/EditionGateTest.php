@@ -101,7 +101,7 @@ class EditionGateTest extends TestCase
     public function test_the_free_edition_is_what_an_install_with_no_key_runs_as(): void
     {
         $this->assertSame('free', Edition::current());
-        $this->assertSame('Free', Edition::label());
+        $this->assertSame('Self-Hosted', Edition::label());
     }
 
     /**
@@ -239,8 +239,29 @@ class EditionGateTest extends TestCase
 
     // ------------------------------------------------------------- the limits
 
-    public function test_the_server_limit_refuses_the_next_one_and_says_what_to_do(): void
+    /**
+     * Self-hosted has no ceiling at all. The limits belong to the hosted plans,
+     * where the panel counting the servers is one we run and the person being
+     * counted cannot edit it.
+     */
+    public function test_self_hosted_has_no_server_limit(): void
     {
+        $node = $this->node();
+        $template = $this->template('minecraft');
+
+        for ($i = 0; $i < 40; $i++) {
+            $this->server($node, $template);
+        }
+
+        $this->assertNull(Edition::limit('servers'));
+        $this->assertTrue(Edition::roomForServer(), 'self-hosted must never refuse another server');
+    }
+
+    /** The hosted plans do have one, and it bites. */
+    public function test_a_hosted_plan_refuses_the_next_one_and_says_what_to_do(): void
+    {
+        $this->onEdition('basic');
+
         $node = $this->node();
         $template = $this->template('minecraft');
 
@@ -264,21 +285,23 @@ class EditionGateTest extends TestCase
         // being told "you need Pro" and then also "the swap field is required"
         // is worse than being told one thing at a time.
         $response->assertSessionHasErrors('template_id');
-        $this->assertStringContainsString('Free edition covers', session('errors')->first('template_id'));
+        $this->assertStringContainsString('edition covers', session('errors')->first('template_id'));
         $this->assertSame(Edition::limit('servers'), Server::count(), 'the refused server must not have been created');
     }
 
-    public function test_a_paid_edition_raises_the_ceiling(): void
+    public function test_a_larger_hosted_plan_raises_the_ceiling(): void
     {
         $node = $this->node();
         $template = $this->template('minecraft');
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 26; $i++) {
             $this->server($node, $template);
         }
 
-        $this->assertFalse(Edition::roomForServer());
         $this->onEdition('basic');
-        $this->assertTrue(Edition::roomForServer(), 'basic covers 25');
+        $this->assertFalse(Edition::roomForServer(), 'basic covers 25');
+
+        $this->onEdition('pro');
+        $this->assertTrue(Edition::roomForServer(), 'pro covers 250');
     }
 
     /**
@@ -323,10 +346,11 @@ class EditionGateTest extends TestCase
         // Deliberately past the free ceiling, as an install that has downgraded
         // would be.
         $servers = [];
-        for ($i = 0; $i < 8; $i++) {
+        for ($i = 0; $i < 30; $i++) {
             $servers[] = $this->server($node, $template);
         }
-        $this->onEdition('free');
+        // A hosted install that has downgraded is over its ceiling.
+        $this->onEdition('basic');
 
         $this->assertFalse(Edition::roomForServer());
 
@@ -335,7 +359,7 @@ class EditionGateTest extends TestCase
             $this->assertNotNull($fresh, 'a server was deleted by a licence check');
             $this->assertFalse($fresh->isSuspended(), 'a server was suspended by a licence check');
         }
-        $this->assertSame(8, Server::count());
+        $this->assertSame(30, Server::count());
     }
 
     /** And the panel stays usable, which is what stops a licence problem becoming an outage. */

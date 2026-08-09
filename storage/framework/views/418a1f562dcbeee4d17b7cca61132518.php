@@ -139,16 +139,21 @@
                     <div class="mt-4">
                         <?php if (isset($component)) { $__componentOriginal5194778a3a7b899dcee5619d0610f5cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.alert','data' => ['type' => 'info','title' => 'The Free Edition Is A Real Product']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.alert','data' => ['type' => 'info','title' => 'Self-Hosted Is Free, And That Is Not A Trial']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('alert'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['type' => 'info','title' => 'The Free Edition Is A Real Product']); ?>
-                            Nothing here expires and nothing stops working. A licence raises the limits and unlocks the
-                            rest of the catalogue; without one this panel keeps doing what it does today.
+<?php $component->withAttributes(['type' => 'info','title' => 'Self-Hosted Is Free, And That Is Not A Trial']); ?>
+                            Every feature, every game, as many servers and nodes as your machines will carry. Nothing
+                            here expires, nothing is withheld, and there is no key to buy. A limit on a panel you run
+                            on your own hardware would only be a line in a config file you own anyway.
+                            <span class="mt-2 block">
+                                The plans on the right are for the hosted version, where we run the panel and you bring
+                                the machines. A key here is only for support and is entirely optional.
+                            </span>
                          <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
@@ -166,16 +171,13 @@
                     <div>
                         <dt class="text-slate-500">Servers</dt>
                         <dd class="text-slate-900 tabular">
-                            <?php echo e($usage['servers']); ?> of <?php echo e(\App\Support\Edition::limit('servers') ?? 'unlimited'); ?>
+                            <?php echo e($usage['servers']); ?><?php echo e(\App\Support\Edition::limit('servers') ? ' of '.\App\Support\Edition::limit('servers') : ''); ?>
 
                         </dd>
                     </div>
                     <div>
                         <dt class="text-slate-500">Nodes</dt>
-                        <dd class="text-slate-900 tabular">
-                            <?php echo e($usage['nodes']); ?> of <?php echo e(\App\Support\Edition::limit('nodes') ?? 'unlimited'); ?>
-
-                        </dd>
+                        <dd class="text-slate-900 tabular"><?php echo e($usage['nodes']); ?></dd>
                     </div>
                     <div>
                         <dt class="text-slate-500">Last Checked</dt>
@@ -184,8 +186,8 @@
                 </dl>
 
                 <p class="mt-4 text-xs text-slate-500">
-                    A licence problem never stops a server. Every game already running stays up, and these limits only
-                    apply to creating the next one.
+                    A licence problem never stops a server. Every game already running stays up, and any limit only
+                    ever applies to creating the next one.
                 </p>
              <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -290,20 +292,21 @@
         <div class="space-y-6">
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'The Editions','icon' => 'sliders','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Hosted Plans','icon' => 'cloud','flush' => true,'subtitle' => 'For the version we run. Self-hosted has none of these limits.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'The Editions','icon' => 'sliders','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'Hosted Plans','icon' => 'cloud','flush' => true,'subtitle' => 'For the version we run. Self-hosted has none of these limits.']); ?>
                 <div class="divide-y divide-slate-100">
                     <?php $__currentLoopData = $editions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $name => $tier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php if(empty($tier['hosted'])) continue; ?>
                         <div class="px-5 py-4 <?php echo e($name === $current ? 'bg-brand-50/40' : ''); ?>">
                             <div class="flex items-center justify-between gap-3">
                                 <p class="font-semibold text-slate-900"><?php echo e($tier['label']); ?></p>
-                                <?php if($name === $current): ?>
+                                <?php if($name === $current && ! empty($tier['hosted'])): ?>
                                     <span class="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Current</span>
                                 <?php endif; ?>
                             </div>
@@ -312,11 +315,10 @@
                                     <dt>Servers</dt><dd class="tabular"><?php echo e($tier['servers'] ?? 'unlimited'); ?></dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
-                                    <dt>Nodes</dt><dd class="tabular"><?php echo e($tier['nodes'] ?? 'unlimited'); ?></dd>
+                                    <dt>Nodes</dt><dd class="tabular">unlimited</dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
-                                    <dt>Games</dt>
-                                    <dd class="text-right"><?php echo e($tier['games'] === null ? 'The whole catalogue' : count($tier['games']).' to start with'); ?></dd>
+                                    <dt>Games</dt><dd class="text-right">All of them</dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
                                     <dt>Support</dt><dd class="text-right"><?php echo e($tier['support'] ?? 'Community'); ?></dd>

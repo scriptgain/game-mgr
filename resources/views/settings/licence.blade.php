@@ -38,9 +38,14 @@
 
                 @if ($status['state'] === 'unlicensed')
                     <div class="mt-4">
-                        <x-alert type="info" title="The Free Edition Is A Real Product">
-                            Nothing here expires and nothing stops working. A licence raises the limits and unlocks the
-                            rest of the catalogue; without one this panel keeps doing what it does today.
+                        <x-alert type="info" title="Self-Hosted Is Free, And That Is Not A Trial">
+                            Every feature, every game, as many servers and nodes as your machines will carry. Nothing
+                            here expires, nothing is withheld, and there is no key to buy. A limit on a panel you run
+                            on your own hardware would only be a line in a config file you own anyway.
+                            <span class="mt-2 block">
+                                The plans on the right are for the hosted version, where we run the panel and you bring
+                                the machines. A key here is only for support and is entirely optional.
+                            </span>
                         </x-alert>
                     </div>
                 @endif
@@ -49,14 +54,12 @@
                     <div>
                         <dt class="text-slate-500">Servers</dt>
                         <dd class="text-slate-900 tabular">
-                            {{ $usage['servers'] }} of {{ \App\Support\Edition::limit('servers') ?? 'unlimited' }}
+                            {{ $usage['servers'] }}{{ \App\Support\Edition::limit('servers') ? ' of '.\App\Support\Edition::limit('servers') : '' }}
                         </dd>
                     </div>
                     <div>
                         <dt class="text-slate-500">Nodes</dt>
-                        <dd class="text-slate-900 tabular">
-                            {{ $usage['nodes'] }} of {{ \App\Support\Edition::limit('nodes') ?? 'unlimited' }}
-                        </dd>
+                        <dd class="text-slate-900 tabular">{{ $usage['nodes'] }}</dd>
                     </div>
                     <div>
                         <dt class="text-slate-500">Last Checked</dt>
@@ -65,8 +68,8 @@
                 </dl>
 
                 <p class="mt-4 text-xs text-slate-500">
-                    A licence problem never stops a server. Every game already running stays up, and these limits only
-                    apply to creating the next one.
+                    A licence problem never stops a server. Every game already running stays up, and any limit only
+                    ever applies to creating the next one.
                 </p>
             </x-card>
 
@@ -90,13 +93,15 @@
         </div>
 
         <div class="space-y-6">
-            <x-card title="The Editions" icon="sliders" flush>
+            <x-card title="Hosted Plans" icon="cloud" flush
+                    subtitle="For the version we run. Self-hosted has none of these limits.">
                 <div class="divide-y divide-slate-100">
                     @foreach ($editions as $name => $tier)
+                        @continue(empty($tier['hosted']))
                         <div class="px-5 py-4 {{ $name === $current ? 'bg-brand-50/40' : '' }}">
                             <div class="flex items-center justify-between gap-3">
                                 <p class="font-semibold text-slate-900">{{ $tier['label'] }}</p>
-                                @if ($name === $current)
+                                @if ($name === $current && ! empty($tier['hosted']))
                                     <span class="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Current</span>
                                 @endif
                             </div>
@@ -105,11 +110,10 @@
                                     <dt>Servers</dt><dd class="tabular">{{ $tier['servers'] ?? 'unlimited' }}</dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
-                                    <dt>Nodes</dt><dd class="tabular">{{ $tier['nodes'] ?? 'unlimited' }}</dd>
+                                    <dt>Nodes</dt><dd class="tabular">unlimited</dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
-                                    <dt>Games</dt>
-                                    <dd class="text-right">{{ $tier['games'] === null ? 'The whole catalogue' : count($tier['games']).' to start with' }}</dd>
+                                    <dt>Games</dt><dd class="text-right">All of them</dd>
                                 </div>
                                 <div class="flex justify-between gap-3">
                                     <dt>Support</dt><dd class="text-right">{{ $tier['support'] ?? 'Community' }}</dd>

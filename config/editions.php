@@ -59,14 +59,22 @@ return [
      */
     'tiers' => [
 
+        /*
+         * Self-hosted, and unlimited.
+         *
+         * A limit on a panel somebody runs on their own machine is a limit they
+         * can edit out of a config file, so it only ever taxed the honest. The
+         * limits below are the HOSTED plans, where the servers are counted by a
+         * panel we run and cannot be edited by the person being counted.
+         */
         'free' => [
-            'label' => 'Free',
+            'label' => 'Self-Hosted',
             // Nodes are not limited on any edition. Somebody who wants a second
             // machine has a reason for it, and telling them to pay for the
             // privilege of running their own hardware is a strange thing to
             // charge for.
             'nodes' => null,
-            'servers' => 5,
+            'servers' => null,
             /*
              * Every game, on every edition.
              *
@@ -84,10 +92,12 @@ return [
             'games' => null,
             'features' => ['subusers', 'backups.scheduled', 'api', 'templates.import', 'webhooks'],
             'support' => 'Community',
+            'hosted' => false,
         ],
 
         'basic' => [
             'label' => 'Basic',
+            'hosted' => true,
             'nodes' => null,
             'servers' => 25,
             // null means every game in the catalogue, but still not imported
@@ -99,6 +109,7 @@ return [
 
         'pro' => [
             'label' => 'Pro',
+            'hosted' => true,
             'nodes' => null,
             'servers' => 250,
             'games' => null,
@@ -108,6 +119,7 @@ return [
 
         'plus' => [
             'label' => 'Plus',
+            'hosted' => true,
             'nodes' => null,
             'servers' => null,
             'games' => null,
