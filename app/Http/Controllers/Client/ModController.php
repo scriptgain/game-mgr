@@ -6,7 +6,8 @@ use App\Models\Mod;
 use App\Models\Server;
 use App\Services\Mods\ModInstaller;
 use App\Services\Mods\ModTarget;
-use App\Services\Mods\Modrinth;
+use App\Services\Mods\Contracts\ModSource;
+use App\Services\Mods\ModSourceRegistry;
 use Illuminate\Http\Request;
 
 /**
@@ -16,28 +17,28 @@ use Illuminate\Http\Request;
  * download it, drag it into /plugins, restart, hope. Here it is a managed list
  * with a source, a version, and a visible answer to "is there an update".
  *
- * The catalogue is Modrinth, live, through App\Services\Mods\Modrinth. Search
- * is narrowed to the loader and Minecraft version this server actually runs,
- * install downloads the file and verifies the checksum Modrinth published
- * before it reaches the node, disable renames to .disabled rather than
+ * The catalogues come from ModSourceRegistry, which knows which of them this
+ * template declares, which this panel has a client for, and which suit the
+ * loader this server actually runs. Search is narrowed to that loader and to
+ * the Minecraft version, install verifies the checksum the source published
+ * before the file reaches the node, disable renames to .disabled rather than
  * deleting, and remove deletes both the file and the row.
  *
- * CurseForge and SpigotMC are still declared on templates and still listed as
- * sources, but neither has a client yet: CurseForge needs an API key per
- * install and SpigotMC has no official API at all. The browse screen says so
- * rather than pretending to search them.
+ * A source a template declares but this panel cannot serve is NAMED, with the
+ * reason, rather than dropped. Silently hiding it is how a finished feature
+ * comes to look like a missing one.
  *
- * DEGRADING. Modrinth is a third party and will one day be slow, rate limiting
- * or down. None of that may break this page. Every catalogue call answers null
+ * DEGRADING. Every catalogue is a third party and will one day be slow, rate
+ * limiting or down. None of that may break this page. Every call answers null
  * instead of throwing, the installed list renders from the database and never
- * from the network, and an unavailable catalogue becomes a note at the top of
- * the screen. Nothing in this controller can 500 because Modrinth had a bad
+ * from the network, and an unavailable source becomes a note rather than an
+ * exception. Nothing in this controller can 500 because a catalogue had a bad
  * afternoon.
  */
 class ModController extends ServerController
 {
     public function __construct(
-        private readonly Modrinth $modrinth,
+        private readonly ModSourceRegistry $registry,
         private readonly ModInstaller $installer,
     ) {}
 
@@ -58,7 +59,8 @@ class ModController extends ServerController
             'updatable' => $mods->filter->hasUpdate(),
             'sources' => $target->sources,
             'target' => $target,
-            'catalogue' => $this->catalogueState($target),
+            'catalogue' => $this->catalogueState($target, $this->registry->for($target)[0] ?? null),
+            'unusable' => $this->registry->unusable($target),
         ]);
     }
 
@@ -78,8 +80,8 @@ class ModController extends ServerController
 
         return redirect()->route('server.mods', $server)->with(
             'status',
-            $this->modrinth->degraded()
-                ? 'Modrinth did not answer, so the version list was left as it was.'
+            $this->anyDegraded($target)
+                ? 'A catalogue did not answer, so part of the version list was left as it was.'
                 : ($waiting === 0
                     ? 'Every mod is on the newest version this server can run.'
                     : $waiting.' '.str('mod')->plural($waiting).' can be updated.'),
@@ -98,14 +100,16 @@ class ModController extends ServerController
         // "Modrinth is down" marker, and reading the state afterwards would
         // replace the specific "that search did not answer" screen with the
         // general banner on the very request that learned it.
-        $catalogue = $this->catalogueState($target);
+        $usable = $this->registry->for($target);
+        $source = $this->pickSource($request, $usable);
+        $catalogue = $this->catalogueState($target, $source);
 
         // null and [] mean different things and the view shows different
         // screens for them: null is "Modrinth did not answer", [] is "Modrinth
         // answered and there is nothing".
-        $results = $query === '' || ! $catalogue['ok']
+        $results = $query === '' || ! $catalogue['ok'] || $source === null
             ? []
-            : $this->modrinth->search($query, $target);
+            : $source->search($query, $target);
 
         return view('server.mod-browse', [
             'title' => 'Browse Mods',
@@ -115,6 +119,9 @@ class ModController extends ServerController
             'query' => $query,
             'results' => $results,
             'catalogue' => $catalogue,
+            'usable' => $usable,
+            'source' => $source,
+            'unusable' => $this->registry->unusable($target),
             'installed' => $server->mods()->pluck('remote_id')->filter()->all(),
         ]);
     }
@@ -124,16 +131,19 @@ class ModController extends ServerController
         $this->guard($server, 'mod.install');
 
         $data = $request->validate([
-            // A Modrinth project id or slug. Nothing else is accepted: the name,
-            // author and summary all come back from the API, so a forged form
-            // cannot invent a mod that is not really there.
+            // A project id or slug, and which catalogue it belongs to. Nothing
+            // else is accepted: the name, author and summary all come back from
+            // the API, so a forged form cannot invent a mod that is not really
+            // there, and the source is checked against the template rather than
+            // trusted, so it cannot reach a catalogue this server may not use.
+            'source' => ['required', 'string', 'max:32', 'alpha_dash'],
             'project' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9!@$()`.+,_"\-]+$/'],
         ], [
-            'project.regex' => 'That is not a Modrinth project id.',
+            'project.regex' => 'That is not a catalogue project id.',
         ]);
 
         $server->load('node', 'template.game', 'template.variables');
-        $result = $this->installer->install($server, ModTarget::for($server), $data['project']);
+        $result = $this->installer->install($server, ModTarget::for($server), $data['source'], $data['project']);
 
         if (! $result['ok']) {
             return back()->with('error', $result['error']);
@@ -207,34 +217,16 @@ class ModController extends ServerController
     // ---------------------------------------------------------------- inside
 
     /**
-     * What the screen should say about the catalogue before anyone searches.
+     * What the screen should say before anyone searches.
      *
-     * Four honest answers, and the difference between them matters to whoever
-     * is looking at it: this template has no Modrinth, we cannot tell what this
-     * server runs, Modrinth is not answering, or everything is fine.
+     * The answers are different in kind and a customer can act on only some of
+     * them: this template names no catalogue anyone can search, we cannot tell
+     * what this server runs, or the catalogue picked is not answering.
      *
      * @return array{ok:bool,note:?string,tone:string,title:?string}
      */
-    private function catalogueState(ModTarget $target): array
+    private function catalogueState(ModTarget $target, ?ModSource $source): array
     {
-        if (! $target->usesModrinth()) {
-            return [
-                'ok' => false,
-                'tone' => 'info',
-                'title' => 'No Searchable Catalogue',
-                'note' => 'This template does not list Modrinth as a mod source. Installed mods are still managed here, but there is nothing to search.',
-            ];
-        }
-
-        if (! $this->modrinth->enabled()) {
-            return [
-                'ok' => false,
-                'tone' => 'info',
-                'title' => 'Catalogue Switched Off',
-                'note' => 'The Modrinth catalogue is switched off on this panel, so mods have to be uploaded through the file manager.',
-            ];
-        }
-
         if ($target->loader === null) {
             return [
                 'ok' => false,
@@ -244,15 +236,58 @@ class ModController extends ServerController
             ];
         }
 
-        if ($this->modrinth->degraded()) {
+        if ($source === null) {
+            return [
+                'ok' => false,
+                'tone' => 'info',
+                'title' => 'No Searchable Catalogue',
+                'note' => 'Nothing this template lists can be searched from here, so mods have to be uploaded through the file manager. Installed mods are still managed on this page.',
+            ];
+        }
+
+        if ($source->degraded()) {
             return [
                 'ok' => false,
                 'tone' => 'warn',
-                'title' => 'Catalogue Unavailable',
-                'note' => 'Modrinth is not answering right now, so the catalogue cannot be searched. Everything already installed is listed below and still works.',
+                'title' => $source->label().' Unavailable',
+                'note' => $source->label().' is not answering right now, so it cannot be searched. Everything already installed is listed below and still works.',
             ];
         }
 
         return ['ok' => true, 'tone' => 'info', 'title' => null, 'note' => null];
+    }
+
+    /**
+     * Which catalogue the browse screen is showing.
+     *
+     * A tab the server cannot use is not selectable, so an unknown or unusable
+     * key falls back to the first one that works rather than erroring: a stale
+     * bookmark should show a working screen, not a refusal.
+     *
+     * @param  array<int,ModSource>  $usable
+     */
+    private function pickSource(Request $request, array $usable): ?ModSource
+    {
+        $wanted = (string) $request->query('source', '');
+
+        foreach ($usable as $source) {
+            if ($source->key() === $wanted) {
+                return $source;
+            }
+        }
+
+        return $usable[0] ?? null;
+    }
+
+    /** Did any catalogue this server uses fail recently? */
+    private function anyDegraded(ModTarget $target): bool
+    {
+        foreach ($this->registry->for($target) as $source) {
+            if ($source->degraded()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -14,7 +14,18 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // The mod catalogues, in the order they are offered on screen. Modrinth
+        // first because it indexes both plugins and mods and is the widest net;
+        // Hangar second because it is Paper's own and its answers are the most
+        // trustworthy for a Paper server.
         //
+        // Registering them here rather than discovering them means adding a
+        // source is a deliberate line in a diff, which is the right amount of
+        // ceremony for something that downloads code onto a customer's machine.
+        $this->app->singleton(\App\Services\Mods\ModSourceRegistry::class, fn ($app) => new \App\Services\Mods\ModSourceRegistry([
+            $app->make(\App\Services\Mods\Sources\ModrinthSource::class),
+            $app->make(\App\Services\Mods\Sources\HangarSource::class),
+        ]));
     }
 
     /**

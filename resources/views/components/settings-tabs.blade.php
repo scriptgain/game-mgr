@@ -11,6 +11,10 @@
             ['Notifications', 'bell', 'settings.notifications.edit', 'settings.notifications.*'],
             ['Integrations', 'bolt', 'settings.integrations.edit', 'settings.integrations.*'],
             ['Domains', 'globe', 'settings.domains.edit', 'settings.domains.*'],
+            // Both of these were built, both render, and neither was reachable
+            // from anywhere in the panel. A page you can only get to by typing
+            // the URL reads as a missing feature, not a hidden one.
+            ['Firewall', 'shield', 'settings.firewall.index', 'settings.firewall.*'],
         ]],
         ['My Security', [
             ['Password', 'lock', 'settings.password.edit', 'settings.password.*'],
@@ -20,6 +24,7 @@
             ['Licence', 'key', 'settings.licence.edit', 'settings.licence.*'],
             ['Updates', 'download', 'settings.updates.show', 'settings.updates.*'],
             ['Telemetry', 'chart', 'settings.telemetry.edit', 'settings.telemetry.*'],
+            ['Audit Log', 'book', 'settings.audit.index', 'settings.audit.*'],
         ]],
     ];
     $groups = array_values(array_filter(array_map(function ($g) {

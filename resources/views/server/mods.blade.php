@@ -41,7 +41,7 @@
 
         @if ($mods->isEmpty())
             <x-empty-state icon="puzzle" title="No Mods Installed"
-                           description="Search Modrinth and install with one click, instead of hunting for a jar and dragging it into the file manager.">
+                           description="Search the catalogues this server can use and install with one click, instead of hunting for a jar and dragging it into the file manager.">
                 <x-slot:action>
                     @can('check', [$server, 'mod.install'])
                         <x-button href="{{ route('server.mods.browse', $server) }}" icon="search">Browse Mods</x-button>

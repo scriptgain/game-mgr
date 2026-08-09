@@ -390,7 +390,10 @@ class CatalogueSeeder extends Seeder
                         // port of 25565, and the query on the game port itself.
                         'rcon_port_offset' => 10,
                         'query_port_offset' => 0,
-                        'mod_sources' => ['modrinth', 'spigot', 'curseforge'],
+                        // Hangar is PaperMC's own plugin repository, so it
+                        // belongs on the Paper family before the two that need
+                        // a key or have no official API.
+                        'mod_sources' => ['modrinth', 'hangar', 'spigot', 'curseforge'],
                         'update_command' => 'docker pull itzg/minecraft-server:latest',
                         'variables' => [
                             ['name' => 'Accept the Minecraft EULA', 'env_variable' => 'EULA', 'default_value' => 'TRUE', 'rules' => 'required|in:TRUE,true', 'description' => 'Mojang requires this. Without it the container prints the EULA notice and exits immediately, which reads as a crash loop.', 'user_viewable' => true, 'user_editable' => false],

@@ -4,6 +4,8 @@ namespace App\Services\Mods;
 
 use App\Models\Mod;
 use App\Models\Server;
+use App\Services\Mods\Catalogue\CatalogueVersion;
+use App\Services\Mods\Contracts\ModSource;
 use App\Services\NodeClient;
 use Illuminate\Support\Str;
 
@@ -19,7 +21,7 @@ use Illuminate\Support\Str;
  * So, in order:
  *
  *   install  resolves a project to the newest version this server can run,
- *            downloads the primary file, verifies the checksum Modrinth
+ *            downloads its file, verifies the checksum the catalogue
  *            published, and writes it into plugins/ or mods/ depending on what
  *            the chosen version's own loaders say.
  *
@@ -47,42 +49,48 @@ use Illuminate\Support\Str;
  */
 class ModInstaller
 {
-    public function __construct(private readonly Modrinth $modrinth) {}
+    public function __construct(private readonly ModSourceRegistry $sources) {}
 
     /**
-     * Install a Modrinth project onto a server.
+     * Install a project from one named catalogue onto a server.
      *
      * @return array{ok:bool,error?:string,mod?:Mod,message?:string}
      */
-    public function install(Server $server, ModTarget $target, string $projectId): array
+    public function install(Server $server, ModTarget $target, string $sourceKey, string $projectId): array
     {
-        if (! $target->supported()) {
-            return ['ok' => false, 'error' => self::unsupported($target)];
+        $source = $this->usable($target, $sourceKey);
+
+        if (is_string($source)) {
+            return ['ok' => false, 'error' => $source];
         }
 
-        $project = $this->modrinth->project($projectId);
+        $project = $source->project($projectId);
 
         if ($project === null) {
-            return ['ok' => false, 'error' => 'Modrinth did not answer for that project, so nothing was installed.'];
+            return ['ok' => false, 'error' => $source->label().' did not answer for that project, so nothing was installed.'];
         }
 
-        $slug = (string) ($project['slug'] ?? $projectId);
-
         $already = $server->mods()
-            ->where(fn ($q) => $q->where('remote_id', $project['id'])->orWhere('slug', $slug))
+            ->where('source', $source->key())
+            ->where(fn ($q) => $q->where('remote_id', $project->id)->orWhere('slug', $project->slug))
             ->exists();
 
         if ($already) {
-            return ['ok' => false, 'error' => ($project['title'] ?? $slug).' is already installed.'];
+            return ['ok' => false, 'error' => $project->name.' is already installed.'];
         }
 
-        $version = $this->modrinth->latestVersion((string) $project['id'], $target);
+        $version = $source->latestVersion($project->id, $target);
 
         if ($version === null) {
-            return ['ok' => false, 'error' => self::noVersion($project, $target)];
+            return ['ok' => false, 'error' => self::noVersion($project->name, $target)];
         }
 
-        $placed = $this->place($server, $target, $version);
+        if (! $version->installable()) {
+            return ['ok' => false, 'error' => $project->name.' '.$version->number.' is hosted outside '.
+                $source->label().', so this panel cannot fetch it. Download it yourself and upload it in the file manager.'];
+        }
+
+        $placed = $this->place($server, $target, $source, $version);
 
         if (! $placed['ok']) {
             return $placed;
@@ -90,14 +98,14 @@ class ModInstaller
 
         $mod = Mod::create([
             'server_id' => $server->id,
-            'source' => 'modrinth',
-            'remote_id' => (string) $project['id'],
-            'name' => (string) ($project['title'] ?? $slug),
-            'slug' => $slug,
-            'author' => $this->modrinth->author((string) $project['id']),
-            'summary' => Str::limit((string) ($project['description'] ?? ''), 480),
-            'version' => (string) ($version['version_number'] ?? $version['id']),
-            'latest_version' => (string) ($version['version_number'] ?? $version['id']),
+            'source' => $source->key(),
+            'remote_id' => $project->id,
+            'name' => $project->name,
+            'slug' => $project->slug,
+            'author' => $project->author,
+            'summary' => Str::limit($project->summary, 480),
+            'version' => $version->number,
+            'latest_version' => $version->number,
             'path' => $placed['path'],
             'bytes' => $placed['bytes'],
             'enabled' => true,
@@ -114,27 +122,64 @@ class ModInstaller
     }
 
     /**
+     * The source, or the sentence explaining why it cannot be used.
+     *
+     * One place, so asking and doing can never disagree: the browse screen
+     * calls the registry for the same answer before it draws a tab.
+     */
+    private function usable(ModTarget $target, string $key): ModSource|string
+    {
+        if ($target->loader === null) {
+            return 'GameMGR cannot tell which mod loader this server runs, so it will not guess where a file '.
+                'belongs. Set the server type on the Startup tab first.';
+        }
+
+        if (! in_array($key, $target->sources, true)) {
+            return 'This template does not list '.(Mod::SOURCES[$key] ?? $key).' as a mod source, '.
+                'so nothing can be installed from it.';
+        }
+
+        $source = $this->sources->get($key);
+
+        if ($source === null) {
+            return 'This panel has no client for '.(Mod::SOURCES[$key] ?? $key).' yet.';
+        }
+
+        if (! $source->available()) {
+            return $source->unavailableReason() ?? $source->label().' is not available on this install.';
+        }
+
+        if (! $source->supports($target)) {
+            return $source->label().' has nothing for a '.$target->loaderLabel.' server.';
+        }
+
+        return $source;
+    }
+
+    /**
      * Fetch the newest compatible version and replace the installed file.
      *
      * @return array{ok:bool,error?:string,message?:string}
      */
     public function update(Server $server, ModTarget $target, Mod $mod): array
     {
-        if ($mod->source !== 'modrinth' || ! $mod->remote_id) {
-            return ['ok' => false, 'error' => $mod->name.' was not installed from Modrinth, so it cannot be updated here.'];
+        if (! $mod->remote_id) {
+            return ['ok' => false, 'error' => $mod->name.' was uploaded by hand rather than installed from a catalogue, so it cannot be updated here.'];
         }
 
-        if (! $target->supported()) {
-            return ['ok' => false, 'error' => self::unsupported($target)];
+        $source = $this->usable($target, (string) $mod->source);
+
+        if (is_string($source)) {
+            return ['ok' => false, 'error' => $source];
         }
 
-        $version = $this->modrinth->latestVersion($mod->remote_id, $target);
+        $version = $source->latestVersion($mod->remote_id, $target);
 
         if ($version === null) {
-            return ['ok' => false, 'error' => 'Modrinth did not answer for '.$mod->name.', so nothing was changed.'];
+            return ['ok' => false, 'error' => $source->label().' did not answer for '.$mod->name.', so nothing was changed.'];
         }
 
-        $number = (string) ($version['version_number'] ?? $version['id']);
+        $number = $version->number;
         $wasDisabled = ! $mod->enabled;
 
         if ($number === $mod->version) {
@@ -143,7 +188,12 @@ class ModInstaller
             return ['ok' => true, 'message' => $mod->name.' is already on the newest version for this server.'];
         }
 
-        $placed = $this->place($server, $target, $version, disabled: $wasDisabled);
+        if (! $version->installable()) {
+            return ['ok' => false, 'error' => $mod->name.' '.$number.' is hosted outside '.$source->label().
+                ', so this panel cannot fetch it. The installed version was left alone.'];
+        }
+
+        $placed = $this->place($server, $target, $source, $version, disabled: $wasDisabled);
 
         if (! $placed['ok']) {
             return $placed;
@@ -230,27 +280,36 @@ class ModInstaller
     }
 
     /**
-     * Refresh what Modrinth says the newest compatible version is, without
+     * Refresh what each catalogue says the newest compatible version is,
      * touching a file. This is what puts "Update Ready" on the list.
      *
      * @return int How many rows were found to have an update waiting.
      */
     public function refresh(Server $server, ModTarget $target): int
     {
-        if (! $target->supported()) {
+        if ($target->loader === null) {
             return 0;
         }
 
         $waiting = 0;
 
-        foreach ($server->mods()->where('source', 'modrinth')->whereNotNull('remote_id')->get() as $mod) {
-            $version = $this->modrinth->latestVersion((string) $mod->remote_id, $target);
+        foreach ($server->mods()->whereNotNull('remote_id')->get() as $mod) {
+            $source = $this->sources->get((string) $mod->source);
+
+            // A row from a source this panel cannot reach is left exactly as it
+            // is. Its version column is what somebody installed and is still
+            // true; blanking it would lose that.
+            if ($source === null || ! $source->available() || ! $source->supports($target)) {
+                continue;
+            }
+
+            $version = $source->latestVersion((string) $mod->remote_id, $target);
 
             if ($version === null) {
                 continue;
             }
 
-            $number = (string) ($version['version_number'] ?? $version['id']);
+            $number = $version->number;
             $mod->update(['latest_version' => $number, 'checked_at' => now()]);
 
             if ($number !== $mod->version) {
@@ -269,16 +328,15 @@ class ModInstaller
      * @param  array<string,mixed>  $version
      * @return array{ok:bool,error?:string,path?:string,bytes?:int}
      */
-    private function place(Server $server, ModTarget $target, array $version, bool $disabled = false): array
+    private function place(Server $server, ModTarget $target, ModSource $source, CatalogueVersion $version, bool $disabled = false): array
     {
-        $file = Modrinth::primaryFile($version);
+        $file = $version->file;
 
         if ($file === null) {
-            return ['ok' => false, 'error' => 'That version has no downloadable file on Modrinth.'];
+            return ['ok' => false, 'error' => 'That version has no downloadable file on '.$source->label().'.'];
         }
 
-        $loaders = array_values(array_filter((array) ($version['loaders'] ?? []), 'is_string'));
-        $directory = $target->directoryFor($loaders);
+        $directory = $target->directoryFor($file->loaders);
 
         if ($directory === null) {
             // A hybrid server with a file whose loaders say nothing useful.
@@ -287,14 +345,14 @@ class ModInstaller
         }
 
         $maxBytes = self::maxBytes();
-        $download = $this->modrinth->download($file, $maxBytes);
+        $download = $source->download($file, $maxBytes);
 
         if (! $download['ok']) {
             return ['ok' => false, 'error' => (string) $download['error']];
         }
 
         $temporary = (string) $download['path'];
-        $path = '/'.$directory.'/'.self::safeFilename($file['filename']).($disabled ? '.disabled' : '');
+        $path = '/'.$directory.'/'.self::safeFilename($file->filename).($disabled ? '.disabled' : '');
 
         $client = NodeClient::for($server->node);
         $client->makeDir($server, '/'.$directory);
@@ -354,20 +412,8 @@ class ModInstaller
         return str_ends_with($path, '.disabled') ? substr($path, 0, -strlen('.disabled')) : $path;
     }
 
-    private static function unsupported(ModTarget $target): string
+    private static function noVersion(string $name, ModTarget $target): string
     {
-        if (! $target->usesModrinth()) {
-            return 'This template does not list Modrinth as a mod source, so nothing can be installed from it.';
-        }
-
-        return 'GameMGR cannot tell which mod loader this server runs, so it will not guess where a file belongs. Set the server type on the Startup tab first.';
-    }
-
-    /** @param array<string,mixed> $project */
-    private static function noVersion(array $project, ModTarget $target): string
-    {
-        $name = (string) ($project['title'] ?? 'That project');
-
         return $target->versionKnown()
             ? $name.' has no release for '.$target->loaderLabel.' on Minecraft '.$target->gameVersion.'.'
             : $name.' has no release for '.$target->loaderLabel.'.';

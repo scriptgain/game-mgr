@@ -115,16 +115,18 @@ class ModTarget
         );
     }
 
-    /** Can anything be searched or installed for this server at all? */
+    /**
+     * Can anything be searched or installed for this server at all?
+     *
+     * Deliberately not "is Modrinth listed", which is what this used to ask.
+     * That made a template declaring only CurseForge unsupported by definition
+     * and gave an ARK owner a Mods tab that refused everything it advertised.
+     * WHICH catalogues can serve this server is the registry's question; this
+     * one is only whether we know where a file would go.
+     */
     public function supported(): bool
     {
-        return $this->loader !== null && in_array('modrinth', $this->sources, true);
-    }
-
-    /** Is Modrinth one of the sources this template declares? */
-    public function usesModrinth(): bool
-    {
-        return in_array('modrinth', $this->sources, true);
+        return $this->loader !== null && $this->sources !== [];
     }
 
     /** Did anyone pin a Minecraft version, or is it floating on LATEST? */

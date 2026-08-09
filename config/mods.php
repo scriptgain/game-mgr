@@ -2,12 +2,38 @@
 
 // The mod and plugin catalogue.
 //
-// Modrinth is the only source wired to a real API so far. CurseForge needs an
-// API key per install and SpigotMC has no official API at all, so both stay
-// declared on templates and unavailable in the browser until they have a client
-// of their own. Saying so in the UI is better than a search box that silently
-// returns nothing.
+// Modrinth and Hangar are wired to real APIs and need no credentials. Both
+// publish a checksum for every file and serve those files themselves, which is
+// the combination an unattended installer needs.
+//
+// CurseForge needs an API key per install and SpigotMC has no official API, so
+// they remain declared on templates and are reported as unavailable with the
+// reason, rather than being a search box that silently returns nothing.
 return [
+    // The contact address every catalogue is asked to identify this panel by.
+    // Modrinth requires one as a condition of use and blocks generic agents;
+    // the others simply behave better with it.
+    'contact' => env('GAMEMGR_MODS_CONTACT', 'support@scriptgain.com'),
+
+    'hangar' => [
+        'enabled' => filter_var(env('GAMEMGR_HANGAR', true), FILTER_VALIDATE_BOOL),
+
+        'base' => env('GAMEMGR_HANGAR_URL', 'https://hangar.papermc.io'),
+
+        'timeout' => (float) env('GAMEMGR_HANGAR_TIMEOUT', 5),
+
+        'download_timeout' => (float) env('GAMEMGR_HANGAR_DOWNLOAD_TIMEOUT', 120),
+
+        // Same reasoning as the Modrinth block below: searches move with the
+        // ranking, project metadata barely changes, and the version list is the
+        // one an update check needs to see move.
+        'ttl' => [
+            'search' => 300,
+            'project' => 3600,
+            'versions' => 900,
+        ],
+    ],
+
     'modrinth' => [
         'enabled' => filter_var(env('GAMEMGR_MODRINTH', true), FILTER_VALIDATE_BOOL),
 

@@ -258,7 +258,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$this->version()]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertRedirect(route('server.mods', $this->paper))
             ->assertSessionHas('status');
 
@@ -282,7 +282,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$this->version()], body: 'this is not the jar that was published');
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertRedirect()
             ->assertSessionHas('error');
 
@@ -299,7 +299,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$version]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('mods', 0);
@@ -316,7 +316,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$version]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('mods', 0);
@@ -331,7 +331,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$version]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('mods', 0);
@@ -342,7 +342,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('mods', 0);
@@ -464,7 +464,7 @@ class ModInstallTest extends TestCase
         ]);
 
         $this->actingAs($stranger)
-            ->post(route('server.mods.store', $this->paper), ['project' => 'Vebnzrzj'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => 'Vebnzrzj'])
             ->assertForbidden();
 
         $this->assertDatabaseCount('mods', 0);
@@ -475,7 +475,7 @@ class ModInstallTest extends TestCase
         $this->fakeModrinth([$this->version()]);
 
         $this->actingAs($this->owner)
-            ->post(route('server.mods.store', $this->paper), ['project' => '../../etc/passwd'])
+            ->post(route('server.mods.store', $this->paper), ['source' => 'modrinth', 'project' => '../../etc/passwd'])
             ->assertSessionHasErrors('project');
 
         $this->assertDatabaseCount('mods', 0);
