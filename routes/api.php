@@ -61,6 +61,10 @@ Route::prefix('node')->name('api.node.')->group(function () {
 
     Route::middleware('agent.auth')->group(function () {
         Route::post('heartbeat', [\App\Http\Controllers\Api\NodeApiController::class, 'heartbeat']);
+        // One call per SFTP connection. The daemon holds no accounts, so this is
+        // where an SFTP password is actually checked, against the same policy
+        // that guards the web file manager.
+        Route::post('sftp/authenticate', [\App\Http\Controllers\Api\NodeApiController::class, 'sftpAuthenticate']);
         Route::get('servers', [\App\Http\Controllers\Api\NodeApiController::class, 'servers']);
         Route::post('servers/{uuid}/state', [\App\Http\Controllers\Api\NodeApiController::class, 'state']);
     });

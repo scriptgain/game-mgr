@@ -107,7 +107,15 @@ class Subuser extends Model
         return array_merge(...array_map('array_keys', array_values(self::MATRIX)));
     }
 
-    /** A sensible starting set for a newly invited subuser. */
+    /**
+     * A sensible starting set for a newly invited subuser.
+     *
+     * file.sftp is deliberately absent. Everything else here is something that
+     * happens inside the panel, where it can be watched and undone; SFTP is a
+     * credential that works against the node from anywhere. Handing someone the
+     * file manager should not silently hand them that too, so it stays an
+     * explicit tick.
+     */
     public static function defaultPermissions(): array
     {
         return ['control.console', 'control.start', 'control.restart', 'file.read', 'backup.read', 'player.read'];

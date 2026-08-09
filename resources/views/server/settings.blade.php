@@ -73,11 +73,41 @@
                     @else
                         <x-copy-field label="Game Address" :value="$server->address()" />
                     @endif
-                    <x-copy-field label="SFTP Host" :value="($server->node?->fqdn ?: 'node').':'.($server->node?->sftp_port ?? 2022)" />
-                    <x-copy-field label="SFTP Username" :value="$server->sftpUsername()" />
-                    <p class="text-xs text-slate-500">Your SFTP password is your account password.</p>
                 </div>
             </x-card>
+
+            {{-- Shown only to somebody who can actually use it. A username and a
+                 host for a login that will be refused is worse than no card. --}}
+            @can('check', [$server, 'file.sftp'])
+                <x-card title="File Access" icon="folder">
+                    @if ($server->node?->sftp_enabled)
+                        <div class="space-y-4">
+                            <x-copy-field label="Host" :value="$server->sftpHost()" />
+                            <x-copy-field label="Username" :value="$server->sftpUsername(auth()->user())" />
+
+                            @if ($server->node?->sftp_fingerprint)
+                                <div class="min-w-0">
+                                    <p class="text-xs font-medium text-slate-500">Host Key</p>
+                                    <p class="mt-1 break-all font-mono text-xs text-slate-700">{{ $server->node->sftp_fingerprint }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        Your client shows this the first time you connect. If it matches, it is this node.
+                                    </p>
+                                </div>
+                            @endif
+
+                            <p class="text-xs text-slate-500">
+                                Sign in with your account password, the same one you use here. You will land in this
+                                server's own folder and cannot move above it.
+                            </p>
+                        </div>
+                    @else
+                        <x-alert type="info" title="File Access Is Off For This Node">
+                            Use the <a href="{{ route('server.files', $server) }}" class="font-medium underline">file manager</a>
+                            instead. An administrator can turn SFTP on for this node.
+                        </x-alert>
+                    @endif
+                </x-card>
+            @endcan
 
             <x-card title="Limits" icon="memory">
                 <dl class="space-y-2.5 text-sm">
