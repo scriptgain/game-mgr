@@ -147,7 +147,7 @@ rm -f "$TARBALL"
 # applies a release with `tar xzf <file> -C base_path()` and no strip.
 tar czf "$TARBALL" -C "$STAGE" \
   --owner=0 --group=0 --numeric-owner \
-  --exclude='./.git' --exclude='./agent' \
+  --exclude='./.git' --exclude='./agent' --exclude='./TODO.md' \
   .
 
 log "Verifying the archive"

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -232,6 +233,31 @@ func (d *Driver) ensureContainer(ctx context.Context, s runtime.Server) (string,
 
 	info, err := d.api.Inspect(ctx, name)
 	if err == nil {
+		/*
+		 * A container is frozen at the spec it was created with, and Start has
+		 * always just started whatever was already there. So a template fixed
+		 * today did nothing for a server created yesterday: the Mumble startup
+		 * fix needed a Reinstall before it took, and a stop/start looked like
+		 * it should have worked. Same for a changed image, a changed
+		 * environment, or an allocation added after the fact.
+		 *
+		 * Nothing is lost by rebuilding it. The server's files live in a bind
+		 * mount; the only casualty is the container's own log buffer, which is
+		 * a fair price for not running the wrong command.
+		 */
+		if reason := d.stale(info, s); reason != "" && !info.State.Running {
+			log.Printf("server %s: recreating the container (%s)", s.UUID, reason)
+
+			if id, err := d.recreate(ctx, s, info.ID); err == nil {
+				return id, nil
+			} else {
+				// The old container is still there and still starts. A server
+				// running last week's command beats a server that will not
+				// come up at all, so this is a note rather than a failure.
+				log.Printf("server %s: could not recreate the container, starting the existing one: %v", s.UUID, err)
+			}
+		}
+
 		return info.ID, nil
 	}
 	if !dockerapi.NotFound(err) {
@@ -253,6 +279,90 @@ func (d *Driver) ensureContainer(ctx context.Context, s runtime.Server) (string,
 	}
 
 	return d.api.CreateContainer(ctx, name, d.config(s, path))
+}
+
+/*
+ * Why the existing container is no longer the one we would create, or "".
+ *
+ * Deliberately only the fields that change what the server IS. Docker fills in
+ * a great deal else, and comparing the whole config would recreate a container
+ * on every start for no reason.
+ *
+ * Environment is checked one way round: the image bakes in variables of its
+ * own, so the question is whether everything WE ask for is present, not
+ * whether the two lists match.
+ */
+func (d *Driver) stale(info *dockerapi.Inspect, s runtime.Server) string {
+	desired := d.config(s, d.Dir(s))
+
+	if len(desired.Cmd) > 0 && !slices.Equal(info.Config.Cmd, desired.Cmd) {
+		return "the startup command changed"
+	}
+
+	if s.Image != "" && info.Config.Image != s.Image {
+		return "the image changed to " + s.Image
+	}
+
+	have := make(map[string]bool, len(info.Config.Env))
+	for _, entry := range info.Config.Env {
+		have[entry] = true
+	}
+	for _, entry := range desired.Env {
+		if !have[entry] {
+			// Named, because "an environment variable changed" sends somebody
+			// diffing forty of them by hand.
+			return "environment changed: " + strings.SplitN(entry, "=", 2)[0]
+		}
+	}
+
+	if desired.HostConfig != nil && !samePorts(info.HostConfig.PortBindings, desired.HostConfig.PortBindings) {
+		return "the published ports changed"
+	}
+
+	return ""
+}
+
+/** Same set of port/proto keys, each bound to the same host port. */
+func samePorts(have, want map[string][]dockerapi.PortBinding) bool {
+	if len(have) != len(want) {
+		return false
+	}
+
+	for key, wanted := range want {
+		existing, ok := have[key]
+		if !ok || len(existing) != len(wanted) {
+			return false
+		}
+		for i := range wanted {
+			if existing[i].HostPort != wanted[i].HostPort {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+// recreate removes the old container and builds it again from the current spec.
+// The remove comes first because Docker will not have two of one name, and it
+// is safe: everything that matters is in the bind mount.
+func (d *Driver) recreate(ctx context.Context, s runtime.Server, id string) (string, error) {
+	if err := d.api.RemoveContainer(ctx, id, true); err != nil {
+		return "", err
+	}
+
+	path, err := d.EnsureDir(s)
+	if err != nil {
+		return "", err
+	}
+
+	if s.Image != "" && !d.api.ImageExists(ctx, s.Image) {
+		if err := d.api.PullImage(ctx, s.Image, io.Discard); err != nil {
+			return "", err
+		}
+	}
+
+	return d.api.CreateContainer(ctx, container(s), d.config(s, path))
 }
 
 func (d *Driver) config(s runtime.Server, path string) dockerapi.ContainerConfig {

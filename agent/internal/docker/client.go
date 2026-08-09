@@ -372,9 +372,18 @@ type Inspect struct {
 		// container's own cgroup, and this is what leads there.
 		Pid int `json:"Pid"`
 	} `json:"State"`
+	// Enough of the running container's spec to tell whether it is still the
+	// container we would create today. A container is frozen at the moment it
+	// was created, so without this the daemon happily starts one running last
+	// week's command.
 	Config struct {
-		Image string `json:"Image"`
+		Image string   `json:"Image"`
+		Cmd   []string `json:"Cmd"`
+		Env   []string `json:"Env"`
 	} `json:"Config"`
+	HostConfig struct {
+		PortBindings map[string][]PortBinding `json:"PortBindings"`
+	} `json:"HostConfig"`
 }
 
 func (c *Client) Inspect(ctx context.Context, id string) (*Inspect, error) {
