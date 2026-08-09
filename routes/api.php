@@ -32,12 +32,53 @@ Route::prefix('application')->name('api.app.')->middleware('api.token:applicatio
     Route::get('nodes/{node}/allocations/{allocation}', [App\Http\Controllers\Api\Application\AllocationController::class, 'show'])->name('nodes.allocations.show');
     Route::delete('nodes/{node}/allocations/{allocation}', [App\Http\Controllers\Api\Application\AllocationController::class, 'destroy'])->name('nodes.allocations.destroy');
 
-    Route::get('locations', [App\Http\Controllers\Api\Application\LocationController::class, 'index'])->name('locations.index');
-    Route::get('locations/{location}', [App\Http\Controllers\Api\Application\LocationController::class, 'show'])->name('locations.show');
+
+    // Full CRUD. Rules match each admin screen's, so the API cannot write a
+    // row the form would have refused.
+    Route::get('locations', [App\Http\Controllers\Api\Application\LocationApiController::class, 'index'])->name('locations.index');
+    Route::post('locations', [App\Http\Controllers\Api\Application\LocationApiController::class, 'store'])->name('locations.store');
+    Route::get('locations/{location}', [App\Http\Controllers\Api\Application\LocationApiController::class, 'show'])->name('locations.show');
+    Route::patch('locations/{location}', [App\Http\Controllers\Api\Application\LocationApiController::class, 'update'])->name('locations.update');
+    Route::delete('locations/{location}', [App\Http\Controllers\Api\Application\LocationApiController::class, 'destroy'])->name('locations.destroy');
+
+    Route::get('games', [App\Http\Controllers\Api\Application\GameApiController::class, 'index'])->name('games.index');
+    Route::post('games', [App\Http\Controllers\Api\Application\GameApiController::class, 'store'])->name('games.store');
+    Route::get('games/{game}', [App\Http\Controllers\Api\Application\GameApiController::class, 'show'])->name('games.show');
+    Route::patch('games/{game}', [App\Http\Controllers\Api\Application\GameApiController::class, 'update'])->name('games.update');
+    Route::delete('games/{game}', [App\Http\Controllers\Api\Application\GameApiController::class, 'destroy'])->name('games.destroy');
+
+    Route::get('mounts', [App\Http\Controllers\Api\Application\MountApiController::class, 'index'])->name('mounts.index');
+    Route::post('mounts', [App\Http\Controllers\Api\Application\MountApiController::class, 'store'])->name('mounts.store');
+    Route::get('mounts/{mount}', [App\Http\Controllers\Api\Application\MountApiController::class, 'show'])->name('mounts.show');
+    Route::patch('mounts/{mount}', [App\Http\Controllers\Api\Application\MountApiController::class, 'update'])->name('mounts.update');
+    Route::delete('mounts/{mount}', [App\Http\Controllers\Api\Application\MountApiController::class, 'destroy'])->name('mounts.destroy');
+
+    Route::get('database-hosts', [App\Http\Controllers\Api\Application\DatabaseHostApiController::class, 'index'])->name('database_hosts.index');
+    Route::post('database-hosts', [App\Http\Controllers\Api\Application\DatabaseHostApiController::class, 'store'])->name('database_hosts.store');
+    Route::get('database-hosts/{host}', [App\Http\Controllers\Api\Application\DatabaseHostApiController::class, 'show'])->name('database_hosts.show');
+    Route::patch('database-hosts/{host}', [App\Http\Controllers\Api\Application\DatabaseHostApiController::class, 'update'])->name('database_hosts.update');
+    Route::delete('database-hosts/{host}', [App\Http\Controllers\Api\Application\DatabaseHostApiController::class, 'destroy'])->name('database_hosts.destroy');
+
+    Route::get('webhooks', [App\Http\Controllers\Api\Application\WebhookApiController::class, 'index'])->name('webhooks.index');
+    Route::post('webhooks', [App\Http\Controllers\Api\Application\WebhookApiController::class, 'store'])->name('webhooks.store');
+    Route::get('webhooks/{webhook}', [App\Http\Controllers\Api\Application\WebhookApiController::class, 'show'])->name('webhooks.show');
+    Route::patch('webhooks/{webhook}', [App\Http\Controllers\Api\Application\WebhookApiController::class, 'update'])->name('webhooks.update');
+    Route::delete('webhooks/{webhook}', [App\Http\Controllers\Api\Application\WebhookApiController::class, 'destroy'])->name('webhooks.destroy');
+
+    Route::get('watchdog-rules', [App\Http\Controllers\Api\Application\WatchdogRuleApiController::class, 'index'])->name('watchdog_rules.index');
+    Route::post('watchdog-rules', [App\Http\Controllers\Api\Application\WatchdogRuleApiController::class, 'store'])->name('watchdog_rules.store');
+    Route::get('watchdog-rules/{rule}', [App\Http\Controllers\Api\Application\WatchdogRuleApiController::class, 'show'])->name('watchdog_rules.show');
+    Route::patch('watchdog-rules/{rule}', [App\Http\Controllers\Api\Application\WatchdogRuleApiController::class, 'update'])->name('watchdog_rules.update');
+    Route::delete('watchdog-rules/{rule}', [App\Http\Controllers\Api\Application\WatchdogRuleApiController::class, 'destroy'])->name('watchdog_rules.destroy');
+
+    Route::get('channels', [App\Http\Controllers\Api\Application\NotificationChannelApiController::class, 'index'])->name('channels.index');
+    Route::post('channels', [App\Http\Controllers\Api\Application\NotificationChannelApiController::class, 'store'])->name('channels.store');
+    Route::get('channels/{channel}', [App\Http\Controllers\Api\Application\NotificationChannelApiController::class, 'show'])->name('channels.show');
+    Route::patch('channels/{channel}', [App\Http\Controllers\Api\Application\NotificationChannelApiController::class, 'update'])->name('channels.update');
+    Route::delete('channels/{channel}', [App\Http\Controllers\Api\Application\NotificationChannelApiController::class, 'destroy'])->name('channels.destroy');
+
     Route::get('templates', [App\Http\Controllers\Api\Application\TemplateController::class, 'index'])->name('templates.index');
     Route::get('templates/{template}', [App\Http\Controllers\Api\Application\TemplateController::class, 'show'])->name('templates.show');
-    Route::get('games', [App\Http\Controllers\Api\Application\GameController::class, 'index'])->name('games.index');
-    Route::get('games/{game}', [App\Http\Controllers\Api\Application\GameController::class, 'show'])->name('games.show');
 
     // Accounts. A billing system creates one of these before it can create a
     // server for it, so this is the first call a provisioning module makes.
