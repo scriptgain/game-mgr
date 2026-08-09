@@ -49,7 +49,21 @@ return [
             'label' => 'Free',
             'nodes' => 1,
             'servers' => 5,
-            'games' => ['minecraft', 'palworld', 'valheim'],
+            /*
+             * Every game, on every edition.
+             *
+             * Withholding games was the wrong line to draw. Somebody who wants
+             * to run Rust and is told to pay first has not been shown what this
+             * panel is worth; somebody running five servers and wanting a sixth
+             * has. Scale and the integration features are what separate the
+             * editions now, so an upgrade is bought out of growth rather than
+             * out of frustration.
+             *
+             * Importing arbitrary eggs is still a paid feature, which is a
+             * different question: that is "run anything on the internet", not
+             * "run the games we ship".
+             */
+            'games' => null,
             'features' => [],
             'support' => 'Community',
         ],

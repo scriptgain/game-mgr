@@ -157,39 +157,44 @@ class EditionGateTest extends TestCase
 
     // -------------------------------------------------------------- the games
 
-    public function test_the_free_edition_covers_its_own_games_and_not_the_others(): void
+    /**
+     * Every game is free, deliberately.
+     *
+     * Withholding games was the wrong line: somebody told to pay before they
+     * can run Rust has not yet seen what this panel is worth. Scale and the
+     * integration features separate the editions instead.
+     */
+    public function test_every_game_is_available_on_the_free_edition(): void
     {
-        $this->assertTrue(Edition::allowsTemplate($this->template('minecraft')));
-        $this->assertTrue(Edition::allowsTemplate($this->template('palworld')));
-        $this->assertFalse(Edition::allowsTemplate($this->template('rust')));
-        $this->assertFalse(Edition::allowsTemplate($this->template('counter-strike-2')));
+        foreach (['minecraft', 'palworld', 'valheim', 'rust', 'counter-strike-2', 'ark-survival-ascended'] as $slug) {
+            $this->assertTrue(
+                Edition::allowsTemplate($this->template($slug)),
+                $slug.' must be runnable on the free edition',
+            );
+        }
+    }
+
+    /** Voice servers are games as far as this is concerned, so they are free too. */
+    public function test_voice_servers_are_available_on_the_free_edition(): void
+    {
+        $this->assertTrue(Edition::allowsTemplate($this->template('teamspeak')));
+        $this->assertTrue(Edition::allowsTemplate($this->template('mumble')));
     }
 
     /**
-     * Voice servers arrived after the editions did, so this is really asking
-     * whether a NEW category lands on the paid side by default rather than
-     * quietly falling through as free.
+     * The line that IS drawn: running the games that ship is free, importing
+     * arbitrary eggs is not. Those are different questions, and only the second
+     * is "run anything on the internet".
      */
-    public function test_voice_servers_are_not_in_the_free_edition(): void
+    public function test_importing_an_egg_is_still_a_paid_feature(): void
     {
-        $teamspeak = $this->template('teamspeak');
-        $mumble = $this->template('mumble');
+        $imported = $this->template('minecraft', ['imported_at' => now()]);
 
-        $this->assertFalse(Edition::allowsTemplate($teamspeak), 'TeamSpeak must not be free');
-        $this->assertFalse(Edition::allowsTemplate($mumble), 'Mumble must not be free');
-        $this->assertSame('basic', Edition::cheapestWithGame($teamspeak->game));
+        $this->assertFalse(Edition::allowsTemplate($imported), 'an imported egg is not free');
+        $this->assertTrue(Edition::allowsTemplate($this->template('minecraft')), 'but the shipped template is');
 
-        $this->onEdition('basic');
-        $this->assertTrue(Edition::allowsTemplate($teamspeak));
-        $this->assertTrue(Edition::allowsTemplate($mumble));
-    }
-
-    public function test_a_paid_edition_covers_the_whole_catalogue(): void
-    {
-        $this->onEdition('basic');
-
-        $this->assertTrue(Edition::allowsTemplate($this->template('rust')));
-        $this->assertTrue(Edition::allowsTemplate($this->template('counter-strike-2')));
+        $this->onEdition('pro');
+        $this->assertTrue(Edition::allowsTemplate($imported));
     }
 
     /**
@@ -213,7 +218,8 @@ class EditionGateTest extends TestCase
     /** A refusal should name the way out of it. */
     public function test_a_refusal_can_name_the_edition_that_would_allow_it(): void
     {
-        $this->assertSame('basic', Edition::cheapestWithGame(Game::firstOrCreate(['slug' => 'rust'], ['name' => 'Rust'])));
+        // Free, because every game is.
+        $this->assertSame('free', Edition::cheapestWithGame(Game::firstOrCreate(['slug' => 'rust'], ['name' => 'Rust'])));
         $this->assertSame('pro', Edition::cheapestWith('api'));
         $this->assertSame('basic', Edition::cheapestWith('subusers'));
     }
