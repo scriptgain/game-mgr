@@ -95,7 +95,41 @@ class NodeController extends Controller
     public function update(Request $request, Node $node, WildcardManager $wildcards)
     {
         $previousLabel = $node->dns_label;
-        $node->update($this->validated($request, $node));
+        $data = $this->validated($request, $node);
+
+        /*
+         * CLEARING A LABEL DELETES EVERY NAME ON THE NODE, so it has to be
+         * asked for rather than arrived at.
+         *
+         * This is not hypothetical. On 2026-08-08 a label went from lax1 to
+         * empty, the hourly reconciler did exactly what an unlabelled node
+         * means and removed the wildcard, and every server on that node stopped
+         * resolving. Nobody set out to do that: the field is optional, an empty
+         * one is a perfectly ordinary thing to post, and the form had no idea
+         * it was throwing anything away.
+         *
+         * So an empty label is only honoured when the request says so out loud.
+         * Any other save leaves the label exactly as it was, which means an
+         * unrelated edit, or a stale form loaded before the label existed, can
+         * no longer take the names down with it.
+         */
+        $clearing = filled($previousLabel) && blank($data['dns_label'] ?? null);
+
+        if ($clearing && ! $request->boolean('confirm_clear_dns_label')) {
+            unset($data['dns_label']);
+
+            $node->update($data);
+
+            return redirect()->route('admin.nodes.show', $node)->with(
+                'warning',
+                'Node updated, but the DNS label was left as "'.$previousLabel.'". Clearing it would delete the '.
+                'wildcard record and every connection name on this node, so it has to be confirmed on the '.
+                'Connection Names card.',
+            );
+        }
+
+        $node->update($data);
+        $this->recordChanges($node, $previousLabel);
 
         // A node's label is the middle of every name on it, so changing it
         // renames every server here and orphans the old wildcard.
@@ -107,6 +141,35 @@ class NodeController extends Controller
         }
 
         return redirect()->route('admin.nodes.show', $node)->with('status', 'Node updated.');
+    }
+
+    /**
+     * Leave a trail for node edits, which had none.
+     *
+     * When the label vanished there was no way to tell whether somebody had
+     * saved the form, a script had, or something in the app had done it: the
+     * only audited node action was clearing its metrics. A change that can take
+     * every name on a node offline should say who made it.
+     */
+    private function recordChanges(Node $node, ?string $previousLabel): void
+    {
+        $changed = collect($node->getChanges())
+            ->keys()
+            ->reject(fn ($key) => in_array($key, ['updated_at', 'last_seen_at'], true))
+            ->values();
+
+        if ($changed->isEmpty()) {
+            return;
+        }
+
+        $description = 'Node "'.$node->name.'" updated: '.$changed->join(', ', ' and ');
+
+        if ($previousLabel !== $node->dns_label) {
+            $description .= '. DNS label '.($previousLabel === null ? 'set to' : 'changed from "'.$previousLabel.'" to')
+                .' '.(blank($node->dns_label) ? 'nothing, which removes every connection name on this node' : '"'.$node->dns_label.'"');
+        }
+
+        AuditLog::record('node.update', $description, $node, null, ['changed' => $changed->all()]);
     }
 
     public function destroy(Node $node, WildcardManager $wildcards)

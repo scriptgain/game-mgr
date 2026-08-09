@@ -1474,6 +1474,41 @@ unset($__errorArgs, $__bag); ?>
 <?php unset($__componentOriginalae4c123bc9806121d87d234de2f27a3b); ?>
 <?php endif; ?>
 
+                            
+                            <?php if($node->exists && filled($node->dns_label)): ?>
+                                <div x-show="dnsLabel.trim() === ''" x-cloak>
+                                    <?php if (isset($component)) { $__componentOriginal5194778a3a7b899dcee5619d0610f5cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.alert','data' => ['type' => 'warn','title' => 'That Removes Every Name On This Node']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('alert'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'warn','title' => 'That Removes Every Name On This Node']); ?>
+                                        <p>
+                                            Clearing the label deletes the wildcard record and every server here goes
+                                            back to its direct address. The addresses keep working; the names stop.
+                                        </p>
+                                        <label class="mt-2 flex items-start gap-2 text-sm">
+                                            <input type="checkbox" name="confirm_clear_dns_label" value="1"
+                                                   class="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500">
+                                            <span>Yes, remove the connection names from this node.</span>
+                                        </label>
+                                     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $attributes = $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $component = $__componentOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+
                             <div class="rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200 px-4 py-3">
                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Players Will Be Able To Type</p>
                                 <p class="mt-1 font-mono text-sm text-slate-800 [overflow-wrap:anywhere]"

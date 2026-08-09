@@ -383,6 +383,104 @@ class DnsTest extends TestCase
             ->assertSee('which has no label', false);
     }
 
+    /**
+     * The one that actually happened.
+     *
+     * A node's label went from lax1 to empty, the hourly reconciler did exactly
+     * what an unlabelled node means and deleted the wildcard, and every server
+     * on that node stopped resolving. Nobody set out to do it: the field is
+     * optional and an empty one is an ordinary thing to post.
+     *
+     * So an empty label is now only honoured when the request says so, and any
+     * other save leaves it alone.
+     */
+    public function test_an_unconfirmed_save_cannot_clear_the_dns_label(): void
+    {
+        $this->configure(true);
+
+        $response = $this->actingAs($this->admin)
+            ->put(route('admin.nodes.update', $this->node), $this->nodeForm(['dns_label' => '']));
+
+        $response->assertRedirect(route('admin.nodes.show', $this->node));
+        $this->assertSame('lax1', $this->node->fresh()->dns_label, 'the label was silently thrown away');
+        $this->assertStringContainsString('left as "lax1"', session('warning'));
+    }
+
+    /** Deliberately clearing it still works, because sometimes that is the job. */
+    public function test_a_confirmed_save_clears_it(): void
+    {
+        $this->configure(true);
+
+        $this->actingAs($this->admin)->put(route('admin.nodes.update', $this->node), $this->nodeForm([
+            'dns_label' => '',
+            'confirm_clear_dns_label' => '1',
+        ]));
+
+        $this->assertNull($this->node->fresh()->dns_label);
+    }
+
+    /** An edit that never mentions the label must not disturb it either. */
+    public function test_an_unrelated_edit_leaves_the_label_alone(): void
+    {
+        $this->configure(true);
+
+        $form = $this->nodeForm(['name' => 'renamed-node']);
+        unset($form['dns_label']);
+
+        $this->actingAs($this->admin)->put(route('admin.nodes.update', $this->node), $form);
+
+        $this->assertSame('renamed-node', $this->node->fresh()->name);
+        $this->assertSame('lax1', $this->node->fresh()->dns_label);
+    }
+
+    /**
+     * Node edits had no audit trail at all, so when the label vanished there
+     * was no way to tell who or what had done it.
+     */
+    public function test_a_node_edit_is_audited(): void
+    {
+        $this->configure(true);
+
+        $this->actingAs($this->admin)->put(route('admin.nodes.update', $this->node), $this->nodeForm([
+            'dns_label' => 'lax2',
+        ]));
+
+        $entry = \App\Models\AuditLog::where('action', 'node.update')->latest('id')->first();
+
+        $this->assertNotNull($entry, 'a node edit left no trail');
+        $this->assertStringContainsString('lax1', $entry->description);
+        $this->assertStringContainsString('lax2', $entry->description);
+        $this->assertSame($this->admin->id, $entry->user_id);
+    }
+
+    /** The form the node edit screen posts, with overrides. */
+    private function nodeForm(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => $this->node->name,
+            'location_id' => $this->node->location_id,
+            'connection_mode' => $this->node->connection_mode ?? 'direct',
+            'scheme' => $this->node->scheme ?? 'http',
+            'fqdn' => $this->node->fqdn,
+            'dns_label' => $this->node->dns_label,
+            'daemon_port' => $this->node->daemon_port,
+            'sftp_port' => $this->node->sftp_port ?? 2022,
+            'memory' => $this->node->memory,
+            'memory_overallocate' => 0,
+            'disk' => $this->node->disk,
+            'disk_overallocate' => 0,
+            'cpu' => $this->node->cpu,
+            'cpu_overallocate' => 0,
+            'upload_size' => 256,
+            'daemon_base' => $this->node->daemon_base ?: '/var/lib/gamemgr/volumes',
+            // A MAP, not a list: the form posts runtimes[docker] => "1" from
+            // its toggles, and a list validates as an array and then filters
+            // down to nothing, which fails with "pick at least one runtime".
+            'runtimes' => array_fill_keys($this->node->runtimes ?: ['docker'], '1'),
+            'public' => 1,
+        ], $overrides);
+    }
+
     // ------------------------------------------------------------ fixtures
 
     private function configure(bool $enabled, string $provider = 'null'): void
