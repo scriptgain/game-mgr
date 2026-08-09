@@ -72,7 +72,10 @@ unset($__defined_vars, $__key, $__value); ?>
     $confirmClasses = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed '.$confirmTone;
 ?>
 
-<span x-data @click="$dispatch('open-modal', '<?php echo e($name); ?>')" class="inline-flex"><?php echo e($slot); ?></span>
+
+<span x-data
+      @click="$el.querySelector('[disabled], [aria-disabled=&quot;true&quot;]') || $dispatch('open-modal', '<?php echo e($name); ?>')"
+      class="inline-flex"><?php echo e($slot); ?></span>
 
 <?php if (isset($component)) { $__componentOriginal9f64f32e90b9102968f2bc548315018c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal9f64f32e90b9102968f2bc548315018c = $attributes; } ?>

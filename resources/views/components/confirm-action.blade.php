@@ -29,7 +29,20 @@
 @endphp
 {{-- Wraps a trigger (passed as the default slot) so any action goes through a
      modal confirm instead of firing immediately. --}}
-<span x-data @click="$dispatch('open-modal', '{{ $name }}')" class="inline-flex">{{ $slot }}</span>
+{{-- The click sits on this wrapper rather than on the trigger, because the
+     trigger is whatever the caller passed and may be a button, a link or an
+     icon button with its own markup.
+
+     Which means the wrapper has to check the trigger itself. A disabled button
+     does not fire a click, but the surrounding span still receives one from any
+     pixel the button does not cover, and a trigger that only LOOKS disabled
+     fires normally. Either way the modal opened for an action that could not be
+     taken, and confirming it posted a request the panel had already decided to
+     refuse. So the dispatch asks whether anything inside is disabled before it
+     opens anything. --}}
+<span x-data
+      @click="$el.querySelector('[disabled], [aria-disabled=&quot;true&quot;]') || $dispatch('open-modal', '{{ $name }}')"
+      class="inline-flex">{{ $slot }}</span>
 
 <x-modal :name="$name" :title="$title" :icon="$tone === 'danger' ? 'warning' : 'info'" :tone="$tone" maxWidth="max-w-md">
     {{ $message }}
