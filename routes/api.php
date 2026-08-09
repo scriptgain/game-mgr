@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\Route;
  * own per-node key rather than a user token.
  */
 
+// Unauthenticated on purpose: which endpoints exist is not a secret, every one
+// of them still demands a token, and a specification you need a credential to
+// read is one nobody generates a client from.
+Route::get('openapi.json', [App\Http\Controllers\Api\OpenApiController::class, 'show'])->name('api.openapi');
+
 Route::prefix('application')->name('api.app.')->middleware('api.token:application')->group(function () {
     Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'email', 'role']));
 
