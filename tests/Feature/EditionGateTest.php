@@ -182,46 +182,35 @@ class EditionGateTest extends TestCase
     }
 
     /**
-     * The line that IS drawn: running the games that ship is free, importing
-     * arbitrary eggs is not. Those are different questions, and only the second
-     * is "run anything on the internet".
+     * Importing a template is free too.
+     *
+     * The server count already catches everybody a gate here would have: anyone
+     * running this commercially is past five servers on their first day, so
+     * gating the import only ever landed on somebody adding one game for their
+     * friends, and made the panel a walled garden exactly where the alternative
+     * is not.
      */
-    public function test_importing_an_egg_is_still_a_paid_feature(): void
+    public function test_importing_a_template_is_free(): void
     {
         $imported = $this->template('minecraft', ['imported_at' => now()]);
 
-        $this->assertFalse(Edition::allowsTemplate($imported), 'an imported egg is not free');
-        $this->assertTrue(Edition::allowsTemplate($this->template('minecraft')), 'but the shipped template is');
-
-        $this->onEdition('pro');
         $this->assertTrue(Edition::allowsTemplate($imported));
+        $this->assertTrue(Edition::allows('templates.import'));
     }
 
     /**
-     * An imported egg is not "a game in the catalogue", so it is gated as an
-     * import even on an edition that covers every game.
+     * Everything except the server count is free, and this is the test that
+     * says so. If a feature ever stops being available on free, this fails and
+     * whoever did it has to mean it.
      */
-    public function test_an_imported_template_is_gated_as_an_import_not_as_a_game(): void
+    public function test_every_feature_is_available_on_the_free_edition(): void
     {
-        $imported = $this->template('minecraft', ['imported_at' => now()]);
+        foreach (array_keys((array) config('editions.features')) as $feature) {
+            $this->assertTrue(Edition::allows($feature), $feature.' must be available on the free edition');
+            $this->assertSame('free', Edition::cheapestWith($feature));
+        }
 
-        // Free covers Minecraft, but not importing.
-        $this->assertFalse(Edition::allowsTemplate($imported));
-
-        $this->onEdition('basic');
-        $this->assertFalse(Edition::allowsTemplate($imported), 'basic has no templates.import');
-
-        $this->onEdition('pro');
-        $this->assertTrue(Edition::allowsTemplate($imported));
-    }
-
-    /** A refusal should name the way out of it. */
-    public function test_a_refusal_can_name_the_edition_that_would_allow_it(): void
-    {
-        // Free, because every game is.
         $this->assertSame('free', Edition::cheapestWithGame(Game::firstOrCreate(['slug' => 'rust'], ['name' => 'Rust'])));
-        $this->assertSame('pro', Edition::cheapestWith('api'));
-        $this->assertSame('basic', Edition::cheapestWith('subusers'));
     }
 
     // ------------------------------------------------------------- the limits
@@ -268,19 +257,32 @@ class EditionGateTest extends TestCase
         $this->assertTrue(Edition::roomForServer(), 'basic covers 25');
     }
 
-    public function test_the_node_limit_refuses_a_second_node_on_free(): void
+    /**
+     * Nodes are not limited on any edition.
+     *
+     * Somebody who wants a second machine has a reason for it, and charging for
+     * the privilege of running your own hardware is a strange thing to sell.
+     * The servers running on those machines are what is counted.
+     */
+    public function test_nodes_are_not_limited(): void
     {
         $this->node('first');
-        $this->assertFalse(Edition::roomForNode());
+        $this->node('second');
+        $this->node('third');
+
+        $this->assertTrue(Edition::roomForNode());
+        $this->assertNull(Edition::limit('nodes'), 'nodes are unlimited on every edition');
 
         $this->actingAs($this->admin)->post(route('admin.nodes.store'), [
-            'name' => 'second', 'location_id' => $this->location()->id,
-            'scheme' => 'http', 'fqdn' => '10.0.0.2', 'daemon_port' => 8942,
-            'sftp_port' => 2022, 'memory' => 8000, 'disk' => 100000,
+            'name' => 'fourth', 'location_id' => $this->location()->id,
+            'connection_mode' => 'direct', 'scheme' => 'http', 'fqdn' => '10.0.0.4',
+            'daemon_port' => 8942, 'daemon_base' => '/var/lib/gamemgr/volumes',
+            'sftp_port' => 2022, 'memory' => 8000, 'disk' => 100000, 'cpu' => 400,
+            'upload_size' => 100, 'runtimes' => ['docker' => '1'],  // posted as a map by the toggles, not a list
             'memory_overallocate' => 0, 'disk_overallocate' => 0, 'cpu_overallocate' => 0,
-        ])->assertSessionHasErrors('name');
+        ])->assertSessionHasNoErrors();
 
-        $this->assertSame(1, Node::count());
+        $this->assertSame(4, Node::count());
     }
 
     // ------------------------------------------------------------- the rules

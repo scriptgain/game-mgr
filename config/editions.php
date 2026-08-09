@@ -41,13 +41,31 @@ return [
      * is decided by position in this list.
      *
      * null means unlimited. Setting a limit to 0 would mean "none at all",
-     * which is never what an edition wants to say about servers or nodes.
+     * which is never what an edition wants to say.
+     *
+     * ONE LIMIT: how many servers. Everything else is the same on every
+     * edition, and that is deliberate.
+     *
+     * The server count already catches everybody it should. Anyone running this
+     * commercially is past five servers on their first day, so a separate gate
+     * on the API, on subusers or on importing a template only ever landed on
+     * hobbyists, who were never going to pay and whose product was worse for
+     * it. Gating subusers in particular produced shared passwords rather than
+     * upgrades, which is a worse outcome for everybody including us.
+     *
+     * The features key is kept, and every edition holds every feature. Nothing
+     * is gated by it today; it stays because removing the mechanism and later
+     * wanting it back is a rebuild, while an unused list is a line of config.
      */
     'tiers' => [
 
         'free' => [
             'label' => 'Free',
-            'nodes' => 1,
+            // Nodes are not limited on any edition. Somebody who wants a second
+            // machine has a reason for it, and telling them to pay for the
+            // privilege of running their own hardware is a strange thing to
+            // charge for.
+            'nodes' => null,
             'servers' => 5,
             /*
              * Every game, on every edition.
@@ -64,24 +82,24 @@ return [
              * "run the games we ship".
              */
             'games' => null,
-            'features' => [],
+            'features' => ['subusers', 'backups.scheduled', 'api', 'templates.import', 'webhooks'],
             'support' => 'Community',
         ],
 
         'basic' => [
             'label' => 'Basic',
-            'nodes' => 3,
+            'nodes' => null,
             'servers' => 25,
             // null means every game in the catalogue, but still not imported
             // eggs, which are their own feature below.
             'games' => null,
-            'features' => ['subusers', 'backups.scheduled'],
+            'features' => ['subusers', 'backups.scheduled', 'api', 'templates.import', 'webhooks'],
             'support' => 'Email',
         ],
 
         'pro' => [
             'label' => 'Pro',
-            'nodes' => 10,
+            'nodes' => null,
             'servers' => 250,
             'games' => null,
             'features' => ['subusers', 'backups.scheduled', 'api', 'templates.import', 'webhooks'],
