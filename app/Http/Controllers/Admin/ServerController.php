@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\InstallServer;
+use App\Jobs\MigrateServer;
 use App\Models\Allocation;
 use App\Models\AuditLog;
 use App\Models\Blueprint;
@@ -17,6 +18,7 @@ use App\Models\User;
 use App\Services\AllocationPlanner;
 use App\Services\Minecraft\McJars;
 use App\Services\NodeClient;
+use App\Services\ServerMigrator;
 use App\Support\Edition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -494,6 +496,29 @@ class ServerController extends Controller
      * old contents aside rather than deleting them, putting them back if the
      * reinstall fails.
      */
+    /**
+     * Move a server to another node.
+     *
+     * The same preflight the API uses, so the screen can say the actual reason
+     * rather than a generic refusal: "stop the server first" is actionable and
+     * "that cannot be done" is not.
+     */
+    public function transfer(Request $request, Server $server, ServerMigrator $migrator)
+    {
+        $data = $request->validate(['node_id' => ['required', 'exists:nodes,id']]);
+        $target = Node::findOrFail($data['node_id']);
+
+        if ($reason = $migrator->reasonItCannotRun($server, $target)) {
+            return back()->with('error', $reason);
+        }
+
+        MigrateServer::dispatch($server->id, $target->id);
+
+        return back()->with('status',
+            'Moving "'.$server->name.'" to '.$target->name.'. It is offline for the transfer and its address will '
+            .'change when it lands; the connection name follows by itself.');
+    }
+
     public function reinstall(Request $request, Server $server)
     {
         $wipe = $request->boolean('wipe');

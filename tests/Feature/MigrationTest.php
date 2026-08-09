@@ -45,13 +45,22 @@ class MigrationTest extends TestCase
      *  restore should fail. */
     private bool $restoreFails = false;
 
+    private bool $fetchFails = false;
+
     protected function setUp(): void
     {
         parent::setUp();
         Queue::fake();
-        Http::fake(fn ($request) => $this->restoreFails && str_contains($request->url(), '/restore')
-            ? Http::response('', 500)
-            : Http::response(['ok' => true, 'bytes' => 100, 'checksum' => 'x'], 200));
+        Http::fake(function ($request) {
+            if ($this->restoreFails && str_contains($request->url(), '/restore')) {
+                return Http::response('', 500);
+            }
+            if ($this->fetchFails && str_contains($request->url(), '/backups/fetch')) {
+                return Http::response('', 502);
+            }
+
+            return Http::response(['ok' => true, 'bytes' => 100, 'checksum' => 'x'], 200);
+        });
         Setting::create(['key' => 'setup_complete', 'value' => '1']);
         Cache::put('licence.status', [
             'state' => 'valid', 'ok' => true, 'licence' => ['edition' => 'plus'],
@@ -200,5 +209,53 @@ class MigrationTest extends TestCase
         $this->assertNull($fresh->status, 'the server was left stuck in a migrating state');
         $this->assertSame($this->server->id, Allocation::find($originalAllocation)->server_id,
             'the original port was freed even though the migration failed');
+    }
+
+    /**
+     * The step that was missing entirely: Backup writes the archive on the
+     * source node's disk and Restore reads it from the target's, so without a
+     * transfer between them the target opens a path that never existed there.
+     *
+     * The earlier tests all passed with it missing, because a faked HTTP layer
+     * answers "ok" to a restore that would have failed on a real node. This one
+     * asserts the fetch actually happens, and in the right order.
+     */
+    public function test_the_archive_is_carried_to_the_target_before_the_restore(): void
+    {
+        app(ServerMigrator::class)->migrate($this->server->fresh(), $this->target);
+
+        $calls = [];
+        Http::assertSent(function ($request) use (&$calls) {
+            $calls[] = $request->url();
+
+            return true;
+        });
+
+        $fetch = null;
+        $restore = null;
+        foreach ($calls as $i => $url) {
+            if ($fetch === null && str_contains($url, '/backups/fetch')) {
+                $fetch = $i;
+            }
+            if ($restore === null && str_contains($url, '/restore')) {
+                $restore = $i;
+            }
+        }
+
+        $this->assertNotNull($fetch, 'the archive was never carried to the target node');
+        $this->assertNotNull($restore, 'nothing was restored');
+        $this->assertLessThan($restore, $fetch, 'the restore ran before the archive had arrived');
+    }
+
+    /** A transfer that fails leaves the server where it was, like every other failure. */
+    public function test_a_failed_transfer_leaves_the_server_where_it_was(): void
+    {
+        $this->fetchFails = true;
+
+        $this->assertFalse(app(ServerMigrator::class)->migrate($this->server->fresh(), $this->target));
+
+        $fresh = $this->server->fresh();
+        $this->assertSame($this->source->id, $fresh->node_id);
+        $this->assertNull($fresh->status);
     }
 }

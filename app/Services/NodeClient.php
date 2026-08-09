@@ -251,6 +251,25 @@ class NodeClient
         }
     }
 
+    /**
+     * Tell this node to pull a backup from another one.
+     *
+     * The step that makes a migration work. Backup writes the archive on the
+     * node it ran on and Restore reads it from the node it runs on, so without
+     * this the target looks for a file that was never sent. Node to node,
+     * because the alternative is tens of gigabytes through a PHP worker.
+     */
+    public function fetchBackup(Server $server, string $url, string $backupUuid): bool
+    {
+        $res = $this->post("/api/servers/{$server->uuid}/backups/fetch", [
+            'server' => $server->daemonPayload(),
+            'url' => $url,
+            'backup_uuid' => $backupUuid,
+        ], 7200);
+
+        return (bool) ($res['ok'] ?? false);
+    }
+
     /** Compress paths into one archive inside the server's own directory. */
     public function archive(Server $server, array $paths, string $target): bool
     {

@@ -101,10 +101,29 @@ class ServerMigrator
 
             // 2. Back up on the source. Still nothing destroyed.
             $say('line', 'Backing up on '.$source->name);
+
+            // Recorded as a real backup, because the signed download route the
+            // target fetches through resolves the archive through this row. It
+            // is removed again at the end: a migration should not leave a
+            // backup behind counting against the customer's allowance.
+            $record = $server->backups()->create([
+                'uuid' => $backupUuid,
+                'name' => 'Migration to '.$target->name,
+                'is_successful' => false,
+            ]);
+
             $backup = NodeClient::for($source)->backup($server, $backupUuid);
             if (! $backup) {
+                $record->delete();
+
                 throw new \RuntimeException('The backup on '.$source->name.' failed, so nothing was moved.');
             }
+            $record->forceFill([
+                'bytes' => $backup['bytes'] ?? 0,
+                'checksum' => $backup['checksum'] ?? null,
+                'is_successful' => true,
+                'completed_at' => now(),
+            ])->save();
 
             // 3. Move the row to the target and reserve its new ports. The old
             //    allocations are deliberately still held at this point: if the
@@ -120,7 +139,31 @@ class ServerMigrator
                 $server->forceFill(['allocation_id' => $primary->id])->save();
             }
 
-            // 4. Carry the archive across and unpack it.
+            // 4. Carry the archive across, THEN unpack it.
+            //
+            // The step that was missing: Backup wrote the tarball to the source
+            // node's own disk and Restore reads it from the target's, so
+            // without this the target opened a path that had never existed
+            // there. The target pulls it directly over a signed, short-lived
+            // URL rather than the panel piping the bytes.
+            $say('line', 'Copying the archive from '.$source->name.' to '.$target->name);
+            $url = \Illuminate\Support\Facades\URL::temporarySignedRoute('backups.download', now()->addHours(2), [
+                'server' => $server->uuid_short,
+                'backup' => $backupUuid,
+            ]);
+
+            if (! NodeClient::for($target)->fetchBackup($server, $url, $backupUuid)) {
+                $server->forceFill([
+                    'node_id' => $oldNodeId,
+                    'allocation_id' => $oldAllocationId,
+                    'status' => null,
+                ])->save();
+                $server->allocations()->whereNotIn('id', $oldAllocations)
+                    ->update(['server_id' => null, 'role' => null]);
+
+                throw new \RuntimeException($target->name.' could not fetch the archive from '.$source->name.'. The server has been left where it was.');
+            }
+
             if (! NodeClient::for($target)->restore($server, $backupUuid)) {
                 // Put the row back exactly as it was before touching anything
                 // on the source.
@@ -146,6 +189,10 @@ class ServerMigrator
             $sourceCopy->id = $server->id;
             $sourceCopy->exists = true;
             NodeClient::for($source)->destroy($sourceCopy);
+
+            // The migration archive has done its job. Deleting the row leaves
+            // the customer's own backups untouched and their allowance intact.
+            $record->delete();
 
             $server->forceFill(['status' => null])->save();
 

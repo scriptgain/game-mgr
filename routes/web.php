@@ -214,6 +214,7 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
 
         Route::post('servers/{server}/suspend', [Admin\ServerController::class, 'suspend'])->name('servers.suspend');
         Route::post('servers/{server}/unsuspend', [Admin\ServerController::class, 'unsuspend'])->name('servers.unsuspend');
+        Route::post('servers/{server}/transfer', [Admin\ServerController::class, 'transfer'])->name('servers.transfer');
         Route::post('servers/{server}/reinstall', [Admin\ServerController::class, 'reinstall'])->name('servers.reinstall');
         Route::resource('servers', Admin\ServerController::class);
 

@@ -84,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/servers/{uuid}/files/upload", s.auth(http.HandlerFunc(s.filesUpload)))
 	mux.Handle("POST /api/servers/{uuid}/files/delete", s.auth(http.HandlerFunc(s.filesDelete)))
 	mux.Handle("POST /api/servers/{uuid}/files/rename", s.auth(http.HandlerFunc(s.filesRename)))
+	mux.Handle("POST /api/servers/{uuid}/backups/fetch", s.auth(http.HandlerFunc(s.backupFetch)))
 	mux.Handle("GET /api/servers/{uuid}/backups/{backup}", s.auth(http.HandlerFunc(s.backupDownload)))
 	mux.Handle("POST /api/servers/{uuid}/files/archive", s.auth(http.HandlerFunc(s.filesArchive)))
 	mux.Handle("POST /api/servers/{uuid}/files/extract", s.auth(http.HandlerFunc(s.filesExtract)))
@@ -695,6 +696,92 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// backupFetch pulls a backup from another node into this one's store.
+//
+// This is what makes a migration possible. Backup writes the archive to the
+// node it ran on and Restore reads it from the node it runs on, so without a
+// step that carries the file between them the target looks for something that
+// was never sent. Node to node, because the alternative is dragging tens of
+// gigabytes through the panel.
+//
+// The URL is signed by the panel and short lived; this daemon does not
+// authenticate to the source itself, it just fetches what it was handed.
+func (s *Server) backupFetch(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		serverBody
+		URL        string `json:"url"`
+		BackupUUID string `json:"backup_uuid"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	_ = json.Unmarshal(raw, &body)
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+
+	srv, _, err := s.decodeServer(r)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if body.URL == "" || strings.ContainsAny(body.BackupUUID, "/\\") || strings.Contains(body.BackupUUID, "..") {
+		writeErr(w, http.StatusBadRequest, "a source url and a clean backup id are both required")
+		return
+	}
+
+	dir := filepath.Join(s.cfg.Root, ".backups", store.Short(srv.UUID))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, body.URL, nil)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// No read timeout: a large world legitimately takes a long time, and a
+	// deadline here would cut a transfer that was working.
+	res, err := (&http.Client{}).Do(req)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "could not reach the source node: "+err.Error())
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		writeErr(w, http.StatusBadGateway, "the source node answered "+res.Status)
+		return
+	}
+
+	// Written to a scratch name and renamed, so a transfer that dies halfway
+	// never leaves a truncated archive where Restore would find it and unpack
+	// it over somebody's server.
+	scratch, err := os.CreateTemp(dir, ".gamemgr-fetch-*")
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer func() {
+		_ = scratch.Close()
+		_ = os.Remove(scratch.Name())
+	}()
+
+	written, err := io.Copy(scratch, res.Body)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "the transfer failed part way: "+err.Error())
+		return
+	}
+	if err := scratch.Close(); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	target := filepath.Join(dir, body.BackupUUID+".tar.gz")
+	if err := os.Rename(scratch.Name(), target); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "bytes": written})
 }
 
 // backupDownload streams a backup off the node.
