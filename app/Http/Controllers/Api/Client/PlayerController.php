@@ -31,10 +31,7 @@ class PlayerController extends ServerApiController
      */
     public function action(Request $request, Server $server, $player)
     {
-        $data = $request->validate([
-            'action' => ['required', 'in:kick,ban,unban,whitelist,unwhitelist,op,deop'],
-            'reason' => ['nullable', 'string', 'max:255'],
-        ]);
+        $data = $request->validate(static::rules('action'));
 
         $this->guard($server, match ($data['action']) {
             'kick' => 'player.kick',
@@ -59,5 +56,26 @@ class PlayerController extends ServerApiController
         AuditLog::record('player.'.$data['action'], $data['action'].' '.$record->name.' on "'.$server->name.'" over the API', $server, $server->id);
 
         return $ok ? $this->done() : response()->json(['message' => 'The node did not accept that command.'], 502);
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file. The
+     * subject is the record being acted on, for rules that must ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'action' => [
+                'action' => ['required', 'in:kick,ban,unban,whitelist,unwhitelist,op,deop'],
+                'reason' => ['nullable', 'string', 'max:255'],
+            ],
+            default => [],
+        };
     }
 }

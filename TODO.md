@@ -34,9 +34,8 @@ manual-update test box without turning `update_auto` off first.
 
 | Item | Effort | Why not yet |
 |---|---|---|
-| Tiering enforcement (free / Basic / Pro / Plus) | M | Allen's call. `Edition` already gates templates; the pricing decisions do not exist |
+| Hosted Cloud product | XL | The panel is free. The paid thing is hosted GameMGR, and it does not exist. The site should say "Cloud, coming soon" and nothing else until it does. Not a gating problem: `Edition` already gates templates |
 | ARK Workshop placement | L | Items land in `steamapps/workshop/content/...`, but ARK wants them unpacked into `ShooterGame/Content/Mods` with `.z` expanded. Needs a real ARK server, a 15 GB download. CS2 and Garry's Mod work today |
-| Request bodies in the API docs | L | `/api-docs` documents paths and query parameters, not bodies. Means extracting schemas from ~40 controllers' validation rules. The page says so out loud |
 | Reverse-mode transport | L | Schema, UI and config all exist; the tunnel does not. Real networking, 1-2 days |
 | Billing and ordering | XL | Needs a product plan first |
 | Modpacks, plugin dependency resolution | — | Deliberately out of scope in the approved mod plan |
@@ -103,9 +102,17 @@ manual-update test box without turning `update_auto` off first.
   "Stoped the server"
 - **Self-update works, proven twice unattended**, 1.0.0 to 1.1.0 to 1.1.1. The
   release channel is live on scriptgain.com
+- **The API reference documents request bodies**, generated from the validation
+  rules rather than from a hand-written copy of them: 33 of 44 write endpoints,
+  with the other 11 named in a test as genuinely taking none. Doing it found
+  three real bugs, all shipped fixed: `POST /api/application/servers` 500'd when
+  `node_id` was omitted, which is the documented way to say "put it wherever it
+  fits" and which every existing test happened to avoid; the backup and
+  reinstall endpoints read fields they never validated; and the startup endpoint
+  validated nothing at all
 - A CloudPanel vhost matches `.gz` as static, so the release tarball route
   returned nginx's 404 and never reached PHP: 1.0.0 was undownloadable for its
   whole life. Verify the ARTIFACT, hashed and cache-busted, never just the
   manifest
 
-Current: **311 tests**, **101 routes clean** in `make health`. Panel version **1.1.0**.
+Current: **331 tests**, **100 routes clean** in `make health`. Panel version **1.1.1**.

@@ -219,12 +219,12 @@
                 </div>
             </dl>
 
-            <div class="mt-4 rounded-xl border-l-2 border-amber-400 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
-                <p class="font-semibold">Request bodies are not described yet.</p>
+            <div class="mt-4 rounded-xl border-l-2 border-emerald-400 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
+                <p class="font-semibold">Everything here is generated from the code that runs.</p>
                 <p class="mt-1 leading-relaxed">
-                    Paths and query parameters below are generated from the routes. The JSON body a write endpoint
-                    accepts is not, so those fields still have to come from the panel form that does the same job.
-                    A real gap, and not one nobody noticed.
+                    Paths, query parameters and request bodies all come from the routes and the validation rules
+                    themselves, so this cannot describe an endpoint that does not exist, miss one that does, or
+                    disagree with what the API will actually accept.
                 </p>
             </div>
         </section>
@@ -264,6 +264,10 @@
                                         <p class="text-sm text-slate-700">{{ $op['summary'] }}</p>
 
                                         @if ($op['parameters'])
+                                            {{-- Labelled now that a Body can sit beneath it. An unlabelled
+                                                 list above a labelled one reads as part of the same thing. --}}
+                                            <div>
+                                            <p class="eyebrow mb-1">Parameters</p>
                                             <dl class="overflow-hidden rounded-lg bg-slate-50 outline outline-1 outline-slate-200">
                                                 @foreach ($op['parameters'] as $parameter)
                                                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-slate-200/70 px-3 py-2 last:border-0">
@@ -275,6 +279,28 @@
                                                     </div>
                                                 @endforeach
                                             </dl>
+                                            </div>
+                                        @endif
+
+                                        @if ($op['body'] ?? null)
+                                            @php $required = $op['body']['required'] ?? []; @endphp
+                                            <div>
+                                                <p class="eyebrow mb-1">Body</p>
+                                                <dl class="overflow-hidden rounded-lg bg-slate-50 outline outline-1 outline-slate-200">
+                                                    @foreach ($op['body']['properties'] ?? [] as $field => $schema)
+                                                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-slate-200/70 px-3 py-2 last:border-0">
+                                                            <dt class="path text-xs font-semibold text-slate-900">{{ $field }}</dt>
+                                                            <span class="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-500 outline outline-1 outline-slate-200">
+                                                                {{ collect((array) ($schema['type'] ?? 'any'))->join(' or ') }}{{ in_array($field, $required, true) ? ', required' : '' }}
+                                                            </span>
+                                                            {{-- One line, on purpose: Blade emits its own indentation, and at
+                                                                 102 endpoints a prettily nested loop body costs a quarter of a
+                                                                 megabyte of whitespace on a page nobody gzips by default. --}}
+                                                            <dd class="min-w-0 flex-1 text-xs text-slate-500">{{ $schema['description'] ?? '' }}@isset($schema['enum'])<span class="path">{{ collect($schema['enum'])->join(' | ') }}</span>@endisset @foreach (['minimum' => 'min', 'maximum' => 'max', 'minLength' => 'min length', 'maxLength' => 'max length'] as $key => $label)@isset($schema[$key])<span class="text-slate-400">{{ $label }} {{ $schema[$key] }}</span>@endisset @endforeach</dd>
+                                                        </div>
+                                                    @endforeach
+                                                </dl>
+                                            </div>
                                         @endif
 
                                         <details>
@@ -283,8 +309,8 @@
                                                 <pre class="overflow-x-auto px-3 py-2.5 text-xs leading-relaxed text-slate-200" style="font-family: var(--mono)"><code>curl -X {{ $op['method'] }} \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: application/json" \
-@if (in_array($op['method'], ['POST', 'PATCH', 'PUT'], true))  -H "Content-Type: application/json" \
-  -d '{}' \
+@if ($op['body'] ?? null)  -H "Content-Type: application/json" \
+  -d '{{ $op['example'] }}' \
 @endif  "{{ $baseUrl }}{{ $op['path'] }}"</code></pre>
                                             </div>
                                         </details>

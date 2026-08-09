@@ -60,16 +60,33 @@ class MountApiController extends ApiController
         return $this->done();
     }
 
-    private function validated(Request $request, ?Mount $model): array
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * Static and public because two callers need it: validation here, and
+     * the OpenAPI document, which would otherwise have to parse this file.
+     * $subject carries the record being updated, for the rules that have to
+     * ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
     {
-        $data = $request->validate([
+        $model = $subject instanceof Mount ? $subject : null;
+
+        return [
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
             'source' => ['required', 'string', 'max:255'],
             'target' => ['required', 'string', 'max:255'],
             'read_only' => ['nullable', 'boolean'],
             'user_mountable' => ['nullable', 'boolean'],
-        ]);
+        ];
+    }
+
+    private function validated(Request $request, ?Mount $model): array
+    {
+        $data = $request->validate(static::rules($model ? 'update' : 'store', $model));
 
         // These columns are NOT NULL with no database default, so an absent
         // array or flag has to become empty rather than null. The form always

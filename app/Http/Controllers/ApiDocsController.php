@@ -64,6 +64,8 @@ class ApiDocsController extends Controller
                     'path' => $path,
                     'summary' => $operation['summary'] ?? '',
                     'parameters' => $operation['parameters'] ?? [],
+                    'body' => $schema = $operation['requestBody']['content']['application/json']['schema'] ?? null,
+                    'example' => $schema ? self::example($schema) : null,
                     'anchor' => Str::slug($method.'-'.$path),
                     'id' => $operation['operationId'] ?? '',
                 ];
@@ -122,6 +124,37 @@ class ApiDocsController extends Controller
     public static function iconFor(string $resource): string
     {
         return self::ICONS[$resource] ?? 'link';
+    }
+
+    /**
+     * A copy-paste payload, from the required fields only.
+     *
+     * Required only, because the point of an example is to be the smallest
+     * thing that works. A body carrying every optional field is a body somebody
+     * has to edit down before their first call.
+     *
+     * The values are placeholders shaped like the type, never plausible-looking
+     * real data: "1" for an id invites somebody to run it and wonder why it
+     * failed against their install.
+     */
+    private static function example(array $schema): string
+    {
+        $payload = [];
+
+        foreach ($schema['required'] ?? [] as $field) {
+            $property = $schema['properties'][$field] ?? [];
+            $type = (array) ($property['type'] ?? 'string');
+
+            $payload[$field] = match (true) {
+                isset($property['enum']) => $property['enum'][0],
+                in_array('integer', $type, true), in_array('number', $type, true) => 0,
+                in_array('boolean', $type, true) => true,
+                in_array('array', $type, true) => [],
+                default => '<'.$field.'>',
+            };
+        }
+
+        return $payload === [] ? '{}' : json_encode($payload, JSON_UNESCAPED_SLASHES);
     }
 
     /** Path segments that are things done TO a server, not things it has. */

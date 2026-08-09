@@ -60,9 +60,21 @@ class WatchdogRuleApiController extends ApiController
         return $this->done();
     }
 
-    private function validated(Request $request, ?WatchdogRule $model): array
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * Static and public because two callers need it: validation here, and
+     * the OpenAPI document, which would otherwise have to parse this file.
+     * $subject carries the record being updated, for the rules that have to
+     * ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
     {
-        $data = $request->validate([
+        $model = $subject instanceof WatchdogRule ? $subject : null;
+
+        return [
             'name' => ['required', 'string', 'max:120'],
             'server_id' => ['nullable', 'exists:servers,id'],
             'trigger' => ['required', 'in:crash,offline,log_pattern,memory,players_zero,tick_rate'],
@@ -73,7 +85,12 @@ class WatchdogRuleApiController extends ApiController
             'channels' => ['nullable', 'array'],
             'channels.*' => ['exists:notification_channels,id'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ];
+    }
+
+    private function validated(Request $request, ?WatchdogRule $model): array
+    {
+        $data = $request->validate(static::rules($model ? 'update' : 'store', $model));
 
         // These columns are NOT NULL with no database default, so an absent
         // array or flag has to become empty rather than null. The form always

@@ -180,6 +180,27 @@ class ApplicationApiTest extends TestCase
         Queue::assertPushed(InstallServer::class);
     }
 
+    /**
+     * Every existing test sent node_id, so nobody found this until the API
+     * reference documented the body and the field was shown as optional. It
+     * was: validate() returns what was SENT, so the absent key was a 500 rather
+     * than the "put it wherever it fits" the rule promises.
+     */
+    public function test_a_server_created_without_a_node_is_placed_on_one(): void
+    {
+        $owner = User::create([
+            'name' => 'Customer', 'email' => 'unplaced@test.local',
+            'password' => 'secret1234', 'role' => 'client',
+        ]);
+
+        $this->apiCall('POST', '/api/application/servers', [
+            'name' => 'Wherever It Fits',
+            'owner_id' => $owner->id,
+            'template_id' => $this->template->id,
+            'memory' => 1024, 'disk' => 4096, 'cpu' => 100,
+        ])->assertCreated()->assertJsonPath('attributes.node_id', $this->node->id);
+    }
+
     /** The one that was untrue: suspending has to stop the game. */
     public function test_suspending_stops_the_server_and_not_just_the_panel(): void
     {

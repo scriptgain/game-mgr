@@ -60,14 +60,31 @@ class LocationApiController extends ApiController
         return $this->done();
     }
 
-    private function validated(Request $request, ?Location $model): array
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * Static and public because two callers need it: validation here, and
+     * the OpenAPI document, which would otherwise have to parse this file.
+     * $subject carries the record being updated, for the rules that have to
+     * ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
     {
-        $data = $request->validate([
+        $model = $subject instanceof Location ? $subject : null;
+
+        return [
             'short' => ['required', 'string', 'max:32', Rule::unique('locations', 'short')->ignore($model?->id)],
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:255'],
             'flag' => ['nullable', 'string', 'max:8'],
-        ]);
+        ];
+    }
+
+    private function validated(Request $request, ?Location $model): array
+    {
+        $data = $request->validate(static::rules($model ? 'update' : 'store', $model));
 
         return $data;
     }

@@ -82,10 +82,7 @@ class FileController extends ServerApiController
 
     public function write(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'path' => ['required', 'string'],
-            'content' => ['present', 'string'],
-        ]);
+        $data = $request->validate(static::rules('write'));
 
         $this->guard($server, 'file.update');
         $this->refuseIfSuspended($server);
@@ -97,7 +94,7 @@ class FileController extends ServerApiController
 
     public function mkdir(Request $request, Server $server)
     {
-        $data = $request->validate(['path' => ['required', 'string']]);
+        $data = $request->validate(static::rules('mkdir'));
         $this->guard($server, 'file.create');
 
         return NodeClient::for($server->node)->makeDir($server, $data['path'])
@@ -107,10 +104,7 @@ class FileController extends ServerApiController
 
     public function rename(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'from' => ['required', 'string'],
-            'to' => ['required', 'string'],
-        ]);
+        $data = $request->validate(static::rules('rename'));
         $this->guard($server, 'file.update');
 
         return NodeClient::for($server->node)->renameFile($server, $data['from'], $data['to'])
@@ -120,10 +114,7 @@ class FileController extends ServerApiController
 
     public function destroy(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'paths' => ['required', 'array', 'min:1'],
-            'paths.*' => ['string'],
-        ]);
+        $data = $request->validate(static::rules('destroy'));
         $this->guard($server, 'file.delete');
 
         $ok = NodeClient::for($server->node)->deleteFiles($server, $data['paths']);
@@ -140,11 +131,7 @@ class FileController extends ServerApiController
      */
     public function archive(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'paths' => ['required', 'array', 'min:1'],
-            'paths.*' => ['string'],
-            'target' => ['nullable', 'string'],
-        ]);
+        $data = $request->validate(static::rules('archive'));
 
         $this->guard($server, 'file.archive');
         $this->refuseIfSuspended($server);
@@ -162,7 +149,7 @@ class FileController extends ServerApiController
 
     public function extract(Request $request, Server $server)
     {
-        $data = $request->validate(['path' => ['required', 'string']]);
+        $data = $request->validate(static::rules('extract'));
 
         $this->guard($server, 'file.archive');
         $this->refuseIfSuspended($server);
@@ -176,5 +163,41 @@ class FileController extends ServerApiController
         AuditLog::record('file.archive', 'Extracted '.$data['path'].' on "'.$server->name.'" over the API', $server, $server->id);
 
         return $this->done();
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'write', mixed $subject = null): array
+    {
+        return match ($action) {
+            'write' => [
+                'path' => ['required', 'string'],
+                'content' => ['present', 'string'],
+            ],
+            'mkdir', 'extract' => [
+                'path' => ['required', 'string'],
+            ],
+            'rename' => [
+                'from' => ['required', 'string'],
+                'to' => ['required', 'string'],
+            ],
+            'destroy' => [
+                'paths' => ['required', 'array', 'min:1'],
+                'paths.*' => ['string'],
+            ],
+            'archive' => [
+                'paths' => ['required', 'array', 'min:1'],
+                'paths.*' => ['string'],
+                'target' => ['nullable', 'string'],
+            ],
+            default => [],
+        };
     }
 }

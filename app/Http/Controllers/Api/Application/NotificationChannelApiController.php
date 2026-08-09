@@ -60,16 +60,33 @@ class NotificationChannelApiController extends ApiController
         return $this->done();
     }
 
-    private function validated(Request $request, ?NotificationChannel $model): array
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * Static and public because two callers need it: validation here, and
+     * the OpenAPI document, which would otherwise have to parse this file.
+     * $subject carries the record being updated, for the rules that have to
+     * ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
     {
-        $data = $request->validate([
+        $model = $subject instanceof NotificationChannel ? $subject : null;
+
+        return [
             'name' => ['required', 'string', 'max:120'],
             'type' => ['required', 'in:discord,slack,webhook,email'],
             'target' => [$model ? 'nullable' : 'required', 'string', 'max:500'],
             'events' => ['nullable', 'array'],
             'events.*' => ['string'],
             'is_active' => ['nullable', 'boolean'],
-        ]);
+        ];
+    }
+
+    private function validated(Request $request, ?NotificationChannel $model): array
+    {
+        $data = $request->validate(static::rules($model ? 'update' : 'store', $model));
 
         // These columns are NOT NULL with no database default, so an absent
         // array or flag has to become empty rather than null. The form always

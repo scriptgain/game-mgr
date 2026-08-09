@@ -60,9 +60,21 @@ class DatabaseHostApiController extends ApiController
         return $this->done();
     }
 
-    private function validated(Request $request, ?DatabaseHost $model): array
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * Static and public because two callers need it: validation here, and
+     * the OpenAPI document, which would otherwise have to parse this file.
+     * $subject carries the record being updated, for the rules that have to
+     * ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
     {
-        $data = $request->validate([
+        $model = $subject instanceof DatabaseHost ? $subject : null;
+
+        return [
             'name' => ['required', 'string', 'max:120'],
             'host' => ['required', 'string', 'max:255'],
             'port' => ['required', 'integer', 'between:1,65535'],
@@ -71,7 +83,12 @@ class DatabaseHostApiController extends ApiController
             'linked_ip' => ['nullable', 'string', 'max:255'],
             'node_id' => ['nullable', 'exists:nodes,id'],
             'max_databases' => ['required', 'integer', 'min:0'],
-        ]);
+        ];
+    }
+
+    private function validated(Request $request, ?DatabaseHost $model): array
+    {
+        $data = $request->validate(static::rules($model ? 'update' : 'store', $model));
 
         // password is write only. It is never returned by the resource, and a
         // blank one on update leaves the stored value alone rather than wiping

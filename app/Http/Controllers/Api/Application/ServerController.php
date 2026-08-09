@@ -56,23 +56,7 @@ class ServerController extends Controller
      */
     public function store(Request $request, AllocationPlanner $planner)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'owner_id' => ['required', 'exists:users,id'],
-            'template_id' => ['required', 'exists:templates,id'],
-            'node_id' => ['nullable', 'exists:nodes,id'],
-            'memory' => ['required', 'integer', 'min:0'],
-            'disk' => ['required', 'integer', 'min:0'],
-            'cpu' => ['required', 'integer', 'min:0'],
-            'swap' => ['nullable', 'integer'],
-            'io' => ['nullable', 'integer'],
-            'database_limit' => ['nullable', 'integer', 'min:0'],
-            'allocation_limit' => ['nullable', 'integer', 'min:0'],
-            'backup_limit' => ['nullable', 'integer', 'min:0'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'environment' => ['nullable', 'array'],
-            'start_on_completion' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate(static::rules('store'));
 
         $template = Template::with(['variables', 'ports', 'game'])->findOrFail($data['template_id']);
 
@@ -87,7 +71,12 @@ class ServerController extends Controller
             ], 403);
         }
 
-        $node = $data['node_id']
+        // ?? null, not [$data['node_id']]: validate() returns the keys that
+        // were SENT, and a nullable field that was left out is absent rather
+        // than null. Omitting node_id is the documented way to say "put it
+        // wherever it fits", and until the docs described this body nobody had
+        // ever called it that way, so it 500'd instead.
+        $node = ($data['node_id'] ?? null)
             ? Node::findOrFail($data['node_id'])
             : $this->firstNodeWithRoom($template, $data);
 
@@ -149,16 +138,7 @@ class ServerController extends Controller
     /** Change the package: limits, and the container that has to honour them. */
     public function build(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'memory' => ['nullable', 'integer', 'min:0'],
-            'disk' => ['nullable', 'integer', 'min:0'],
-            'cpu' => ['nullable', 'integer', 'min:0'],
-            'swap' => ['nullable', 'integer'],
-            'io' => ['nullable', 'integer'],
-            'database_limit' => ['nullable', 'integer', 'min:0'],
-            'allocation_limit' => ['nullable', 'integer', 'min:0'],
-            'backup_limit' => ['nullable', 'integer', 'min:0'],
-        ]);
+        $data = $request->validate(static::rules('build'));
 
         $server->update(array_filter($data, fn ($v) => $v !== null));
 
@@ -215,6 +195,8 @@ class ServerController extends Controller
 
     public function reinstall(Request $request, Server $server)
     {
+        $request->validate(static::rules('reinstall'));
+
         $wipe = $request->boolean('wipe');
 
         $server->update(['status' => 'installing', 'installed_at' => null, 'stopped_intentionally' => false]);
@@ -258,9 +240,7 @@ class ServerController extends Controller
      */
     public function transfer(Request $request, Server $server, ServerMigrator $migrator)
     {
-        $data = $request->validate([
-            'node_id' => ['required', 'exists:nodes,id'],
-        ]);
+        $data = $request->validate(static::rules('transfer'));
 
         $target = Node::findOrFail($data['node_id']);
 
@@ -301,4 +281,55 @@ class ServerController extends Controller
                 'value' => $environment[$variable->env_variable] ?? $variable->default_value,
             ]);
         }
-    }}
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file. The
+     * subject is the record being acted on, for rules that must ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'store' => [
+                'name' => ['required', 'string', 'max:120'],
+                'owner_id' => ['required', 'exists:users,id'],
+                'template_id' => ['required', 'exists:templates,id'],
+                'node_id' => ['nullable', 'exists:nodes,id'],
+                'memory' => ['required', 'integer', 'min:0'],
+                'disk' => ['required', 'integer', 'min:0'],
+                'cpu' => ['required', 'integer', 'min:0'],
+                'swap' => ['nullable', 'integer'],
+                'io' => ['nullable', 'integer'],
+                'database_limit' => ['nullable', 'integer', 'min:0'],
+                'allocation_limit' => ['nullable', 'integer', 'min:0'],
+                'backup_limit' => ['nullable', 'integer', 'min:0'],
+                'description' => ['nullable', 'string', 'max:1000'],
+                'environment' => ['nullable', 'array'],
+                'start_on_completion' => ['nullable', 'boolean'],
+            ],
+            'build' => [
+                'memory' => ['nullable', 'integer', 'min:0'],
+                'disk' => ['nullable', 'integer', 'min:0'],
+                'cpu' => ['nullable', 'integer', 'min:0'],
+                'swap' => ['nullable', 'integer'],
+                'io' => ['nullable', 'integer'],
+                'database_limit' => ['nullable', 'integer', 'min:0'],
+                'allocation_limit' => ['nullable', 'integer', 'min:0'],
+                'backup_limit' => ['nullable', 'integer', 'min:0'],
+            ],
+            'transfer' => [
+                'node_id' => ['required', 'exists:nodes,id'],
+            ],
+            'reinstall' => [
+                'wipe' => ['nullable', 'boolean'],
+            ],
+            default => [],
+        };
+    }
+}

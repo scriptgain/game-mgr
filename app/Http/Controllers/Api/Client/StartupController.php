@@ -49,7 +49,9 @@ class StartupController extends ServerApiController
     {
         $this->guard($server, 'startup.update');
 
-        $submitted = (array) $request->input('variables', []);
+        // Validated as well as documented. This took whatever `variables`
+        // happened to be, including a string, and only found out further down.
+        $submitted = (array) $request->validate(static::rules('update'))['variables'];
         $changed = 0;
 
         foreach ($server->template->variables as $variable) {
@@ -88,4 +90,25 @@ class StartupController extends ServerApiController
             'meta' => ['note' => 'The server has to restart before these apply.'],
         ]);
     }
+
+    /**
+     * The request body, in one place so the API reference can describe it.
+     *
+     * `variables` is a map of the template's own environment names to values,
+     * which is why it is an object rather than a listed set of fields: what is
+     * accepted depends on the template this server runs. The Startup screen in
+     * the panel shows the exact names.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'update', mixed $subject = null): array
+    {
+        return match ($action) {
+            'update' => [
+                'variables' => ['required', 'array'],
+            ],
+            default => [],
+        };
+    }
+
 }

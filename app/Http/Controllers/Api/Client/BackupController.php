@@ -39,13 +39,15 @@ class BackupController extends ServerApiController
             ], 409);
         }
 
+        $data = $request->validate(static::rules('store'));
+
         $backup = $server->backups()->create([
             'uuid' => (string) Str::uuid(),
-            'name' => $request->input('name') ?: 'Backup '.now()->format('Y-m-d H:i'),
+            'name' => ($data['name'] ?? null) ?: 'Backup '.now()->format('Y-m-d H:i'),
             'is_successful' => false,
         ]);
 
-        $result = NodeClient::for($server->node)->backup($server, $backup->uuid, (array) $request->input('ignore', []));
+        $result = NodeClient::for($server->node)->backup($server, $backup->uuid, (array) ($data['ignore'] ?? []));
 
         $backup->forceFill([
             'bytes' => $result['bytes'] ?? 0,
@@ -130,5 +132,25 @@ class BackupController extends ServerApiController
             'object' => 'signed_url',
             'attributes' => ['url' => $url, 'expires_in' => 900, 'bytes' => $record->bytes],
         ];
+    }
+
+    /**
+     * Both fields were read straight off the request and never validated, so
+     * the API reference had nothing to describe and a caller sending
+     * ignore="*.log" as a string got a type error from the node instead of a
+     * 422 from here.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'store' => [
+                'name' => ['nullable', 'string', 'max:120'],
+                'ignore' => ['nullable', 'array'],
+                'ignore.*' => ['string'],
+            ],
+            default => [],
+        };
     }
 }

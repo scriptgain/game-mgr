@@ -52,12 +52,7 @@ class AllocationController extends ApiController
      */
     public function store(Request $request, Node $node)
     {
-        $data = $request->validate([
-            'ip' => ['required', 'ip'],
-            'ip_alias' => ['nullable', 'string', 'max:255'],
-            'port_start' => ['required', 'integer', 'between:1024,65535'],
-            'port_end' => ['required', 'integer', 'between:1024,65535', 'gte:port_start'],
-        ]);
+        $data = $request->validate(static::rules('store'));
 
         $span = $data['port_end'] - $data['port_start'] + 1;
         if ($span > 500) {
@@ -122,5 +117,28 @@ class AllocationController extends ApiController
     private function assertBelongs(Node $node, Allocation $allocation): void
     {
         abort_unless($allocation->node_id === $node->id, 404, 'That allocation is not on this node.');
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file. The
+     * subject is the record being acted on, for rules that must ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'store' => [
+                'ip' => ['required', 'ip'],
+                'ip_alias' => ['nullable', 'string', 'max:255'],
+                'port_start' => ['required', 'integer', 'between:1024,65535'],
+                'port_end' => ['required', 'integer', 'between:1024,65535', 'gte:port_start'],
+            ],
+            default => [],
+        };
     }
 }

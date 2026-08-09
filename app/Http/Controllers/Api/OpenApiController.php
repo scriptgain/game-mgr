@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use App\Services\Api\RuleSchema;
 use Illuminate\Support\Str;
 
 /**
@@ -84,6 +85,7 @@ class OpenApiController extends Controller
                     'summary' => $this->summarise($method, $uri),
                     'operationId' => $route->getName() ?: strtolower($method).'-'.Str::slug($uri),
                     'parameters' => $this->parameters($route, $method),
+                    'requestBody' => $this->requestBody($route, $method),
                     'responses' => $this->responses($method),
                 ]);
             }
@@ -209,6 +211,50 @@ class OpenApiController extends Controller
         }
 
         return '';
+    }
+
+    /**
+     * What JSON this endpoint accepts, from the controller's own rules.
+     *
+     * The rules were always written down; they were just written where a
+     * generator could not reach them. A controller that exposes rules() is
+     * describing its body to both callers at once, so the document and the
+     * validation cannot drift.
+     *
+     * Null for a read, and null for a write that genuinely takes no body, such
+     * as a reinstall. An empty object would claim the endpoint accepts JSON and
+     * has no fields, which is a different and untrue statement.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function requestBody($route, string $method): ?array
+    {
+        if (! in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
+            return null;
+        }
+
+        [$class, $action] = array_pad(explode('@', (string) $route->getAction('controller')), 2, '');
+
+        if ($class === '' || ! method_exists($class, 'rules')) {
+            return null;
+        }
+
+        try {
+            $rules = $class::rules($action);
+        } catch (\Throwable) {
+            // A controller whose rules need context this cannot supply says
+            // nothing rather than half a schema.
+            return null;
+        }
+
+        if (! is_array($rules) || $rules === []) {
+            return null;
+        }
+
+        return [
+            'required' => true,
+            'content' => ['application/json' => ['schema' => RuleSchema::object($rules)]],
+        ];
     }
 
     private function parameters($route, string $method): array

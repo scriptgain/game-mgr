@@ -55,9 +55,7 @@ class ServerController extends Controller
 
     public function power(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'signal' => ['required', 'in:start,stop,restart,kill'],
-        ]);
+        $data = $request->validate(static::rules('power'));
 
         // Each signal is its own permission, because "may restart" and "may
         // kill" are genuinely different things to trust somebody with.
@@ -82,7 +80,7 @@ class ServerController extends Controller
     {
         $this->guard($server, 'control.console');
 
-        $data = $request->validate(['command' => ['required', 'string', 'max:2000']]);
+        $data = $request->validate(static::rules('command'));
 
         if ($server->power_state !== 'running') {
             return response()->json(['message' => 'That server is not running.'], 409);
@@ -100,5 +98,28 @@ class ServerController extends Controller
             403,
             'Your access to this server does not include that.',
         );
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file. The
+     * subject is the record being acted on, for rules that must ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'command' => [
+                'command' => ['required', 'string', 'max:2000'],
+            ],
+            'power' => [
+                'signal' => ['required', 'in:start,stop,restart,kill'],
+            ],
+            default => [],
+        };
     }
 }

@@ -36,14 +36,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'username' => ['nullable', 'string', 'min:3', 'max:48', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/', 'unique:users,username'],
-            'password' => ['required', Password::min(8)],
-            'role' => ['nullable', Rule::in(['admin', 'client'])],
-            'timezone' => ['nullable', 'string', 'max:64'],
-        ]);
+        $data = $request->validate(static::rules('store'));
 
         $user = User::create($data + [
             'role' => $data['role'] ?? 'client',
@@ -58,13 +51,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $data = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'username' => ['nullable', 'string', 'min:3', 'max:48', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/', Rule::unique('users', 'username')->ignore($user->id)],
-            'password' => ['nullable', Password::min(8)],
-            'suspended' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate(static::rules('update', $user));
 
         // The root admin cannot be suspended or demoted by anything, including
         // this. An install has to keep one account that can always get in.
@@ -123,5 +110,37 @@ class UserController extends Controller
         AuditLog::record('user.delete', 'Deleted account "'.$email.'" over the API');
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * The request body for each write action, in one place so the API
+     * reference can describe it rather than admitting it cannot.
+     *
+     * Static and public because two callers need it: validation here, and the
+     * OpenAPI document, which would otherwise have to parse this file. The
+     * subject is the record being acted on, for rules that must ignore it.
+     *
+     * @return array<string,mixed>
+     */
+    public static function rules(string $action = 'store', mixed $subject = null): array
+    {
+        return match ($action) {
+            'store' => [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+                'username' => ['nullable', 'string', 'min:3', 'max:48', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/', 'unique:users,username'],
+                'password' => ['required', Password::min(8)],
+                'role' => ['nullable', Rule::in(['admin', 'client'])],
+                'timezone' => ['nullable', 'string', 'max:64'],
+            ],
+            'update' => [
+                'name' => ['nullable', 'string', 'max:255'],
+                'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($subject?->id)],
+                'username' => ['nullable', 'string', 'min:3', 'max:48', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]*$/', Rule::unique('users', 'username')->ignore($subject?->id)],
+                'password' => ['nullable', Password::min(8)],
+                'suspended' => ['nullable', 'boolean'],
+            ],
+            default => [],
+        };
     }
 }
