@@ -16,6 +16,7 @@ use App\Http\Controllers\GeneralSettingsController;
 use App\Http\Controllers\IntegrationController;
 use App\Http\Controllers\MinecraftController;
 use App\Http\Controllers\NodeInstallerController;
+use App\Http\Controllers\ModSettingsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SetupController;
@@ -265,6 +266,12 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::put('domains', [DomainController::class, 'update'])->name('domains.update');
         Route::delete('domains/token', [DomainController::class, 'clearToken'])->name('domains.token.clear');
         Route::post('domains/sync', [DomainController::class, 'sync'])->name('domains.sync');
+
+        // Where one-click mod installs come from, and the two API keys the two
+        // catalogues that need one are given.
+        Route::get('mods', [ModSettingsController::class, 'edit'])->name('mods.edit');
+        Route::put('mods', [ModSettingsController::class, 'update'])->name('mods.update');
+        Route::post('mods/{which}/clear', [ModSettingsController::class, 'clear'])->name('mods.clear');
 
         Route::get('firewall', [FirewallController::class, 'index'])->name('firewall.index');
         Route::put('firewall', [FirewallController::class, 'update'])->name('firewall.update');

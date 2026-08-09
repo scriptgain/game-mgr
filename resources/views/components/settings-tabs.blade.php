@@ -15,6 +15,7 @@
             // from anywhere in the panel. A page you can only get to by typing
             // the URL reads as a missing feature, not a hidden one.
             ['Firewall', 'shield', 'settings.firewall.index', 'settings.firewall.*'],
+            ['Mods', 'puzzle', 'settings.mods.edit', 'settings.mods.*'],
         ]],
         ['My Security', [
             ['Password', 'lock', 'settings.password.edit', 'settings.password.*'],

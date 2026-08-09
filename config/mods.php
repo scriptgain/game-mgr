@@ -15,6 +15,27 @@ return [
     // the others simply behave better with it.
     'contact' => env('GAMEMGR_MODS_CONTACT', 'support@scriptgain.com'),
 
+    'curseforge' => [
+        // The key is NOT read from here in normal use: it is entered on
+        // Settings, Mods and stored encrypted, the same as the Cloudflare
+        // token. This entry exists so an automated install can seed one.
+        'enabled' => filter_var(env('GAMEMGR_CURSEFORGE', true), FILTER_VALIDATE_BOOL),
+
+        'base' => env('GAMEMGR_CURSEFORGE_URL', 'https://api.curseforge.com'),
+
+        'api_key' => env('GAMEMGR_CURSEFORGE_KEY'),
+
+        'timeout' => (float) env('GAMEMGR_CURSEFORGE_TIMEOUT', 6),
+
+        'download_timeout' => (float) env('GAMEMGR_CURSEFORGE_DOWNLOAD_TIMEOUT', 180),
+
+        'ttl' => [
+            'search' => 300,
+            'project' => 3600,
+            'versions' => 900,
+        ],
+    ],
+
     'spigot' => [
         // SpigotMC has no API; Spiget indexes it and does. No key, no auth.
         //
