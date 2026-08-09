@@ -61,7 +61,15 @@ class ConsoleController extends ServerController
             'cached_at' => now(),
         ]);
 
-        $this->log($server, 'power.'.$action, ucfirst($action).'ed the server');
+        // Spelled out rather than built by adding "ed" to the verb, which is
+        // how the audit log came to be full of "Stoped the server".
+        $this->log($server, 'power.'.$action, match ($action) {
+            'start' => 'Started the server',
+            'stop' => 'Stopped the server',
+            'restart' => 'Restarted the server',
+            'kill' => 'Killed the server',
+            default => ucfirst($action).' the server',
+        });
 
         return back()->with('status', 'Sent '.$action.' to the server.');
     }
