@@ -30,7 +30,12 @@ class InstallServer implements ShouldQueue
     /** Six hours. TF2's dedicated server alone is 14.9 GB. */
     public int $timeout = 21600;
 
-    public function __construct(public int $serverId) {}
+    /**
+     * $wipe empties the data directory before installing. The node moves the old
+     * contents aside and only drops them once the install has succeeded, so a
+     * wipe that fails leaves the server exactly as it was.
+     */
+    public function __construct(public int $serverId, public bool $wipe = false) {}
 
     public function handle(): void
     {
@@ -83,7 +88,7 @@ class InstallServer implements ShouldQueue
                     'install_phase' => $phase,
                 ])->save();
             }
-        });
+        }, 21600, $this->wipe);
 
         $server->forceFill([
             'install_log' => implode("\n", $lines),

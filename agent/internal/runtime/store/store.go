@@ -44,22 +44,56 @@ type Store struct {
 	RunAs *supervise.Credential
 }
 
-func New(root string) Store {
+// New builds the store for a node's data root.
+//
+// The credential is passed in rather than looked up here. One node has one game
+// account, resolved once in main and handed to everything that needs it; a
+// package that resolves its own can disagree with the one the game is actually
+// running as, and a chown to the wrong uid looks exactly like a chown that
+// worked.
+func New(root string, runAs *supervise.Credential) Store {
 	if root == "" {
 		root = "/var/lib/gamemgr/volumes"
 	}
 
-	return Store{Root: root, RunAs: supervise.Unprivileged()}
+	return Store{Root: root, RunAs: runAs}
 }
 
-// own hands a path to the account the game runs as. A no-op when the daemon is
-// already unprivileged.
-func (s Store) own(path string) error {
+// chown is a variable so tests can watch ownership without being root.
+//
+// Lchown, not Chown: os.Chown follows a symlink, and a restored backup is
+// allowed to contain one. Walking a tree chowning what it finds would then
+// follow a link pointing at /etc/shadow and hand that file to the game account.
+// Lchown changes the link itself and never what it points at.
+var chown = os.Lchown
+
+// Own hands a single path to the account the game runs as. A no-op when the
+// daemon is already unprivileged, since everything it creates is correct then.
+func (s Store) Own(path string) error {
 	if s.RunAs == nil {
 		return nil
 	}
 
-	return os.Chown(path, int(s.RunAs.Uid), int(s.RunAs.Gid))
+	return chown(path, int(s.RunAs.Uid), int(s.RunAs.Gid))
+}
+
+// OwnTree hands a whole directory to the game account.
+//
+// For the case Own cannot cover: files a third-party installer created while
+// this daemon watched. steamcmd, the LinuxGSM installer and an unpacked backup
+// all produce trees this package did not write file by file.
+func (s Store) OwnTree(dir string) error {
+	if s.RunAs == nil {
+		return nil
+	}
+
+	return filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		return s.Own(path)
+	})
 }
 
 // Short is the directory name a server gets. Derived from the uuid rather than
@@ -78,10 +112,19 @@ func (s Store) Dir(server runtime.Server) string {
 	return filepath.Join(s.Root, Short(server.UUID))
 }
 
+// EnsureDir creates a server's directory and hands it to the game account.
+//
+// This is the single first-creation point for every runtime, which is what
+// makes it the right place for the chown. Every driver called this and then
+// remembered, or did not remember, to fix the ownership afterwards; doing it
+// here means a new runtime cannot get it wrong by omission.
 func (s Store) EnsureDir(server runtime.Server) (string, error) {
 	dir := s.Dir(server)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("create data directory: %w", err)
+	}
+	if err := s.Own(dir); err != nil {
+		return "", fmt.Errorf("hand the data directory to the game account: %w", err)
 	}
 
 	return dir, nil
@@ -303,7 +346,7 @@ func (s Store) Upload(_ context.Context, server runtime.Server, path string, bod
 	if err := os.Chmod(scratch, 0o644); err != nil {
 		return 0, err
 	}
-	if err := s.own(scratch); err != nil {
+	if err := s.Own(scratch); err != nil {
 		return 0, fmt.Errorf("could not hand the file to the game account: %w", err)
 	}
 	if err := os.Rename(scratch, full); err != nil {
@@ -321,7 +364,7 @@ func (s Store) ownUpTo(server runtime.Server, dir string) {
 	}
 	base := s.Dir(server)
 	for current := dir; strings.HasPrefix(current, base); current = filepath.Dir(current) {
-		_ = s.own(current)
+		_ = s.Own(current)
 		if current == base {
 			return
 		}
@@ -358,6 +401,11 @@ func (s Store) Rename(_ context.Context, server runtime.Server, from, to string)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
+	// Moving a file into a folder that does not exist yet creates that folder,
+	// and it was being created root-owned: the rename itself succeeded, so the
+	// panel reported success, and the game then could not write into the
+	// directory its own file had just been moved into.
+	s.ownUpTo(server, filepath.Dir(target))
 
 	return os.Rename(source, target)
 }
@@ -510,6 +558,21 @@ func (s Store) Restore(ctx context.Context, server runtime.Server, backupUUID st
 		return err
 	}
 
+	// A tar carries the uid the file had when it was archived, and nothing here
+	// honours it, so every entry lands owned by whoever this daemon runs as:
+	// root. LinuxGSM hid this by re-chowning its whole directory on every start;
+	// Docker and SteamCMD have no such habit, so a restore left them with a
+	// directory full of files the game could read and never write. The symptom
+	// is a server that starts, runs, and silently loses everything it saves.
+	//
+	// Swept after the unpack rather than per entry, so a directory whose mode
+	// arrives before its contents is still covered.
+	if err := s.OwnTree(dir); err != nil {
+		s.putBack(safety, dir)
+
+		return fmt.Errorf("hand the restored files to the game account: %w", err)
+	}
+
 	// Only now is the old state expendable.
 	if safety != "" {
 		_ = os.RemoveAll(safety)
@@ -561,6 +624,44 @@ func (s Store) unpack(ctx context.Context, server runtime.Server, gz io.Reader) 
 			_ = out.Close()
 		}
 	}
+}
+
+// SetAsideForReinstall moves a server's data out of the way before a wipe and
+// reinstall, returning a token to commit or roll back with.
+//
+// A move, not a delete, and this is the whole point. A wipe that removes the
+// directory and then fails to reinstall has destroyed a customer's world in
+// order to fix a problem with it, which is worse than the problem. Restore
+// learned this the same way and uses the same pattern.
+//
+// An empty token means there was nothing there to set aside, which is a normal
+// first install.
+func (s Store) SetAsideForReinstall(server runtime.Server) (string, error) {
+	safety, err := s.setAside(server, s.Dir(server))
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.EnsureDir(server); err != nil {
+		s.putBack(safety, s.Dir(server))
+
+		return "", err
+	}
+
+	return safety, nil
+}
+
+// CommitReinstall drops the set-aside copy, once the reinstall has succeeded and
+// the old state is genuinely expendable.
+func (s Store) CommitReinstall(safety string) {
+	if safety != "" {
+		_ = os.RemoveAll(safety)
+	}
+}
+
+// RollbackReinstall puts the old data back after a failed reinstall, so a wipe
+// that did not work leaves the server exactly as it was.
+func (s Store) RollbackReinstall(server runtime.Server, safety string) {
+	s.putBack(safety, s.Dir(server))
 }
 
 // setAside renames the server directory out of the way. A rename rather than a

@@ -8,6 +8,7 @@ use App\Models\Node;
 use App\Models\Server;
 use App\Models\ServerMetric;
 use Illuminate\Support\Facades\DB;
+use App\Support\TimeBucket;
 
 /**
  * Two dashboards behind one route. An admin gets the fleet: node health,
@@ -31,7 +32,7 @@ class DashboardController extends Controller
         // quietly becomes a hundred queries if you let it.
         $playerSeries = ServerMetric::query()
             ->where('sampled_at', '>=', now()->subDay())
-            ->selectRaw('DATE_FORMAT(sampled_at, "%Y-%m-%d %H:00:00") as bucket, SUM(players) as players')
+            ->selectRaw(TimeBucket::expression('sampled_at', TimeBucket::HOUR).' as bucket, SUM(players) as players')
             ->groupBy('bucket')
             ->orderBy('bucket')
             ->pluck('players', 'bucket');

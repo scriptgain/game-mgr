@@ -17,6 +17,7 @@
             ['Two-Factor', 'shield', 'settings.2fa.show', 'settings.2fa.*'],
         ]],
         ['System', [
+            ['Licence', 'key', 'settings.licence.edit', 'settings.licence.*'],
             ['Updates', 'download', 'settings.updates.show', 'settings.updates.*'],
         ]],
     ];

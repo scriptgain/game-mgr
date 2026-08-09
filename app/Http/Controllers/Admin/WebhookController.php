@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\NotificationChannel;
 use App\Models\Webhook;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -33,6 +34,13 @@ class WebhookController extends Controller
 
     public function store(Request $request)
     {
+        if (! Edition::allows('webhooks')) {
+            $needs = Edition::cheapestWith('webhooks');
+
+            return back()->withInput()->with('error', 'Webhooks are not included in the '.Edition::label().' edition.'
+                .($needs ? ' They are included from '.Edition::label($needs).' upwards.' : ''));
+        }
+
         $webhook = Webhook::create($this->validated($request));
 
         return redirect()->route('admin.webhooks.index')

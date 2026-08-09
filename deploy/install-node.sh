@@ -28,6 +28,10 @@ PANEL="${PANEL:-}"
 TOKEN=""
 NODE_ROOT="/var/lib/gamemgr/volumes"
 PORT="8942"
+# Where customers reach their own server's files. Must match the SFTP port on
+# the node's page in the panel, which is what the client area tells them to use.
+# --sftp-port 0 turns file access off on this node.
+SFTP_PORT="2022"
 NODE_NAME=""
 BINARY=""
 BINARY_SHA256=""
@@ -117,6 +121,13 @@ while [[ $# -gt 0 ]]; do
         --token)       TOKEN="${2:-}"; shift 2 ;;
         --root)        NODE_ROOT="${2:-}"; shift 2 ;;
         --port)        PORT="${2:-}"; shift 2 ;;
+        --sftp-port)
+            SFTP_PORT="${2:-}"
+            # 0 means off. Written as an if rather than a && chain because a
+            # false [[ ]] as the last command of a case branch exits a set -e
+            # script, which would turn "--sftp-port 2022" into a silent abort.
+            if [[ "$SFTP_PORT" == "0" ]]; then SFTP_PORT=""; fi
+            shift 2 ;;
         --name)        NODE_NAME="${2:-}"; shift 2 ;;
         --binary)      BINARY="${2:-}"; shift 2 ;;
         --sha256)      BINARY_SHA256="${2:-}"; shift 2 ;;
@@ -468,6 +479,13 @@ tmp_env="$(mktemp "${CONFIG_DIR}/node.env.XXXXXX")"
     printf 'NODE_DOCKER_SOCKET=%s\n' "$(env_get NODE_DOCKER_SOCKET || true)"
     printf 'NODE_HEARTBEAT=%s\n' "$(env_get NODE_HEARTBEAT || true)"
     printf 'NODE_CONFIG_FILE=%s\n' "$CONFIG_FILE"
+    # File access for customers. An empty value turns it off; ":" on its own is
+    # not a valid listen address and the daemon would refuse to bind it.
+    if [[ -n "$SFTP_PORT" ]]; then
+        printf 'NODE_SFTP_LISTEN=:%s\n' "$SFTP_PORT"
+    else
+        printf 'NODE_SFTP_LISTEN=\n'
+    fi
     if [[ -n "$EXISTING_TOKEN" ]]; then printf 'NODE_TOKEN=%s\n' "$EXISTING_TOKEN"; fi
     if [[ -n "$ENROLL_TOKEN" ]]; then printf 'NODE_ENROLL_TOKEN=%s\n' "$ENROLL_TOKEN"; fi
 } > "$tmp_env"
@@ -578,6 +596,9 @@ if [[ "$TOUCH_FIREWALL" != "yes" ]]; then
 elif command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q '^Status: active'; then
     open_ufw "22/tcp" "ssh"
     open_ufw "${PORT}/tcp" "the node daemon"
+    if [[ -n "$SFTP_PORT" ]]; then
+        open_ufw "${SFTP_PORT}/tcp" "sftp file access"
+    fi
     open_ufw "80/tcp" "http"
     open_ufw "443/tcp" "https"
 

@@ -10,12 +10,14 @@
             ['Branding', 'edit', 'settings.branding.edit', 'settings.branding.*'],
             ['Notifications', 'bell', 'settings.notifications.edit', 'settings.notifications.*'],
             ['Integrations', 'bolt', 'settings.integrations.edit', 'settings.integrations.*'],
+            ['Domains', 'globe', 'settings.domains.edit', 'settings.domains.*'],
         ]],
         ['My Security', [
             ['Password', 'lock', 'settings.password.edit', 'settings.password.*'],
             ['Two-Factor', 'shield', 'settings.2fa.show', 'settings.2fa.*'],
         ]],
         ['System', [
+            ['Licence', 'key', 'settings.licence.edit', 'settings.licence.*'],
             ['Updates', 'download', 'settings.updates.show', 'settings.updates.*'],
         ]],
     ];

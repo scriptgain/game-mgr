@@ -1,7 +1,20 @@
 <?php $attributes ??= new \Illuminate\View\ComponentAttributeBag;
 
 $__newAttributes = [];
-$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames((['value' => 0, 'max' => 100, 'label' => null, 'suffix' => '', 'tone' => null]));
+$__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
+    'value' => 0,
+    'max' => 100,
+    'label' => null,
+    'suffix' => '',
+    'tone' => null,
+    // Optional Alpine expressions, for a meter that has to move without a page
+    // reload. `live` returns a percentage, `liveText` the value line, `liveTone`
+    // a bar colour class. The server-rendered percentage stays as the first
+    // frame, so the bar is never blank while Alpine boots.
+    'live' => null,
+    'liveText' => null,
+    'liveTone' => null,
+]));
 
 foreach ($attributes->all() as $__key => $__value) {
     if (in_array($__key, $__propNames)) {
@@ -16,7 +29,20 @@ $attributes = new \Illuminate\View\ComponentAttributeBag($__newAttributes);
 unset($__propNames);
 unset($__newAttributes);
 
-foreach (array_filter((['value' => 0, 'max' => 100, 'label' => null, 'suffix' => '', 'tone' => null]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+foreach (array_filter(([
+    'value' => 0,
+    'max' => 100,
+    'label' => null,
+    'suffix' => '',
+    'tone' => null,
+    // Optional Alpine expressions, for a meter that has to move without a page
+    // reload. `live` returns a percentage, `liveText` the value line, `liveTone`
+    // a bar colour class. The server-rendered percentage stays as the first
+    // frame, so the bar is never blank while Alpine boots.
+    'live' => null,
+    'liveText' => null,
+    'liveTone' => null,
+]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
 
@@ -37,16 +63,25 @@ unset($__defined_vars, $__key, $__value); ?>
         default => 'brand',
     };
     $bar = ['brand' => 'bg-brand-500', 'amber' => 'bg-amber-500', 'rose' => 'bg-rose-500', 'emerald' => 'bg-emerald-500'][$tone];
+    // A live tone binding adds a class rather than replacing one, so the static
+    // colour has to go or the winner would be whichever Tailwind emitted last.
+    $staticBar = $liveTone ? '' : $bar;
 ?>
 <div <?php echo e($attributes->merge(['class' => 'space-y-1.5'])); ?>>
-    <?php if($label): ?>
-        <div class="flex items-baseline justify-between gap-3 text-sm">
-            <span class="font-medium text-slate-700"><?php echo e($label); ?></span>
-            <span class="tabular text-slate-500"><?php echo e($slot->isEmpty() ? $pct.'%' : $slot); ?><?php echo e($suffix); ?></span>
+    
+    <?php if($label || ! $slot->isEmpty() || $liveText): ?>
+        
+        <div class="flex items-baseline gap-3 <?php echo e($label ? 'justify-between text-sm' : 'text-xs'); ?>">
+            <?php if($label): ?><span class="font-medium text-slate-700"><?php echo e($label); ?></span><?php endif; ?>
+            <span class="tabular whitespace-nowrap text-slate-500"
+                  <?php if($liveText): ?> x-text="<?php echo e($liveText); ?>" <?php endif; ?>><?php echo e($slot->isEmpty() ? $pct.'%' : $slot); ?><?php echo e($suffix); ?></span>
         </div>
     <?php endif; ?>
     <div class="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-        <div class="h-full rounded-full <?php echo e($bar); ?> transition-all" style="width: <?php echo e($pct); ?>%"></div>
+        <div class="h-full rounded-full <?php echo e($staticBar); ?> transition-all"
+             <?php if($liveTone): ?> :class="<?php echo e($liveTone); ?>" <?php endif; ?>
+             style="width: <?php echo e($pct); ?>%"
+             <?php if($live): ?> :style="'width: ' + (<?php echo e($live); ?>) + '%'" <?php endif; ?>></div>
     </div>
 </div>
 <?php /**PATH /var/www/gamemgr/resources/views/components/meter.blade.php ENDPATH**/ ?>

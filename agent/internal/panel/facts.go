@@ -70,6 +70,13 @@ type Metrics struct {
 	Load         float64 `json:"load"`
 	Running      int     `json:"running"`
 	AgentVersion string  `json:"agent_version"`
+	// Whether this node is actually answering SFTP, and the host key it answers
+	// with. Reported rather than configured in the panel: an admin ticking a box
+	// would happily show a customer a username and a port with nothing behind
+	// it, and the fingerprint is what lets that customer tell a real first
+	// connection from an intercepted one.
+	SFTPEnabled     bool   `json:"sftp_enabled"`
+	SFTPFingerprint string `json:"sftp_fingerprint,omitempty"`
 }
 
 // Sampler produces heartbeat metrics. It holds the previous /proc/stat reading
@@ -79,6 +86,10 @@ type Sampler struct {
 	root         string
 	agentVersion string
 	running      func(context.Context) int
+	// Reported unchanged on every heartbeat, so a node whose SFTP listener
+	// failed to start stops advertising itself as soon as it restarts.
+	sftpEnabled     bool
+	sftpFingerprint string
 
 	prevIdle  uint64
 	prevTotal uint64
@@ -88,10 +99,23 @@ func NewSampler(root, agentVersion string, running func(context.Context) int) *S
 	return &Sampler{root: root, agentVersion: agentVersion, running: running}
 }
 
+// ReportSFTP tells the sampler what to say about file access. Called once, after
+// the listener has actually bound, so a node that failed to start SFTP never
+// claims to offer it.
+func (s *Sampler) ReportSFTP(enabled bool, fingerprint string) {
+	s.sftpEnabled = enabled
+	s.sftpFingerprint = fingerprint
+}
+
 // Sample is called from the heartbeat goroutine only, so the counters need no
 // lock.
 func (s *Sampler) Sample(ctx context.Context) Metrics {
-	m := Metrics{AgentVersion: clamp(s.agentVersion, 32), Load: loadAverage()}
+	m := Metrics{
+		AgentVersion:    clamp(s.agentVersion, 32),
+		Load:            loadAverage(),
+		SFTPEnabled:     s.sftpEnabled,
+		SFTPFingerprint: s.sftpFingerprint,
+	}
 
 	if total, avail, err := memory(); err == nil {
 		m.Memory = total - avail

@@ -6,6 +6,7 @@ use App\Models\Schedule;
 use App\Models\ScheduleTask;
 use App\Models\Server;
 use App\Support\Cron;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 
 /**
@@ -38,6 +39,14 @@ class ScheduleController extends ServerController
 
     public function store(Request $request, Server $server)
     {
+        if (! Edition::allows('backups.scheduled')) {
+            $needs = Edition::cheapestWith('backups.scheduled');
+
+            return back()->with('error', 'Schedules are not included in the '.Edition::label().' edition.'
+                .($needs ? ' They are included from '.Edition::label($needs).' upwards.' : '')
+                .' Backups you take by hand are unaffected, and existing schedules keep running.');
+        }
+
         $this->guard($server, 'schedule.create');
 
         $data = $this->validated($request);

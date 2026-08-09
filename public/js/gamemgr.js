@@ -7,6 +7,137 @@
  */
 document.addEventListener('alpine:init', () => {
 
+    /* --------------------------------------------------------------- wizards
+     * One implementation of "a long form broken into steps", shared by the
+     * node form, the server create form and the template form.
+     *
+     * It was written twice before this and shared zero times, which meant every
+     * fix to how steps validate or how the rail unlocks had to be made in two
+     * places and, predictably, sometimes was not. The two copies had already
+     * drifted: one looked its panels up by $refs and the other by a data-step
+     * attribute, one honoured prefers-reduced-motion and the other did not.
+     *
+     * Spread it into a factory and add whatever that form actually needs:
+     *
+     *   Alpine.data('thingWizard', (seed) => ({
+     *       ...wizardCore({ total: 6, step: seed.step, editing: seed.editing }),
+     *       ...
+     *   }))
+     */
+    function wizardCore(options = {}) {
+        const total = options.total || 1;
+
+        return {
+            total,
+            // The node markup says `last`; kept as an alias rather than
+            // rewriting every x-show in a form that already works.
+            last: total,
+            step: options.step || 1,
+            editing: !! options.editing,
+            /* Create walks forward and later steps stay locked. Edit unlocks the
+             * lot, because changing one field must not cost five screens. */
+            furthest: options.editing ? total : (options.step || 1),
+
+            /* Used by the rail to disable what cannot be reached yet. Forward
+             * movement is gated by validation in go() rather than by this, so a
+             * step becomes reachable exactly when the ones before it are valid. */
+            unlocked(n) {
+                return this.editing || n <= this.furthest;
+            },
+
+            /* Panels are found by $refs first and by data-step second, because
+             * the two original wizards each used one of those and neither is
+             * worth rewriting to match the other. */
+            panelFor(n) {
+                if (this.$refs && this.$refs['step' + n]) return this.$refs['step' + n];
+
+                return document.querySelector('[data-step="' + n + '"]');
+            },
+
+            /* The browser is the authority on whether a field is valid; this
+             * just asks it, and can do so safely because every control it looks
+             * at is visible in an open step. The form carries novalidate for
+             * exactly that reason: the browser cannot scroll to, or complain
+             * about, a control inside a step that is currently hidden. */
+            validateStep(n) {
+                const panel = this.panelFor(n);
+                if (! panel) return true;
+
+                for (const el of panel.querySelectorAll('input, select, textarea')) {
+                    if (el.disabled || el.type === 'hidden' || el.offsetParent === null) continue;
+                    if (! el.checkValidity()) {
+                        el.focus();
+                        el.reportValidity();
+
+                        return false;
+                    }
+                }
+
+                return true;
+            },
+
+            /* Override to react to a step opening, for instance to build a
+             * summary on the last one. */
+            onStep() {},
+
+            go(n) {
+                if (n === this.step) return;
+
+                /* Moving forward validates everything being skipped over and
+                 * stops at the first step that is not happy, which is what makes
+                 * clicking straight to Review from step two safe. Going back is
+                 * always allowed: nobody should have to fix a later step to
+                 * return to an earlier one. */
+                if (n > this.step) {
+                    for (let i = this.step; i < n; i++) {
+                        if (! this.validateStep(i)) {
+                            this.step = i;
+
+                            return;
+                        }
+                        this.furthest = Math.max(this.furthest, i + 1);
+                    }
+                } else if (! this.unlocked(n)) {
+                    return;
+                }
+
+                this.step = n;
+                if (n > this.furthest) this.furthest = n;
+                this.onStep(n);
+                window.scrollTo({ top: 0, behavior: this.reduced() ? 'auto' : 'smooth' });
+            },
+
+            next() {
+                if (this.step < this.total) this.go(this.step + 1);
+            },
+
+            back() {
+                if (this.step > 1) this.go(this.step - 1);
+            },
+
+            /* Enter anywhere but the last step advances rather than submitting a
+             * half-filled form. Textareas keep their newlines. */
+            onEnter(event) {
+                if (this.step >= this.total) return;
+                if (event.target && event.target.tagName === 'TEXTAREA') return;
+                event.preventDefault();
+                this.next();
+            },
+
+            reduced() {
+                return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            },
+
+            progress() {
+                return { width: Math.round(this.step / this.total * 100) + '%' };
+            },
+        };
+    }
+
+    /* Registered so a form with no state of its own can use the wizard
+     * directly: x-data="formWizard({ total: 7, step: 1, editing: true })". */
+    Alpine.data('formWizard', (options = {}) => wizardCore(options));
+
     /* ------------------------------------------------------------------ tabs
      * A server has more tabs than fit on any real screen. Nothing in this panel
      * is allowed to scroll sideways, so the strip measures itself against the
@@ -838,9 +969,15 @@ document.addEventListener('alpine:init', () => {
             selected: {}, values: {}, step: 1,
         },
 
-        total: 6,
-        step: 1,
-        furthest: 1,
+        // Steps, validation and the rail come from the shared wizard.
+        ...wizardCore({ total: 6 }),
+
+        /* The summary is only meaningful once every earlier step has been
+         * answered, so it is built on arriving at the last one rather than kept
+         * continuously up to date. */
+        onStep(n) {
+            if (n === this.total) this.buildSummary();
+        },
 
         // step one: what to run
         templateId: '',
@@ -1309,54 +1446,6 @@ document.addEventListener('alpine:init', () => {
          * offsetParent and cannot be focused, so reporting on it would throw the
          * browser's un-focusable-control error and show nothing.
          */
-        validateStep(n) {
-            const panel = document.querySelector('[data-step="' + n + '"]');
-            if (!panel) return true;
-
-            const controls = panel.querySelectorAll('input, select, textarea');
-
-            for (let i = 0; i < controls.length; i++) {
-                const el = controls[i];
-                if (el.disabled || el.type === 'hidden' || el.offsetParent === null) continue;
-                if (!el.checkValidity()) {
-                    el.focus();
-                    el.reportValidity();
-
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        go(n) {
-            if (n > this.step) {
-                for (let i = this.step; i < n; i++) {
-                    if (!this.validateStep(i)) {
-                        this.step = i;
-
-                        return;
-                    }
-                }
-            }
-
-            this.step = n;
-            if (n > this.furthest) this.furthest = n;
-            if (n === this.total) this.buildSummary();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        },
-
-        next() { this.go(Math.min(this.step + 1, this.total)); },
-        back() { this.go(Math.max(this.step - 1, 1)); },
-
-        /** Enter anywhere but the last step advances rather than submits. */
-        onEnter(event) {
-            if (this.step >= this.total) return;
-            if (event.target && event.target.tagName === 'TEXTAREA') return;
-            event.preventDefault();
-            this.next();
-        },
-
         /**
          * Last line of defence. If anything invalid slipped through, open the
          * step that owns it rather than letting the browser refuse to submit
@@ -1491,12 +1580,9 @@ document.addEventListener('alpine:init', () => {
      * quietly blank a field the moment somebody opened an existing node.
      */
     Alpine.data('nodeWizard', (seed) => ({
-        last: 6,
-        step: seed.step,
-        editing: seed.editing,
-        // Create walks forward and later steps stay locked. Edit unlocks the
-        // lot, because changing one port must not cost five screens.
-        furthest: seed.editing ? 6 : seed.step,
+        // Steps, validation and the rail come from the shared wizard; what
+        // follows is only what a node is.
+        ...wizardCore({ total: 6, step: seed.step, editing: seed.editing }),
 
         locations: seed.locations,
 
@@ -1525,54 +1611,6 @@ document.addEventListener('alpine:init', () => {
         isPublic: seed.isPublic,
         maintenance: seed.maintenance,
         daemonBase: seed.daemonBase,
-
-        // -------------------------------------------------------- navigation
-
-        unlocked(n) {
-            return this.editing || n <= this.furthest;
-        },
-
-        go(n) {
-            if (! this.unlocked(n)) return;
-            this.step = n;
-            if (n > this.furthest) this.furthest = n;
-            window.scrollTo({ top: 0, behavior: this.reduced() ? 'auto' : 'smooth' });
-        },
-
-        /* Forward only once the browser is happy with what is on screen. The
-         * server stays the authority; this saves a round trip on the obvious
-         * misses, and it can use reportValidity safely because every field it
-         * inspects is visible in the open step. */
-        next() {
-            if (this.step >= this.last) return;
-            if (! this.checkStep()) return;
-            // Unlock first, then move: go() refuses anything past furthest, and
-            // next() is the only thing that is allowed to push furthest along.
-            this.furthest = Math.max(this.furthest, this.step + 1);
-            this.go(this.step + 1);
-        },
-
-        back() {
-            if (this.step > 1) this.go(this.step - 1);
-        },
-
-        checkStep() {
-            const panel = this.$refs['step' + this.step];
-            if (! panel) return true;
-            for (const el of panel.querySelectorAll('input, select, textarea')) {
-                if (el.type === 'hidden' || el.disabled || el.offsetParent === null) continue;
-                if (! el.checkValidity()) { el.reportValidity(); return false; }
-            }
-            return true;
-        },
-
-        reduced() {
-            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        },
-
-        progress() {
-            return { width: Math.round(this.step / this.last * 100) + '%' };
-        },
 
         // -------------------------------------------------------- connection
 

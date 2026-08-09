@@ -47,8 +47,24 @@
 <?php unset($__componentOriginal074a021b9d42f490272b5eefda63257c); ?>
 <?php endif; ?>
                     <?php else: ?>
+                        
+                        <?php
+                            $owned = $picker && $mc['available'] ? $picker->ownedVariableIds() : [];
+                        ?>
+
+                        <?php if($picker): ?>
+                            <div class="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                <?php echo $__env->make('admin.servers._minecraft', [
+                                    'picker' => $picker,
+                                    'mc' => $mc,
+                                    'group' => 'variables',
+                                ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="space-y-5">
                             <?php $__currentLoopData = $variables; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $variable): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php if(in_array($variable->id, $owned, true)) continue; ?>
                                 <?php
                                     $locked = ! $isAdmin && ! $variable->user_editable;
                                     $value = old('variables.'.$variable->id, $values[$variable->id] ?? $variable->default_value);

@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             CatalogueSeeder::class,
             InfrastructureSeeder::class,
+            // Voice servers are catalogue data, not demo data, so they ship with
+            // every install the way the games do.
+            VoiceCatalogueSeeder::class,
             ServerSeeder::class,
             ActivitySeeder::class,
         ]);

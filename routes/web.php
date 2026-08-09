@@ -59,6 +59,12 @@ Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('ins
 // Public, opt-in status page for a single server. Deliberately outside auth.
 Route::get('/status/{slug}', [Client\StatusPageController::class, 'show'])->name('status.show');
 
+// Single sign-on from a billing system. Outside the auth middleware because
+// the whole point is that nobody is signed in yet; the signature and a
+// single-use nonce are what make it safe.
+Route::get('sso/{user}', [\App\Http\Controllers\SsoController::class, 'consume'])
+    ->middleware('signed')->name('sso.consume');
+
 Route::middleware(['auth', 'security.policy'])->group(function () {
 
     // Dashboard. Admins get the fleet, clients get their own servers.
@@ -218,7 +224,20 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('alerts/{alert}/ack', [Admin\AlertController::class, 'acknowledge'])->name('alerts.ack');
 
         Route::resource('users', Admin\UserController::class)->except(['show']);
+
+        // Starting is an admin action. Stopping deliberately is not: see below.
+        Route::post('users/{user}/act-as', [\App\Http\Controllers\ImpersonationController::class, 'start'])
+            ->name('users.act-as');
     });
+
+    /*
+     * Stopping sits OUTSIDE the admin group on purpose.
+     *
+     * While acting as a customer you are not an admin, so a stop route behind
+     * can:admin would refuse the very person who needs it and strand them in
+     * the account they just stepped into with no way out but clearing cookies.
+     */
+    Route::delete('act-as', [\App\Http\Controllers\ImpersonationController::class, 'stop'])->name('act-as.stop');
 
     // -------------------------------------------------------------- settings
     Route::prefix('settings')->name('settings.')->middleware('can:admin')->group(function () {
@@ -247,6 +266,9 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('firewall/sessions/bulk', [FirewallController::class, 'bulkSessions'])->name('firewall.sessions.bulk');
         Route::post('firewall/bulk', [FirewallController::class, 'bulk'])->name('firewall.bulk');
 
+        Route::get('licence', [\App\Http\Controllers\LicenceController::class, 'edit'])->name('licence.edit');
+        Route::put('licence', [\App\Http\Controllers\LicenceController::class, 'update'])->name('licence.update');
+        Route::post('licence/recheck', [\App\Http\Controllers\LicenceController::class, 'recheck'])->name('licence.recheck');
         Route::get('updates', [UpdateController::class, 'show'])->name('updates.show');
         Route::post('updates/check', [UpdateController::class, 'check'])->name('updates.check');
         Route::post('updates/apply', [UpdateController::class, 'apply'])->name('updates.apply');

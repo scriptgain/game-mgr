@@ -10,16 +10,142 @@
 <?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($title)]); ?>
     <?php echo $__env->make('server._shell', ['server' => $server], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
+    
+    <?php if($portShift !== 0): ?>
+        <div class="mb-6">
+            <?php if (isset($component)) { $__componentOriginal5194778a3a7b899dcee5619d0610f5cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.alert','data' => ['type' => 'warn','title' => 'This Server Is Not On '.e($server->template?->name).'\'s Usual Port']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('alert'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'warn','title' => 'This Server Is Not On '.e($server->template?->name).'\'s Usual Port']); ?>
+                <?php echo e($canonicalPort); ?> was already taken on <?php echo e($server->allocation?->ip); ?> by another server, so this one and
+                every port it uses moved by <?php echo e($portShift > 0 ? '+'.$portShift : $portShift); ?>. Players connect to
+                <span class="font-mono font-semibold"><?php echo e($server->address()); ?></span>, not port <?php echo e($canonicalPort); ?>.
+                A dedicated address would give this server the real port. Ask an administrator to move it to one.
+             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $attributes = $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $component = $__componentOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+        </div>
+    <?php elseif($canonicalPort): ?>
+        <div class="mb-6">
+            <?php if (isset($component)) { $__componentOriginal5194778a3a7b899dcee5619d0610f5cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.alert','data' => ['type' => 'success','title' => 'On The Real Port']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('alert'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'success','title' => 'On The Real Port']); ?>
+                This server holds <?php echo e($server->template?->name); ?>'s canonical port <?php echo e($canonicalPort); ?>, so players can
+                connect with <span class="font-mono font-semibold"><?php echo e($server->address()); ?></span> and every guide written
+                for this game applies as written.
+             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $attributes = $__attributesOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__attributesOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf)): ?>
+<?php $component = $__componentOriginal5194778a3a7b899dcee5619d0610f5cf; ?>
+<?php unset($__componentOriginal5194778a3a7b899dcee5619d0610f5cf); ?>
+<?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    
+    <?php if($server->connectAddress()): ?>
+        <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Network','subtitle' => ''.e($allocations->count()).' of '.e($server->allocation_limit ?: 'unlimited').' allocations used. The primary address is the one players connect to.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'How Players Connect','icon' => 'globe','class' => 'mb-6','subtitle' => 'Two addresses for the same server. The name is easier to hand out; the address below it works with no DNS at all.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Network','subtitle' => ''.e($allocations->count()).' of '.e($server->allocation_limit ?: 'unlimited').' allocations used. The primary address is the one players connect to.','flush' => true]); ?>
+<?php $component->withAttributes(['title' => 'How Players Connect','icon' => 'globe','class' => 'mb-6','subtitle' => 'Two addresses for the same server. The name is easier to hand out; the address below it works with no DNS at all.']); ?>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <?php if (isset($component)) { $__componentOriginal4689e078d981419fe3d32c3868109c4f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4689e078d981419fe3d32c3868109c4f = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.copy-field','data' => ['label' => 'Connect','value' => $server->connectAddress()]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('copy-field'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['label' => 'Connect','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($server->connectAddress())]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4689e078d981419fe3d32c3868109c4f)): ?>
+<?php $attributes = $__attributesOriginal4689e078d981419fe3d32c3868109c4f; ?>
+<?php unset($__attributesOriginal4689e078d981419fe3d32c3868109c4f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4689e078d981419fe3d32c3868109c4f)): ?>
+<?php $component = $__componentOriginal4689e078d981419fe3d32c3868109c4f; ?>
+<?php unset($__componentOriginal4689e078d981419fe3d32c3868109c4f); ?>
+<?php endif; ?>
+                <?php if (isset($component)) { $__componentOriginal4689e078d981419fe3d32c3868109c4f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4689e078d981419fe3d32c3868109c4f = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.copy-field','data' => ['label' => 'Direct','value' => $server->address()]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('copy-field'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['label' => 'Direct','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($server->address())]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4689e078d981419fe3d32c3868109c4f)): ?>
+<?php $attributes = $__attributesOriginal4689e078d981419fe3d32c3868109c4f; ?>
+<?php unset($__attributesOriginal4689e078d981419fe3d32c3868109c4f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4689e078d981419fe3d32c3868109c4f)): ?>
+<?php $component = $__componentOriginal4689e078d981419fe3d32c3868109c4f; ?>
+<?php unset($__componentOriginal4689e078d981419fe3d32c3868109c4f); ?>
+<?php endif; ?>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">
+                The name follows the node this server is on. Moving it to another node gives it a new name, and the
+                direct address keeps working throughout.
+            </p>
+         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal53747ceb358d30c0105769f8471417f6)): ?>
+<?php $attributes = $__attributesOriginal53747ceb358d30c0105769f8471417f6; ?>
+<?php unset($__attributesOriginal53747ceb358d30c0105769f8471417f6); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal53747ceb358d30c0105769f8471417f6)): ?>
+<?php $component = $__componentOriginal53747ceb358d30c0105769f8471417f6; ?>
+<?php unset($__componentOriginal53747ceb358d30c0105769f8471417f6); ?>
+<?php endif; ?>
+    <?php endif; ?>
+
+    <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Network','icon' => 'network','subtitle' => ''.e($allocations->count()).' of '.e($server->allocation_limit ?: 'unlimited').' allocations used. The primary address is the one players connect to.','flush' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Network','icon' => 'network','subtitle' => ''.e($allocations->count()).' of '.e($server->allocation_limit ?: 'unlimited').' allocations used. The primary address is the one players connect to.','flush' => true]); ?>
          <?php $__env->slot('actions', null, []); ?> 
             <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('check', [$server, 'allocation.create'])): ?>
                 <form method="POST" action="<?php echo e(route('server.network.store', $server)); ?>">
@@ -111,8 +237,8 @@
 <?php unset($__componentOriginale7cc125ac67e961dd14784be2099d7c2); ?>
 <?php endif; ?></th>
                 <th>Address</th>
-                <th>IP</th>
-                <th>Port</th>
+                <th>Purpose</th>
+                <th>Protocol</th>
                 <th>Role</th>
                 <th class="text-right vx-act-2">Actions</th>
                 </tr>
@@ -140,9 +266,30 @@
 <?php $component = $__componentOriginale7cc125ac67e961dd14784be2099d7c2; ?>
 <?php unset($__componentOriginale7cc125ac67e961dd14784be2099d7c2); ?>
 <?php endif; ?></td>
-                <td class="font-mono text-slate-900"><?php echo e($allocation->address()); ?></td>
-                <td class="font-mono text-xs text-slate-500"><?php echo e($allocation->ip); ?></td>
-                <td class="tabular text-slate-500"><?php echo e($allocation->port); ?></td>
+                
+                <td class="font-mono text-slate-900 vx-cell-wrap">
+                <span class="text-slate-500 [overflow-wrap:anywhere]"><?php echo e($allocation->ip_alias ?: $allocation->ip); ?></span><wbr><span class="font-medium">:<?php echo e($allocation->port); ?></span>
+                </td>
+                <td class="text-slate-500"><?php echo e($allocation->roleLabel()); ?></td>
+                <td><?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal2ddbc40e602c342e508ac696e52f8719 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.badge','data' => ['color' => ''.e($allocation->protocol === 'both' ? 'info' : 'neutral').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('badge'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['color' => ''.e($allocation->protocol === 'both' ? 'info' : 'neutral').'']); ?><?php echo e($allocation->protocolLabel()); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal2ddbc40e602c342e508ac696e52f8719)): ?>
+<?php $attributes = $__attributesOriginal2ddbc40e602c342e508ac696e52f8719; ?>
+<?php unset($__attributesOriginal2ddbc40e602c342e508ac696e52f8719); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal2ddbc40e602c342e508ac696e52f8719)): ?>
+<?php $component = $__componentOriginal2ddbc40e602c342e508ac696e52f8719; ?>
+<?php unset($__componentOriginal2ddbc40e602c342e508ac696e52f8719); ?>
+<?php endif; ?></td>
                 <td>
                 <?php if($server->allocation_id === $allocation->id): ?>
                 <?php if (isset($component)) { $__componentOriginal2ddbc40e602c342e508ac696e52f8719 = $component; } ?>

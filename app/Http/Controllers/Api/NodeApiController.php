@@ -7,7 +7,11 @@ use App\Models\AuditLog;
 use App\Models\Node;
 use App\Models\NodeMetric;
 use App\Models\Server;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
@@ -101,11 +105,19 @@ class NodeApiController extends Controller
             'load' => ['nullable', 'numeric'],
             'running' => ['nullable', 'integer'],
             'agent_version' => ['nullable', 'string', 'max:32'],
+            'sftp_enabled' => ['nullable', 'boolean'],
+            'sftp_fingerprint' => ['nullable', 'string', 'max:120'],
         ]);
 
         $node->forceFill([
             'last_seen_at' => now(),
             'reported_agent_version' => $data['agent_version'] ?? $node->reported_agent_version,
+            // Reported, never configured. The client area shows an SFTP host and
+            // username off the back of this, so it has to mean "the node is
+            // really answering" rather than "somebody ticked a box". An older
+            // agent sends neither key and is treated as not offering it.
+            'sftp_enabled' => (bool) ($data['sftp_enabled'] ?? false),
+            'sftp_fingerprint' => $data['sftp_fingerprint'] ?? null,
         ])->save();
 
         NodeMetric::create([
@@ -132,6 +144,122 @@ class NodeApiController extends Controller
                 ->with(['template.variables', 'variables', 'allocation'])
                 ->get()
                 ->map(fn (Server $s) => $s->daemonPayload() + ['status' => $s->status]),
+        ]);
+    }
+
+    /**
+     * Whether an SFTP login is allowed, and to which server's files.
+     *
+     * The daemon holds no accounts, so this is where an SFTP password is
+     * actually checked. Two things matter here.
+     *
+     * A refusal is a 200 with granted:false, not a 401. The node authenticates
+     * to this endpoint with its own bearer token, and 401 already means "this
+     * node's credential is wrong". Overloading it would make a node with a stale
+     * token report every customer's login as a bad password, and nobody would
+     * think to look at the node.
+     *
+     * And the answer comes from ServerPolicy, the same class the web file
+     * manager asks. SFTP must not be a second opinion about who may touch what:
+     * revoking someone in the panel has to revoke them here, in the same moment,
+     * without anybody remembering to update two places.
+     */
+    public function sftpAuthenticate(Request $request)
+    {
+        $node = $request->attributes->get('agent_node');
+
+        $data = $request->validate([
+            'username' => ['required', 'string', 'max:160'],
+            'password' => ['required', 'string', 'max:512'],
+            'ip' => ['nullable', 'string', 'max:64'],
+        ]);
+
+        $denied = response()->json(['granted' => false]);
+
+        // username.serveridentifier. Split on the LAST dot, because a username
+        // may contain dots and the server identifier never does.
+        $position = strrpos($data['username'], '.');
+        if ($position === false) {
+            return $denied;
+        }
+        $username = substr($data['username'], 0, $position);
+        $identifier = substr($data['username'], $position + 1);
+
+        // Rate limited on the panel as well as on the node. The node limits per
+        // address; this limits per account, so a run spread across many
+        // addresses still cannot grind away at one person's password.
+        $throttle = 'sftp:'.$username;
+        if (RateLimiter::tooManyAttempts($throttle, 10)) {
+            return $denied;
+        }
+
+        $user = User::where('username', $username)->first();
+        $server = Server::where('uuid_short', $identifier)->where('node_id', $node->id)->first();
+
+        // Checked in one branch on purpose. Answering "no such user" faster than
+        // "wrong password" tells an unauthenticated stranger which accounts
+        // exist, and Hash::check on a dummy hash keeps the timing even.
+        $password = $data['password'];
+        $valid = $user && Hash::check($password, $user->password);
+        if (! $user) {
+            Hash::check($password, '$2y$12$'.str_repeat('x', 53));
+        }
+
+        if (! $valid || ! $server || $user->suspended) {
+            RateLimiter::hit($throttle, 900);
+            AuditLog::record('sftp.denied', 'An SFTP login was refused.', $server, $server?->id, [
+                'username' => $data['username'],
+                'client_ip' => $data['ip'] ?? null,
+                'node' => $node->name,
+            ]);
+
+            return $denied;
+        }
+
+        // file.sftp is the permission to connect at all, separate from what may
+        // then be done with the files. It is deliberately not in a subuser's
+        // default set: being given the file manager should not silently hand out
+        // access to the box from the outside.
+        //
+        // Suspension is handled by this same check rather than by a test of its
+        // own here. ServerPolicy already refuses every non-read permission on a
+        // suspended server, so a suspended customer cannot connect, while an
+        // admin still can and support does not lose file access to the server it
+        // has been called about. Adding a second suspension rule here would be
+        // the divergence this endpoint exists to avoid.
+        if (! Gate::forUser($user)->allows('check', [$server, 'file.sftp'])) {
+            AuditLog::record('sftp.denied', 'An SFTP login was refused: that account may not use SFTP for this server.', $server, $server->id, [
+                'username' => $data['username'],
+                'client_ip' => $data['ip'] ?? null,
+            ]);
+
+            return $denied;
+        }
+
+        $permissions = collect(['file.read', 'file.create', 'file.update', 'file.delete'])
+            ->filter(fn (string $permission) => Gate::forUser($user)->allows('check', [$server, $permission]))
+            ->values();
+
+        RateLimiter::clear($throttle);
+        // The client's own address goes in the properties, not in the log's ip
+        // column: that column records who made the HTTP request, which for this
+        // endpoint is always the node.
+        AuditLog::record('sftp.connected', $user->name.' connected over SFTP.', $server, $server->id, [
+            'username' => $data['username'],
+            'client_ip' => $data['ip'] ?? null,
+            'permissions' => $permissions->all(),
+        ]);
+
+        return response()->json([
+            'granted' => true,
+            'server_uuid' => $server->uuid,
+            'runtime' => $server->runtime,
+            // The disk limit travels with the grant so the node can enforce it
+            // without asking again mid-transfer. 0 means unlimited, which is
+            // what a server with no limit set has always meant elsewhere.
+            'disk_mib' => (int) $server->disk,
+            'permissions' => $permissions,
+            'username' => $data['username'],
         ]);
     }
 

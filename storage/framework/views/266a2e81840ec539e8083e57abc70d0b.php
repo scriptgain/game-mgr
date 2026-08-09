@@ -45,15 +45,27 @@ unset($__defined_vars, $__key, $__value); ?>
        than taking an equal share of a fixed-layout table. */
     .vx-table th.w-10, .vx-table td.w-10 { width: 3.75rem; }
 
-    /* The trailing column is almost always actions. Every action is a 2.25rem
-       icon button with a 0.25rem gap, so the reservation is stated in terms of
-       how many there are instead of a guessed pixel value. Text buttons used to
-       live here and got clipped, which is precisely why they are gone. */
+    /* The trailing column is almost always actions.
+     *
+     * Every action is a 2.25rem icon button with a 0.25rem gap, so the width is
+     * stated as how many there are rather than as a guessed pixel value, and
+     * each is the greater of the buttons and the word "Actions".
+     *
+     * THE CLASS HAS TO MATCH THE BUTTON COUNT. This column cannot size itself:
+     * the table is table-layout:fixed, which is what guarantees nothing here
+     * ever scrolls sideways, and a fixed layout decides column widths from the
+     * CSS without ever looking at what is in the cells. The content-based
+     * width:1% idiom does not work here for exactly that reason; it collapses
+     * the column to 12px.
+     *
+     * So when a row gains a button, its vx-act-N goes up by one, on BOTH the
+     * th and the td. The Users table declared two, gained an Act As button, and
+     * quietly clipped Delete off the end. */
     .vx-table th.text-right:last-child, .vx-table td.text-right:last-child { width: 8.5rem; }
-    .vx-table th.vx-act-1:last-child, .vx-table td.vx-act-1:last-child { width: 3.75rem; }
-    .vx-table th.vx-act-2:last-child, .vx-table td.vx-act-2:last-child { width: 6.25rem; }
-    .vx-table th.vx-act-3:last-child, .vx-table td.vx-act-3:last-child { width: 8.75rem; }
-    .vx-table th.vx-act-4:last-child, .vx-table td.vx-act-4:last-child { width: 11.25rem; }
+    .vx-table th.vx-act-1:last-child, .vx-table td.vx-act-1:last-child { width: 6rem; }
+    .vx-table th.vx-act-2:last-child, .vx-table td.vx-act-2:last-child { width: 6.5rem; }
+    .vx-table th.vx-act-3:last-child, .vx-table td.vx-act-3:last-child { width: 9rem; }
+    .vx-table th.vx-act-4:last-child, .vx-table td.vx-act-4:last-child { width: 11.5rem; }
     /* Kept so existing markup does not break; same size as two actions. */
     .vx-table th.text-right.vx-col-sm:last-child, .vx-table td.text-right.vx-col-sm:last-child { width: 6.25rem; }
 

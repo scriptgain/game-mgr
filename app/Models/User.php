@@ -16,7 +16,7 @@ use Illuminate\Notifications\Notifiable;
  * root_admin is the account that cannot be demoted or deleted, so an install
  * can never lock itself out by mistake.
  */
-#[Fillable(['name', 'email', 'password', 'role', 'timezone', 'suspended'])]
+#[Fillable(['name', 'username', 'email', 'password', 'role', 'timezone', 'suspended'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret'])]
 class User extends Authenticatable
 {
@@ -72,6 +72,68 @@ class User extends Authenticatable
             $q->where('owner_id', $this->id)
                 ->orWhereIn('id', Subuser::where('user_id', $this->id)->select('server_id'));
         });
+    }
+
+    /**
+     * Every account gets a username, whoever created it.
+     *
+     * Here rather than in the four places that create users. An account without
+     * one cannot log in over SFTP and, once the column is unique, a second one
+     * without it cannot be saved at all. Making each caller remember is the same
+     * shape of mistake as making each driver remember to chown.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $user) {
+            if (blank($user->username)) {
+                $user->username = static::deriveUsername((string) $user->email, $user->name);
+            }
+        });
+    }
+
+    /**
+     * Build a username from an email address, unique across accounts.
+     *
+     * The email local part rather than the display name: it is already unique
+     * often enough to avoid a suffix, people recognise it, and it contains no
+     * spaces or punctuation to strip. Two people called Alex Smith would
+     * otherwise both want "alex-smith", and an SFTP login has to identify
+     * exactly one account.
+     */
+    public static function deriveUsername(string $email, ?string $fallbackName = null, ?int $ignoreId = null): string
+    {
+        $base = \Illuminate\Support\Str::of($email)->before('@')->lower()
+            ->replaceMatches('/[^a-z0-9._-]+/', '')
+            ->trim('._-')
+            ->limit(48, '')
+            ->value();
+
+        if ($base === '') {
+            $base = \Illuminate\Support\Str::slug((string) $fallbackName) ?: 'user';
+        }
+
+        $username = $base;
+        $suffix = 1;
+        while (static::where('username', $username)
+            ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))
+            ->exists()) {
+            $suffix++;
+            $username = $base.$suffix;
+        }
+
+        return $username;
+    }
+
+    /**
+     * The SFTP login for one of this account's servers.
+     *
+     * username.serveridentifier, the same shape Pterodactyl uses, so the daemon
+     * can tell the panel which server a connection is asking about before any
+     * password has been checked.
+     */
+    public function sftpUsername(Server $server): string
+    {
+        return $this->username.'.'.$server->uuid_short;
     }
 
     public function initials(): string

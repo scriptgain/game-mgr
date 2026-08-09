@@ -13,6 +13,10 @@
                         <x-field label="Email" required :error="$errors->first('email')">
                             <x-input type="email" name="email" value="{{ old('email', $user->email) }}" required />
                         </x-field>
+                        <x-field label="Username" hint="Used with your password to sign in over SFTP, as username.serverid."
+                                 :error="$errors->first('username')">
+                            <x-input name="username" value="{{ old('username', $user->username) }}" required />
+                        </x-field>
                         <x-field label="Timezone" required hint="Every timestamp in the panel is shown in this zone.">
                             <x-input name="timezone" value="{{ old('timezone', $user->timezone) }}" required />
                         </x-field>

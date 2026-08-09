@@ -33,14 +33,14 @@
         <div class="lg:col-span-2 space-y-6">
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'How It Fits Together']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'How It Fits Together','icon' => 'puzzle']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'How It Fits Together']); ?>
+<?php $component->withAttributes(['title' => 'How It Fits Together','icon' => 'puzzle']); ?>
                 <div class="space-y-4 text-sm text-slate-600">
                     <p>
                         The panel is the only thing you ever log into. Game servers run on <strong>nodes</strong>: any
@@ -66,14 +66,14 @@
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Three Runtimes, Not One']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Three Runtimes, Not One','icon' => 'play']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Three Runtimes, Not One']); ?>
+<?php $component->withAttributes(['title' => 'Three Runtimes, Not One','icon' => 'play']); ?>
                 <div class="space-y-4">
                     <div class="flex gap-3">
                         <?php if (isset($component)) { $__componentOriginal99cb7941a32bc885956a1a595193ad66 = $component; } ?>
@@ -169,14 +169,14 @@
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Games And Templates']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Games And Templates','icon' => 'controller']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Games And Templates']); ?>
+<?php $component->withAttributes(['title' => 'Games And Templates','icon' => 'controller']); ?>
                 <div class="space-y-3 text-sm text-slate-600">
                     <p>
                         A <strong>Game</strong> holds <strong>Templates</strong>. Minecraft holds Paper, Forge and
@@ -200,14 +200,14 @@
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Nodes Behind NAT']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Nodes Behind NAT','icon' => 'network']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Nodes Behind NAT']); ?>
+<?php $component->withAttributes(['title' => 'Nodes Behind NAT','icon' => 'network']); ?>
                 <div class="space-y-3 text-sm text-slate-600">
                     <p>
                         A node can connect two ways. <strong>Direct</strong> means the panel dials the daemon, which
@@ -232,24 +232,46 @@
         </div>
 
         <div class="space-y-6">
+            
+            <?php
+                $apiRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes())
+                    ->filter(fn ($r) => str_starts_with($r->uri(), 'api/application') || str_starts_with($r->uri(), 'api/client'))
+                    ->map(fn ($r) => [
+                        'method' => collect($r->methods())->first(fn ($m) => ! in_array($m, ['HEAD', 'OPTIONS'])),
+                        'uri' => '/'.$r->uri(),
+                    ])
+                    ->sortBy(fn ($r) => $r['uri'])
+                    ->values();
+            ?>
+
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Panel API']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Panel API','icon' => 'link']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Panel API']); ?>
+<?php $component->withAttributes(['title' => 'Panel API','icon' => 'link']); ?>
                 <p class="text-sm text-slate-600">
-                    Two scopes, matching Pterodactyl so existing tooling ports across.
+                    Two scopes, matching Pterodactyl so existing tooling ports across. Application drives
+                    provisioning: create an account, create a server, suspend it, change the package, terminate it.
+                    Client is scoped to the servers its owner can already reach.
                 </p>
-                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">GET /api/application/nodes
-GET /api/application/servers
-GET /api/client/servers</pre>
+                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto"><?php $__currentLoopData = $apiRoutes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $route): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php echo e(str_pad($route['method'], 7)); ?><?php echo e($route['uri']); ?>
+
+<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></pre>
                 <p class="mt-3 text-xs text-slate-500">
-                    Create a token under <a href="<?php echo e(route('account.api.index')); ?>" class="text-brand-700 hover:text-brand-800">API Credentials</a>.
+                    Responses carry the Pterodactyl envelope: one object as
+                    <span class="font-mono">object</span> and <span class="font-mono">attributes</span>, a list as
+                    <span class="font-mono">object: list</span> with <span class="font-mono">meta.pagination</span>.
+                    Ask for related records with <span class="font-mono">?include=node,allocations</span>.
+                </p>
+                <p class="mt-2 text-xs text-slate-500">
+                    Create a token under <a href="<?php echo e(route('account.api.index')); ?>" class="text-brand-700 hover:text-brand-800">API Credentials</a>,
+                    and send it as <span class="font-mono">Authorization: Bearer</span>. An application token needs an
+                    edition that includes the API.
                 </p>
              <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -264,14 +286,14 @@ GET /api/client/servers</pre>
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Node API']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Node API','icon' => 'link']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Node API']); ?>
+<?php $component->withAttributes(['title' => 'Node API','icon' => 'link']); ?>
                 <p class="text-sm text-slate-600">What the daemon on each machine talks to.</p>
                 <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">POST /api/node/enroll
 POST /api/node/heartbeat
@@ -290,14 +312,14 @@ POST /api/node/servers/{uuid}/state</pre>
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal53747ceb358d30c0105769f8471417f6 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Version']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.card','data' => ['title' => 'Version','icon' => 'info']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Version']); ?>
+<?php $component->withAttributes(['title' => 'Version','icon' => 'info']); ?>
                 <dl class="space-y-2 text-sm">
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Panel</dt><dd class="text-slate-900 tabular"><?php echo e(\App\Services\UpdateService::currentVersion()); ?></dd></div>
                     <div class="flex justify-between gap-3"><dt class="text-slate-500">Licence</dt><dd class="text-slate-900">Free, no key needed</dd></div>

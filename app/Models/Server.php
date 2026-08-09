@@ -336,10 +336,40 @@ class Server extends Model
         return $name.':'.$this->allocation->port;
     }
 
-    /** SFTP login the client area shows. */
-    public function sftpUsername(): string
+    /**
+     * Where an SFTP client connects for this server's files.
+     *
+     * A node's fqdn is how the PANEL reaches the daemon, which on a single-box
+     * install is 127.0.0.1 and is the default shape the installer produces.
+     * Printing that in the client area tells a customer to connect to their own
+     * machine, so a loopback address falls back to the panel's own hostname,
+     * which on that same single box is exactly the right answer.
+     */
+    public function sftpHost(): string
     {
-        return Str::slug($this->owner?->name ?? 'user').'.'.$this->uuid_short;
+        $node = $this->node;
+        $host = trim((string) $node?->fqdn);
+
+        if ($host === '' || in_array($host, ['127.0.0.1', 'localhost', '::1', '0.0.0.0'], true)) {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'this-panel';
+        }
+
+        return $host.':'.($node?->sftp_port ?: 2022);
+    }
+
+    /**
+     * SFTP login for a given account, or for the owner when none is named.
+     *
+     * This used to slug the display name, which was fine to print and wrong to
+     * log in with: two accounts called Alex Smith produced the same username and
+     * the daemon had no way to tell them apart. It is the account's own username
+     * now, which is unique by definition.
+     */
+    public function sftpUsername(?User $user = null): string
+    {
+        $user ??= $this->owner;
+
+        return ($user?->username ?: 'user').'.'.$this->uuid_short;
     }
 
     // ------------------------------------------------------------- capacity

@@ -48,6 +48,7 @@ class Node extends Model
             // control of every node.
             'daemon_secret' => 'encrypted',
             'public' => 'boolean',
+            'sftp_enabled' => 'boolean',
             'behind_proxy' => 'boolean',
             'maintenance_mode' => 'boolean',
             'last_seen_at' => 'datetime',

@@ -19,6 +19,13 @@
                         <div class="min-w-0">
                             <h3 class="font-semibold text-slate-900 truncate">{{ $game->name }}</h3>
                             <p class="text-xs text-slate-400 font-mono truncate">{{ $game->slug }}</p>
+                            @if ($game->category)
+                                {{-- What a thing is, which stops mattering at six
+                                     games and starts mattering the moment the
+                                     catalogue holds things that are not games at
+                                     all, such as a voice server. --}}
+                                <span class="mt-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium capitalize text-slate-600">{{ $game->category }}</span>
+                            @endif
                         </div>
                     </div>
                     <x-badge color="neutral">{{ $game->templates_count }} {{ Str::plural('template', $game->templates_count) }}</x-badge>

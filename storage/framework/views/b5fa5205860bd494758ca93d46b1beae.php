@@ -28,6 +28,11 @@ foreach ($attributes->all() as $__key => $__value) {
 }
 
 unset($__defined_vars, $__key, $__value); ?>
+<?php
+    // Which Minecraft build this server is set to, when it is one. Shown in the
+    // header so an operator reads it off any tab without opening a form.
+    $minecraft = $server->minecraft();
+?>
 <?php if (isset($component)) { $__componentOriginalf8d4ea307ab1e58d4e472a43c8548d8e = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf8d4ea307ab1e58d4e472a43c8548d8e = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.page-header','data' => ['title' => $server->name,'icon' => 'server']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -41,8 +46,14 @@ unset($__defined_vars, $__key, $__value); ?>
      <?php $__env->slot('subtitle', null, []); ?> 
         <?php echo e($server->template?->game?->name); ?> &middot; <?php echo e($server->template?->name); ?> &middot; <?php echo e($server->node?->name); ?>
 
+        <?php if($minecraft): ?>
+            &middot; <span class="font-medium text-slate-600"><?php echo e(\Illuminate\Support\Str::headline(mb_strtolower($minecraft['type']))); ?>
+
+                <?php echo e($minecraft['version']); ?><?php if($minecraft['build']): ?> build <?php echo e($minecraft['build']); ?><?php endif; ?></span>
+        <?php endif; ?>
      <?php $__env->endSlot(); ?>
      <?php $__env->slot('actions', null, []); ?> 
+        
         <span class="hidden sm:inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-inset ring-slate-200">
             <?php if (isset($component)) { $__componentOriginalce262628e3a8d44dc38fd1f3965181bc = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalce262628e3a8d44dc38fd1f3965181bc = $attributes; } ?>
@@ -64,7 +75,14 @@ unset($__defined_vars, $__key, $__value); ?>
 <?php $component = $__componentOriginalce262628e3a8d44dc38fd1f3965181bc; ?>
 <?php unset($__componentOriginalce262628e3a8d44dc38fd1f3965181bc); ?>
 <?php endif; ?>
-            <span class="font-mono text-xs text-slate-700"><?php echo e($server->address()); ?></span>
+            <span class="min-w-0">
+                <?php if($server->connectAddress()): ?>
+                    <span class="block font-mono text-xs text-slate-900 truncate"><?php echo e($server->connectAddress()); ?></span>
+                    <span class="block font-mono text-[11px] text-slate-500 truncate"><?php echo e($server->address()); ?></span>
+                <?php else: ?>
+                    <span class="font-mono text-xs text-slate-700"><?php echo e($server->address()); ?></span>
+                <?php endif; ?>
+            </span>
         </span>
         <?php if (isset($component)) { $__componentOriginale122a964aaade1f8044b1545740ce9f7 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginale122a964aaade1f8044b1545740ce9f7 = $attributes; } ?>

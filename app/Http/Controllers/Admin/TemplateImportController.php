@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Game;
 use App\Services\EggImporter;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 
 /**
@@ -31,6 +32,19 @@ class TemplateImportController extends Controller
 
     public function store(Request $request, EggImporter $importer)
     {
+        // Importing an egg is what turns GameMGR from "the games we ship" into
+        // "any game with a Pterodactyl egg", which is most of the value of the
+        // paid editions and the one thing the free edition holds back.
+        if (! Edition::allows('templates.import')) {
+            $needs = Edition::cheapestWith('templates.import');
+
+            return back()->with('error', sprintf(
+                'Importing templates is not included in the %s edition.%s Templates already imported keep working.',
+                Edition::label(),
+                $needs ? ' It is included from '.Edition::label($needs).' upwards.' : ''
+            ));
+        }
+
         $request->validate([
             'json' => ['nullable', 'string'],
             'file' => ['nullable', 'file', 'max:4096'],

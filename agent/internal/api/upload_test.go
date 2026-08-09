@@ -30,7 +30,7 @@ func harness(t *testing.T, maxUploadMiB int) (http.Handler, string) {
 
 	root := t.TempDir()
 	cfg := config.Config{Token: testToken, Root: root, MaxUploadMiB: maxUploadMiB}
-	drivers := gruntime.Registry{"docker": docker.New("/nonexistent.sock", root)}
+	drivers := gruntime.Registry{"docker": docker.New("/nonexistent.sock", root, nil)}
 
 	return New(cfg, drivers, "test", nil, nil).Handler(), root
 }

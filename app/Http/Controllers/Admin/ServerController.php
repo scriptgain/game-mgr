@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\AllocationPlanner;
 use App\Services\Minecraft\McJars;
 use App\Services\NodeClient;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -140,7 +141,29 @@ class ServerController extends Controller
     public function store(Request $request, AllocationPlanner $planner)
     {
         $data = $this->validated($request);
-        $template = Template::with(['variables', 'ports'])->findOrFail($data['template_id']);
+        $template = Template::with(['variables', 'ports', 'game'])->findOrFail($data['template_id']);
+
+        // Checked before anything is written, and phrased as what to do about
+        // it. A gate that only says no leaves somebody guessing which of the
+        // four editions they need.
+        if (! Edition::roomForServer()) {
+            return back()->withInput()->withErrors(['template_id' => sprintf(
+                'The %s edition covers %d servers and this panel has %d. Upgrading raises the limit; nothing already running is affected.',
+                Edition::label(), Edition::limit('servers'), Server::count()
+            )]);
+        }
+        if (! Edition::allowsTemplate($template)) {
+            $needs = $template->imported_at
+                ? Edition::cheapestWith('templates.import')
+                : Edition::cheapestWithGame($template->game);
+
+            return back()->withInput()->withErrors(['template_id' => sprintf(
+                '%s is not included in the %s edition.%s',
+                $template->game?->name ?: $template->name,
+                Edition::label(),
+                $needs ? ' It is included from '.Edition::label($needs).' upwards.' : ''
+            )]);
+        }
 
         // Variables are validated against the template's own rules before
         // anything is written, so a bad value cannot leave a half-built server.
@@ -375,6 +398,17 @@ class ServerController extends Controller
     {
         $name = $server->name;
 
+        // Tell the node first, while the row still exists to describe what to
+        // remove. Nothing did this before: the row went, the allocations were
+        // freed, and the container and every byte of the server's files stayed
+        // on the node forever. On a panel driven by billing that is a disk leak
+        // on a monthly schedule.
+        //
+        // A node that cannot be reached does not block the deletion. A dead node
+        // must not mean customers cannot be terminated, so the row goes and the
+        // operator is told the files were left behind.
+        $reachedNode = NodeClient::for($server->node)->destroy($server);
+
         // Free the ports first. Cascade would take the allocation rows with it,
         // and those belong to the node, not the server. The role goes back to
         // null with them: a free port that still claims to be somebody's RCON
@@ -383,37 +417,89 @@ class ServerController extends Controller
             ->update(['server_id' => null, 'role' => null, 'protocol' => 'both']);
         $server->delete();
 
-        AuditLog::record('server.delete', 'Deleted server "'.$name.'"');
+        AuditLog::record('server.delete', 'Deleted server "'.$name.'"'
+            .($reachedNode ? '' : ' (the node was unreachable, so its files are still on disk)'));
 
-        return redirect()->route('admin.servers.index')->with('status', 'Server deleted.');
+        return redirect()->route('admin.servers.index')->with(
+            $reachedNode ? 'status' : 'warning',
+            $reachedNode
+                ? 'Server deleted, and its files removed from the node.'
+                : 'Server deleted, but the node could not be reached, so its files are still on disk there and need removing by hand.',
+        );
     }
 
     // ------------------------------------------------------------- lifecycle
 
+    /**
+     * Suspension stops the server, then blocks the panel.
+     *
+     * It used to do only the second half, so a suspended server carried on
+     * serving players and a suspension for non-payment cost the customer
+     * nothing to ignore. Files are still untouched: this withholds the service,
+     * it does not destroy anything.
+     *
+     * The stop is best effort. A node that cannot be reached must not stop the
+     * suspension being recorded, or an unreachable node becomes a customer who
+     * cannot be suspended.
+     */
     public function suspend(Server $server)
     {
+        $stopped = true;
+        if ($server->power_state !== 'offline') {
+            $result = NodeClient::for($server->node)->power($server, 'stop');
+            $stopped = (bool) ($result['ok'] ?? false);
+        }
+
         $server->update(['status' => 'suspended', 'stopped_intentionally' => true]);
         AuditLog::record('server.suspend', 'Suspended "'.$server->name.'"', $server, $server->id);
 
-        return back()->with('status', 'Server suspended. Files are untouched.');
+        return back()->with(
+            $stopped ? 'status' : 'warning',
+            $stopped
+                ? 'Server suspended and stopped. Its files are untouched.'
+                : 'Server suspended, but the node did not confirm it stopped. Check it is actually down.',
+        );
     }
 
+    /**
+     * Unsuspending does NOT start the server.
+     *
+     * Coming back online is the customer's choice. A server that starts by
+     * itself hours later because a payment retry succeeded is a surprise, and
+     * for a game server a surprise means players arriving somewhere nobody is
+     * watching.
+     */
     public function unsuspend(Server $server)
     {
         $server->update(['status' => null, 'stopped_intentionally' => false]);
         AuditLog::record('server.unsuspend', 'Unsuspended "'.$server->name.'"', $server, $server->id);
 
-        return back()->with('status', 'Server unsuspended.');
+        return back()->with('status', 'Server unsuspended. Start it when you are ready.');
     }
 
-    public function reinstall(Server $server)
+    /**
+     * Reinstall, keeping the data directory or emptying it first.
+     *
+     * Keep is the default and is what this always did: the installer overwrites
+     * its own files and leaves worlds, configs and anything else alone. Wipe is
+     * for when the thing that is broken is in the data, and the node moves the
+     * old contents aside rather than deleting them, putting them back if the
+     * reinstall fails.
+     */
+    public function reinstall(Request $request, Server $server)
     {
+        $wipe = $request->boolean('wipe');
+
         $server->update(['status' => 'installing', 'installed_at' => null, 'stopped_intentionally' => false]);
-        AuditLog::record('server.reinstall', 'Queued a reinstall of "'.$server->name.'"', $server, $server->id);
+        AuditLog::record('server.reinstall',
+            'Queued a reinstall of "'.$server->name.'"'.($wipe ? ', wiping the data directory' : ', keeping the data directory'),
+            $server, $server->id);
 
-        InstallServer::dispatch($server->id);
+        InstallServer::dispatch($server->id, $wipe);
 
-        return back()->with('status', 'Reinstall queued. Server files are replaced, the data directory is kept.');
+        return back()->with('status', $wipe
+            ? 'Reinstall queued. The data directory is being emptied first, and the previous contents are held until it succeeds.'
+            : 'Reinstall queued. Server files are replaced, the data directory is kept.');
     }
 
     // --------------------------------------------------------------- wizard
