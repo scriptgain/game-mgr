@@ -27,6 +27,24 @@ class UpdateService
     /** Where the free product learns about new releases. */
     private const MANIFEST_URL = 'https://scriptgain.com/releases/gamemgr/latest.json';
 
+    /**
+     * The feed this install actually polls.
+     *
+     * Configurable rather than fixed, for two reasons that both turned up the
+     * moment the feed was first published: a release cannot be tested end to
+     * end without pointing a panel at a staging copy of it, and somebody
+     * running a fleet behind a strict egress policy will want to mirror the
+     * manifest and the tarball inside their own network rather than poke a hole
+     * to scriptgain.com. The default is unchanged, so an install that sets
+     * nothing behaves exactly as before.
+     */
+    public static function manifestUrl(): string
+    {
+        $configured = trim((string) config('gamemgr.update_manifest', ''));
+
+        return $configured !== '' ? $configured : self::MANIFEST_URL;
+    }
+
     /** How many pre-update safety backups to keep; older ones are pruned. */
     private const KEEP_BACKUPS = 3;
 
@@ -84,7 +102,7 @@ class UpdateService
     public static function refresh(): void
     {
         try {
-            $res = Http::timeout(8)->acceptJson()->get(self::MANIFEST_URL);
+            $res = Http::timeout(8)->acceptJson()->get(self::manifestUrl());
             if (! $res->successful()) {
                 Setting::put('update_checked_at', now()->toIso8601String());
 

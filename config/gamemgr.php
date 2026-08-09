@@ -44,4 +44,15 @@ return [
             'builds' => 1800,
         ],
     ],
+
+    /*
+     * Where this install looks for new releases.
+     *
+     * Blank means scriptgain.com, which is what a normal install wants. It
+     * exists so a release can be tested end to end against a staging copy
+     * before it is published, and so a fleet behind a strict egress policy can
+     * mirror the manifest and the tarball inside its own network.
+     */
+    'update_manifest' => env('GAMEMGR_UPDATE_MANIFEST', ''),
+
 ];
