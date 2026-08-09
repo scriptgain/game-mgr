@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\AllocationPlanner;
 use App\Services\Minecraft\McJars;
 use App\Services\NodeClient;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -140,7 +141,29 @@ class ServerController extends Controller
     public function store(Request $request, AllocationPlanner $planner)
     {
         $data = $this->validated($request);
-        $template = Template::with(['variables', 'ports'])->findOrFail($data['template_id']);
+        $template = Template::with(['variables', 'ports', 'game'])->findOrFail($data['template_id']);
+
+        // Checked before anything is written, and phrased as what to do about
+        // it. A gate that only says no leaves somebody guessing which of the
+        // four editions they need.
+        if (! Edition::roomForServer()) {
+            return back()->withInput()->withErrors(['template_id' => sprintf(
+                'The %s edition covers %d servers and this panel has %d. Upgrading raises the limit; nothing already running is affected.',
+                Edition::label(), Edition::limit('servers'), Server::count()
+            )]);
+        }
+        if (! Edition::allowsTemplate($template)) {
+            $needs = $template->imported_at
+                ? Edition::cheapestWith('templates.import')
+                : Edition::cheapestWithGame($template->game);
+
+            return back()->withInput()->withErrors(['template_id' => sprintf(
+                '%s is not included in the %s edition.%s',
+                $template->game?->name ?: $template->name,
+                Edition::label(),
+                $needs ? ' It is included from '.Edition::label($needs).' upwards.' : ''
+            )]);
+        }
 
         // Variables are validated against the template's own rules before
         // anything is written, so a bad value cannot leave a half-built server.

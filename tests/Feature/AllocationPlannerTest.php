@@ -12,6 +12,7 @@ use App\Models\Template;
 use App\Models\User;
 use App\Services\AllocationPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -38,6 +39,15 @@ class AllocationPlannerTest extends TestCase
         Queue::fake();
 
         Setting::create(['key' => 'setup_complete', 'value' => '1']);
+
+        // These tests are about port planning, not about editions, and several
+        // of them deliberately use games the free tier does not cover. Running
+        // them licensed keeps the edition gate from being the reason a planner
+        // test fails, which would say nothing about the planner.
+        Cache::put('licence.status', [
+            'state' => 'valid', 'ok' => true, 'licence' => ['edition' => 'plus'],
+            'message' => 'test', 'checked_at' => now()->toIso8601String(),
+        ], now()->addHour());
 
         $this->admin = User::create([
             'name' => 'Admin', 'email' => 'admin@test.local', 'password' => 'secret1234', 'role' => 'admin',

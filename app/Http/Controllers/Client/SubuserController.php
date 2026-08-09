@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Models\Server;
 use App\Models\Subuser;
 use App\Models\User;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 
 /**
@@ -37,6 +38,15 @@ class SubuserController extends ServerController
 
     public function store(Request $request, Server $server)
     {
+        if (! Edition::allows('subusers')) {
+            $needs = Edition::cheapestWith('subusers');
+
+            return back()->with('error', 'Inviting other people to a server is not included in the '
+                .Edition::label().' edition.'
+                .($needs ? ' It is included from '.Edition::label($needs).' upwards.' : '')
+                .' Anyone already invited keeps their access.');
+        }
+
         $this->guard($server, 'user.create');
 
         $data = $request->validate([

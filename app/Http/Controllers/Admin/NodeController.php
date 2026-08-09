@@ -11,6 +11,7 @@ use App\Models\NodeMetric;
 use App\Services\AllocationPlanner;
 use App\Services\Dns\WildcardManager;
 use App\Services\NodeClient;
+use App\Support\Edition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -47,6 +48,14 @@ class NodeController extends Controller
 
     public function store(Request $request, WildcardManager $wildcards)
     {
+        if (! Edition::roomForNode()) {
+            return back()->withInput()->withErrors(['name' => sprintf(
+                'The %s edition covers %d %s and this panel has %d. Every node already enrolled keeps working.',
+                Edition::label(), Edition::limit('nodes'),
+                Edition::limit('nodes') === 1 ? 'node' : 'nodes', Node::count()
+            )]);
+        }
+
         $node = Node::create($this->validated($request));
         $this->issueEnrollToken($node);
 
