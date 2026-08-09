@@ -1,6 +1,18 @@
 <x-layouts.app :title="$title">
     <x-page-header :title="$title" icon="users"
-                   subtitle="An account that can sign in to the panel. Clients see only their own servers; admins see everything." />
+                   subtitle="An account that can sign in to the panel. Clients see only their own servers; admins see everything.">
+        {{-- The list has this as an icon in a row of three, which is easy to
+             miss. Here it is where somebody looking at one account would
+             expect it, with the word on it. --}}
+        @if ($user->exists && ! $user->isAdmin() && ! $user->suspended && $user->id !== auth()->id())
+            <x-slot:actions>
+                <form method="POST" action="{{ route('admin.users.act-as', $user) }}">
+                    @csrf
+                    <x-button type="submit" variant="secondary" icon="eye">Act As {{ \Illuminate\Support\Str::of($user->name)->explode(' ')->first() }}</x-button>
+                </form>
+            </x-slot:actions>
+        @endif
+    </x-page-header>
 
     {{-- No max-w here. The layout already sets the page width from
          config('gamemgr.max_width'), and a second cap inside it renders a

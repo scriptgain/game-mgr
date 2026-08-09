@@ -253,6 +253,8 @@
         </div>
     </header>
 
+    <x-impersonation-banner />
+
     {{-- Page content --}}
     <main class="flex-1 py-8">
         <div class="{{ $maxWidth }} mx-auto px-4 sm:px-6 lg:px-8">

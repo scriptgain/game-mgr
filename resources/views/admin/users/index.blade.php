@@ -9,7 +9,7 @@
         <x-mass-actions :action="route('admin.bulk', 'users')" label="user">
             <x-slot:table>
                 <x-table flush>
-                <thead><tr><th class="w-10"><x-select-toggle all /></th><th>Name</th><th>Email</th><th>Role</th><th>Servers</th><th>Last Login</th><th class="text-right vx-act-2">Actions</th></tr></thead>
+                <thead><tr><th class="w-10"><x-select-toggle all /></th><th>Name</th><th>Email</th><th>Role</th><th>Servers</th><th>Last Login</th><th class="text-right vx-act-3">Actions</th></tr></thead>
                 <tbody>
                 @foreach ($users as $user)
                 <tr>
@@ -30,9 +30,18 @@
                 </td>
                 <td class="tabular">{{ $user->servers_count }}</td>
                 <td class="text-slate-500 text-xs">{{ $user->last_login_at?->diffForHumans() ?? 'never' }}</td>
-                <td class="text-right vx-act-2">
+                <td class="text-right vx-act-3">
                 <div class="inline-flex items-center gap-1">
                 <x-icon-button href="{{ route('admin.users.edit', $user) }}" icon="edit" title="Edit User" />
+                {{-- Only for accounts it would tell you something about. An
+                     admin already sees everything, so acting as one shows
+                     nothing new and muddies who did what in the audit log. --}}
+                @unless ($user->isAdmin() || $user->id === auth()->id() || $user->suspended)
+                <form method="POST" action="{{ route('admin.users.act-as', $user) }}" class="inline-flex">
+                @csrf
+                <x-icon-button type="submit" icon="eye" title="Act As {{ $user->name }}" />
+                </form>
+                @endunless
                 @unless ($user->isRootAdmin() || $user->id === auth()->id())
                 <x-delete-button
                 name="delete-user-{{ $user->id }}"
