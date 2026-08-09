@@ -76,15 +76,39 @@
         </div>
 
         <div class="space-y-6">
+            {{-- Listed from the routes themselves rather than typed here. The
+                 hand-written version was wrong about the endpoints that existed
+                 within a week of being written, because a list nobody
+                 regenerates is a list that drifts. --}}
+            @php
+                $apiRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes())
+                    ->filter(fn ($r) => str_starts_with($r->uri(), 'api/application') || str_starts_with($r->uri(), 'api/client'))
+                    ->map(fn ($r) => [
+                        'method' => collect($r->methods())->first(fn ($m) => ! in_array($m, ['HEAD', 'OPTIONS'])),
+                        'uri' => '/'.$r->uri(),
+                    ])
+                    ->sortBy(fn ($r) => $r['uri'])
+                    ->values();
+            @endphp
+
             <x-card title="Panel API" icon="link">
                 <p class="text-sm text-slate-600">
-                    Two scopes, matching Pterodactyl so existing tooling ports across.
+                    Two scopes, matching Pterodactyl so existing tooling ports across. Application drives
+                    provisioning: create an account, create a server, suspend it, change the package, terminate it.
+                    Client is scoped to the servers its owner can already reach.
                 </p>
-                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">GET /api/application/nodes
-GET /api/application/servers
-GET /api/client/servers</pre>
+                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto">@foreach ($apiRoutes as $route){{ str_pad($route['method'], 7) }}{{ $route['uri'] }}
+@endforeach</pre>
                 <p class="mt-3 text-xs text-slate-500">
-                    Create a token under <a href="{{ route('account.api.index') }}" class="text-brand-700 hover:text-brand-800">API Credentials</a>.
+                    Responses carry the Pterodactyl envelope: one object as
+                    <span class="font-mono">object</span> and <span class="font-mono">attributes</span>, a list as
+                    <span class="font-mono">object: list</span> with <span class="font-mono">meta.pagination</span>.
+                    Ask for related records with <span class="font-mono">?include=node,allocations</span>.
+                </p>
+                <p class="mt-2 text-xs text-slate-500">
+                    Create a token under <a href="{{ route('account.api.index') }}" class="text-brand-700 hover:text-brand-800">API Credentials</a>,
+                    and send it as <span class="font-mono">Authorization: Bearer</span>. An application token needs an
+                    edition that includes the API.
                 </p>
             </x-card>
 

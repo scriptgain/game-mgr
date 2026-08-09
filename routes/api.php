@@ -19,27 +19,46 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('application')->name('api.app.')->middleware('api.token:application')->group(function () {
     Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'email', 'role']));
 
-    Route::get('nodes', fn () => Node::with('location')->withCount('servers')->get());
-    Route::get('nodes/{node}', fn (Node $node) => $node->load('location', 'allocations'));
+    // Read only. Nothing in a provisioning flow creates a node or a template,
+    // and an API that can create a node is an API that can point a customer's
+    // server at a machine somebody else controls.
+    Route::get('nodes', [App\Http\Controllers\Api\Application\NodeController::class, 'index'])->name('nodes.index');
+    Route::get('nodes/{node}', [App\Http\Controllers\Api\Application\NodeController::class, 'show'])->name('nodes.show');
+    Route::get('locations', [App\Http\Controllers\Api\Application\LocationController::class, 'index'])->name('locations.index');
+    Route::get('locations/{location}', [App\Http\Controllers\Api\Application\LocationController::class, 'show'])->name('locations.show');
+    Route::get('templates', [App\Http\Controllers\Api\Application\TemplateController::class, 'index'])->name('templates.index');
+    Route::get('templates/{template}', [App\Http\Controllers\Api\Application\TemplateController::class, 'show'])->name('templates.show');
+    Route::get('games', [App\Http\Controllers\Api\Application\GameController::class, 'index'])->name('games.index');
+    Route::get('games/{game}', [App\Http\Controllers\Api\Application\GameController::class, 'show'])->name('games.show');
 
-    Route::get('servers', fn () => Server::with(['owner:id,name,email', 'node:id,name', 'template:id,name,runtime', 'allocation'])->get());
-    Route::get('servers/{server}', fn (Server $server) => $server->load(['owner:id,name,email', 'node', 'template', 'allocation', 'subusers.user:id,name,email']));
+    // Accounts. A billing system creates one of these before it can create a
+    // server for it, so this is the first call a provisioning module makes.
+    Route::get('users', [App\Http\Controllers\Api\Application\UserController::class, 'index'])->name('users.index');
+    Route::post('users', [App\Http\Controllers\Api\Application\UserController::class, 'store'])->name('users.store');
+    Route::get('users/{user}', [App\Http\Controllers\Api\Application\UserController::class, 'show'])->name('users.show');
+    Route::patch('users/{user}', [App\Http\Controllers\Api\Application\UserController::class, 'update'])->name('users.update');
+    Route::delete('users/{user}', [App\Http\Controllers\Api\Application\UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('users/{user}/sso', [App\Http\Controllers\Api\Application\UserController::class, 'sso'])->name('users.sso');
+
+    // The provisioning lifecycle.
+    Route::get('servers', [App\Http\Controllers\Api\Application\ServerController::class, 'index'])->name('servers.index');
+    Route::post('servers', [App\Http\Controllers\Api\Application\ServerController::class, 'store'])->name('servers.store');
+    Route::get('servers/{server}', [App\Http\Controllers\Api\Application\ServerController::class, 'show'])->name('servers.show');
+    Route::patch('servers/{server}/build', [App\Http\Controllers\Api\Application\ServerController::class, 'build'])->name('servers.build');
+    Route::post('servers/{server}/suspend', [App\Http\Controllers\Api\Application\ServerController::class, 'suspend'])->name('servers.suspend');
+    Route::post('servers/{server}/unsuspend', [App\Http\Controllers\Api\Application\ServerController::class, 'unsuspend'])->name('servers.unsuspend');
+    Route::post('servers/{server}/reinstall', [App\Http\Controllers\Api\Application\ServerController::class, 'reinstall'])->name('servers.reinstall');
+    Route::delete('servers/{server}', [App\Http\Controllers\Api\Application\ServerController::class, 'destroy'])->name('servers.destroy');
 });
 
 Route::prefix('client')->name('api.client.')->middleware('api.token:client')->group(function () {
-    Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'email']));
+    Route::get('me', fn (Request $r) => $r->user()->only(['id', 'name', 'username', 'email']));
 
-    Route::get('servers', fn (Request $r) => $r->user()->accessibleServers()
-        ->with(['node:id,name', 'template:id,name,runtime', 'allocation'])
-        ->get()
-        ->map(fn (Server $s) => [
-            'identifier' => $s->uuid_short,
-            'name' => $s->name,
-            'state' => $s->statusLabel(),
-            'address' => $s->address(),
-            'limits' => ['memory' => $s->memory, 'disk' => $s->disk, 'cpu' => $s->cpu],
-            'players' => $s->cached_players,
-        ]));
+    Route::get('servers', [App\Http\Controllers\Api\Client\ServerController::class, 'index'])->name('servers.index');
+    Route::get('servers/{server}', [App\Http\Controllers\Api\Client\ServerController::class, 'show'])->name('servers.show');
+    Route::get('servers/{server}/resources', [App\Http\Controllers\Api\Client\ServerController::class, 'resources'])->name('servers.resources');
+    Route::post('servers/{server}/power', [App\Http\Controllers\Api\Client\ServerController::class, 'power'])->name('servers.power');
+    Route::post('servers/{server}/command', [App\Http\Controllers\Api\Client\ServerController::class, 'command'])->name('servers.command');
 });
 
 /*

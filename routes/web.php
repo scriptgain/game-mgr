@@ -59,6 +59,12 @@ Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('ins
 // Public, opt-in status page for a single server. Deliberately outside auth.
 Route::get('/status/{slug}', [Client\StatusPageController::class, 'show'])->name('status.show');
 
+// Single sign-on from a billing system. Outside the auth middleware because
+// the whole point is that nobody is signed in yet; the signature and a
+// single-use nonce are what make it safe.
+Route::get('sso/{user}', [\App\Http\Controllers\SsoController::class, 'consume'])
+    ->middleware('signed')->name('sso.consume');
+
 Route::middleware(['auth', 'security.policy'])->group(function () {
 
     // Dashboard. Admins get the fleet, clients get their own servers.
