@@ -24,17 +24,32 @@
         :root { --nav: 17rem; }
         body { background: #f8fafc; }
         .docs { display: grid; grid-template-columns: var(--nav) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
-        @media (max-width: 1024px) { .docs { grid-template-columns: 1fr; gap: 1.5rem; } .docs-aside { position: static !important; max-height: none !important; } }
-        .docs-aside { position: sticky; top: 5rem; max-height: calc(100vh - 7rem); overflow-y: auto; overscroll-behavior: contain; }
-        .docs-aside::-webkit-scrollbar { width: 6px; }
-        .docs-aside::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        @media (max-width: 1024px) { .docs { grid-template-columns: 1fr; gap: 1.5rem; }
+            .docs-aside { position: static !important; max-height: none !important; }
+            .docs-nav { max-height: 22rem; } }
+        /* The filter box sits OUTSIDE the scrolling area. When the whole aside
+           scrolled, the scrollbar ran the full height and pressed against the
+           search input, which looked like a mistake and put a grab target on
+           top of a click target. Only the link list scrolls now, and it keeps
+           a gutter so the bar never touches the text either. */
+        .docs-aside { position: sticky; top: 5rem; max-height: calc(100vh - 7rem); display: flex; flex-direction: column; }
+        .docs-nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: .625rem;
+                    scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        .docs-nav::-webkit-scrollbar { width: 6px; }
+        .docs-nav::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .docs-nav::-webkit-scrollbar-track { background: transparent; }
         .op { scroll-margin-top: 5.5rem; }
+        /* Bordered, not just tinted. On a white card a pale fill alone barely
+           reads as a chip, and the four methods have to be told apart at a
+           glance while scanning a hundred rows. Border-box, so the outline does
+           not change the width they all share. */
         .m { display: inline-flex; align-items: center; justify-content: center; min-width: 3.75rem; padding: .1rem .4rem;
-             border-radius: .3rem; font-size: .625rem; font-weight: 700; letter-spacing: .04em; font-family: ui-monospace, monospace; }
-        .m-GET { background: #ecfdf5; color: #047857; }
-        .m-POST { background: #eff6ff; color: #1d4ed8; }
-        .m-PATCH, .m-PUT { background: #fffbeb; color: #b45309; }
-        .m-DELETE { background: #fef2f2; color: #b91c1c; }
+             border-radius: .3rem; border: 1px solid; font-size: .625rem; font-weight: 700; letter-spacing: .04em;
+             font-family: ui-monospace, monospace; box-sizing: border-box; }
+        .m-GET { background: #ecfdf5; color: #047857; border-color: #6ee7b7; }
+        .m-POST { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+        .m-PATCH, .m-PUT { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
+        .m-DELETE { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
         /* A path is one unbroken run and will set the width floor of the page
            if it is allowed to. Nothing here ever scrolls sideways. */
         .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
@@ -71,7 +86,7 @@
             <input id="docs-filter" type="search" placeholder="Filter endpoints"
                    class="mb-3 w-full rounded-lg border-0 bg-white px-3 py-2 text-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand-500">
 
-            <nav class="space-y-4" aria-label="Endpoints">
+            <nav class="docs-nav space-y-4" aria-label="Endpoints">
                 <a href="#start" class="nav-a font-medium text-slate-900">Getting Started</a>
                 @foreach ($scopes as $scope => $resources)
                     <div data-nav-scope>
