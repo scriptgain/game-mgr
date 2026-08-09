@@ -24,6 +24,14 @@ Route::prefix('application')->name('api.app.')->middleware('api.token:applicatio
     // server at a machine somebody else controls.
     Route::get('nodes', [App\Http\Controllers\Api\Application\NodeController::class, 'index'])->name('nodes.index');
     Route::get('nodes/{node}', [App\Http\Controllers\Api\Application\NodeController::class, 'show'])->name('nodes.show');
+    // Allocations hang off their node: a port only means anything with the
+    // machine it is on, and a flat /allocations would let an id alone reach
+    // any port on any node.
+    Route::get('nodes/{node}/allocations', [App\Http\Controllers\Api\Application\AllocationController::class, 'index'])->name('nodes.allocations.index');
+    Route::post('nodes/{node}/allocations', [App\Http\Controllers\Api\Application\AllocationController::class, 'store'])->name('nodes.allocations.store');
+    Route::get('nodes/{node}/allocations/{allocation}', [App\Http\Controllers\Api\Application\AllocationController::class, 'show'])->name('nodes.allocations.show');
+    Route::delete('nodes/{node}/allocations/{allocation}', [App\Http\Controllers\Api\Application\AllocationController::class, 'destroy'])->name('nodes.allocations.destroy');
+
     Route::get('locations', [App\Http\Controllers\Api\Application\LocationController::class, 'index'])->name('locations.index');
     Route::get('locations/{location}', [App\Http\Controllers\Api\Application\LocationController::class, 'show'])->name('locations.show');
     Route::get('templates', [App\Http\Controllers\Api\Application\TemplateController::class, 'index'])->name('templates.index');

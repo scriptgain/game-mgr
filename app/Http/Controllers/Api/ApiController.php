@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ApiResource;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 
 /**
@@ -19,7 +20,12 @@ abstract class ApiController extends Controller
     /** The most any caller can ask for in one page, however large per_page is. */
     protected const MAX_PER_PAGE = 200;
 
-    protected function paginate(Request $request, Builder $query, string $resource): array
+    /**
+     * A relation is not a Builder even though it forwards to one, so both are
+     * accepted: half these endpoints page over $node->allocations() and the
+     * other half over Model::query().
+     */
+    protected function paginate(Request $request, Builder|Relation $query, string $resource): array
     {
         $rows = $query->paginate(
             min(max((int) $request->query('per_page', 50), 1), self::MAX_PER_PAGE)
