@@ -254,6 +254,10 @@ class NodeApiController extends Controller
             'granted' => true,
             'server_uuid' => $server->uuid,
             'runtime' => $server->runtime,
+            // The disk limit travels with the grant so the node can enforce it
+            // without asking again mid-transfer. 0 means unlimited, which is
+            // what a server with no limit set has always meant elsewhere.
+            'disk_mib' => (int) $server->disk,
             'permissions' => $permissions,
             'username' => $data['username'],
         ]);

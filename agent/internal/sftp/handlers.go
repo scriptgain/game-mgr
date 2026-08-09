@@ -32,10 +32,20 @@ type handlers struct {
 	store  store.Store
 	server gruntime.Server
 	grant  *panel.SFTPGrant
+	quota  *quota
 }
 
 func (s *Server) handlers(server gruntime.Server, grant *panel.SFTPGrant) sftp.Handlers {
-	h := &handlers{store: s.store, server: server, grant: grant}
+	// Measured once, here, rather than per write: a walk of a large world is
+	// cheap but not free, and putting it in the path of every WriteAt would make
+	// a big upload quadratic in the size of the directory.
+	used := s.store.DiskUsageMiB(server)
+	h := &handlers{
+		store:  s.store,
+		server: server,
+		grant:  grant,
+		quota:  newQuota(grant.DiskMiB, used),
+	}
 
 	return sftp.Handlers{FileGet: h, FilePut: h, FileCmd: h, FileList: h}
 }
@@ -170,17 +180,41 @@ func (h *handlers) Filewrite(r *sftp.Request) (io.WriterAt, error) {
 		return nil, err
 	}
 
-	// The reason this wrapper exists: pkg/sftp hands back a raw file handle, so
-	// without it every uploaded file would belong to whoever the daemon runs as,
-	// which is root. That is the bug this whole ownership pass was about, and an
-	// upload is just one more way to create a file.
-	return &ownedFile{File: file, store: h.store}, nil
+	// Two reasons for this wrapper.
+	//
+	// pkg/sftp hands back a raw file handle, so without it every uploaded file
+	// would belong to whoever the daemon runs as, which is root: the bug the
+	// whole ownership pass was about, and an upload is one more way to make a
+	// file.
+	//
+	// And every byte is charged against the server's disk limit as it arrives,
+	// because a limit nobody measures is a number on a page.
+	return &ownedFile{File: file, store: h.store, quota: h.quota}, nil
 }
 
-// ownedFile hands the file to the game account when the transfer finishes.
+// ownedFile charges each write against the quota and hands the finished file to
+// the game account.
 type ownedFile struct {
 	*os.File
 	store store.Store
+	quota *quota
+}
+
+func (f *ownedFile) WriteAt(p []byte, off int64) (int, error) {
+	// Reserved before the bytes land, not counted after: counting afterwards
+	// means the disk is already full by the time anybody objects.
+	if err := f.quota.reserve(int64(len(p))); err != nil {
+		return 0, err
+	}
+
+	n, err := f.File.WriteAt(p, off)
+	if n < len(p) {
+		// Give back what never made it, so a broken transfer does not
+		// permanently consume an allowance it did not use.
+		f.quota.release(int64(len(p) - n))
+	}
+
+	return n, err
 }
 
 func (f *ownedFile) Close() error {

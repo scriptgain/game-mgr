@@ -27,6 +27,7 @@ type fakePanel struct {
 	permissions []string
 	calls       int
 	err         error
+	diskMiB     int64
 }
 
 func (f *fakePanel) AuthenticateSFTP(_ context.Context, username, password, _ string) (*panel.SFTPGrant, error) {
@@ -44,6 +45,7 @@ func (f *fakePanel) AuthenticateSFTP(_ context.Context, username, password, _ st
 		Runtime:     "docker",
 		Permissions: f.permissions,
 		Username:    username,
+		DiskMiB:     f.diskMiB,
 	}, nil
 }
 
@@ -386,5 +388,89 @@ func TestASuccessClearsTheRecord(t *testing.T) {
 	}
 	if _, blocked := l.blocked("10.0.0.1"); blocked {
 		t.Fatal("earlier failures were still being counted after a successful login")
+	}
+}
+
+// A limit nobody measures is a number on a page. Before this a customer with
+// SFTP could fill the node's disk, and when a node's disk fills it is not their
+// server that stops writing, it is every server on the box.
+func TestTheDiskLimitIsChargedAsBytesArrive(t *testing.T) {
+	q := newQuota(1, 0) // one MiB, nothing used yet
+
+	if err := q.reserve(512 * 1024); err != nil {
+		t.Fatalf("half the allowance should fit: %v", err)
+	}
+	if err := q.reserve(512 * 1024); err != nil {
+		t.Fatalf("the rest of the allowance should fit: %v", err)
+	}
+	if err := q.reserve(1); err == nil {
+		t.Fatal("one byte past the limit was accepted")
+	}
+	if left := q.remaining(); left != 0 {
+		t.Fatalf("remaining = %d, want 0", left)
+	}
+}
+
+// Bytes a failed transfer never wrote have to come back, or a flaky connection
+// eats an allowance it did not use.
+func TestAFailedWriteGivesItsBytesBack(t *testing.T) {
+	q := newQuota(1, 0)
+
+	if err := q.reserve(1024 * 1024); err != nil {
+		t.Fatal(err)
+	}
+	q.release(1024 * 1024)
+
+	if err := q.reserve(1024 * 1024); err != nil {
+		t.Fatalf("released bytes were not reusable: %v", err)
+	}
+}
+
+// Usage measured at login has to count, or somebody already over their limit
+// would start every session with a clean slate.
+func TestAServerAlreadyOverItsLimitIsRefusedImmediately(t *testing.T) {
+	q := newQuota(10, 12) // 12 MiB used against a 10 MiB limit
+
+	if err := q.reserve(1); err == nil {
+		t.Fatal("a server already past its limit accepted another byte")
+	}
+	if left := q.remaining(); left != 0 {
+		t.Fatalf("remaining = %d, want 0", left)
+	}
+}
+
+// Zero means unlimited everywhere else in the panel and has to here too, or
+// every server without an explicit limit could not write at all.
+func TestNoLimitMeansNoLimit(t *testing.T) {
+	q := newQuota(0, 500)
+
+	if err := q.reserve(50 << 30); err != nil {
+		t.Fatalf("an unlimited server refused a write: %v", err)
+	}
+	if left := q.remaining(); left != -1 {
+		t.Fatalf("remaining = %d, want -1 for unlimited", left)
+	}
+}
+
+// End to end: a real client uploading past the limit is refused, and the bytes
+// do not land.
+func TestAnUploadPastTheLimitIsRefusedOverTheWire(t *testing.T) {
+	fake := &fakePanel{password: "hunter2", permissions: allPermissions(), diskMiB: 1}
+	client, dir := dial(t, fake, "hunter2")
+
+	file, err := client.Create("too-big.bin")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// Two MiB against a one MiB limit.
+	_, writeErr := file.Write(make([]byte, 2*1024*1024))
+	closeErr := file.Close()
+
+	if writeErr == nil && closeErr == nil {
+		t.Fatal("an upload past the disk limit was accepted")
+	}
+
+	if info, err := os.Stat(filepath.Join(dir, "too-big.bin")); err == nil && info.Size() > 1024*1024 {
+		t.Fatalf("%d bytes landed despite a 1 MiB limit", info.Size())
 	}
 }

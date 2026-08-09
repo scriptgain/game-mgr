@@ -35,6 +35,8 @@ type SFTPGrant struct {
 	// file.read, file.create, file.update, file.delete.
 	Permissions []string `json:"permissions"`
 	Username    string   `json:"username"`
+	// The server's disk limit in MiB. Zero means unlimited.
+	DiskMiB int64 `json:"disk_mib"`
 }
 
 // Can reports whether the grant carries a permission.

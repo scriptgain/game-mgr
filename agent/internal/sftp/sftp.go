@@ -33,6 +33,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -201,6 +202,10 @@ func (s *Server) password(meta ssh.ConnMetadata, password []byte) (*ssh.Permissi
 			"runtime":     grant.Runtime,
 			"permissions": strings.Join(grant.Permissions, ","),
 			"username":    grant.Username,
+			// Carried through the SSH connection rather than looked up again:
+			// this map is the whole of what survives from login to session, and
+			// a limit left out of it is a limit that silently does not apply.
+			"disk_mib": strconv.FormatInt(grant.DiskMiB, 10),
 		},
 	}, nil
 }
@@ -322,6 +327,9 @@ func grantFrom(permissions *ssh.Permissions) *panel.SFTPGrant {
 		ServerUUID: permissions.Extensions["server"],
 		Runtime:    permissions.Extensions["runtime"],
 		Username:   permissions.Extensions["username"],
+	}
+	if disk, err := strconv.ParseInt(permissions.Extensions["disk_mib"], 10, 64); err == nil {
+		grant.DiskMiB = disk
 	}
 	if held != "" {
 		grant.Permissions = strings.Split(held, ",")
