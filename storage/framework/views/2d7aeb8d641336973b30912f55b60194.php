@@ -443,14 +443,14 @@
 <?php $component->withAttributes(['name' => 'reinstall-server-wipe','action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('admin.servers.reinstall', $server)),'fields' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(['wipe' => 1]),'tone' => 'danger','confirm-variant' => 'danger','title' => 'Wipe And Reinstall '.e($server->name).'?','message' => 'Everything in the data directory goes: worlds, configs, plugins, saves. The node holds the old contents until the reinstall succeeds and puts them back if it fails, but once it succeeds they are gone.','confirm' => 'Wipe And Reinstall']); ?>
                         <?php if (isset($component)) { $__componentOriginal658398a0e73a18931bb7def04d911f42 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal658398a0e73a18931bb7def04d911f42 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['icon' => 'trash','variant' => 'danger','title' => 'Wipe And Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.icon-button','data' => ['icon' => 'fire','variant' => 'danger','title' => 'Wipe And Reinstall']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('icon-button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['icon' => 'trash','variant' => 'danger','title' => 'Wipe And Reinstall']); ?>
+<?php $component->withAttributes(['icon' => 'fire','variant' => 'danger','title' => 'Wipe And Reinstall']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal658398a0e73a18931bb7def04d911f42)): ?>

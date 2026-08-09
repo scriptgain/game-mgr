@@ -171,7 +171,18 @@ class VoiceCatalogueSeeder extends Seeder
                         'runtime' => 'docker',
                         'docker_images' => ['Latest' => 'mumblevoip/mumble-server:latest'],
                         'data_path' => '/data',
-                        'startup' => 'exec /usr/bin/mumble-server -fg -ini /data/mumble_server_config.ini',
+                        /*
+                         * No -ini. The image builds its own configuration from
+                         * the MUMBLE_* variables in its entrypoint, and naming
+                         * a file explicitly bypassed the thing that would have
+                         * written one, so a real server died on
+                         * "Specified ini file could not be opened".
+                         *
+                         * Same lesson as Palworld: the image knows how to start
+                         * itself, and a startup command that overrides that has
+                         * to do everything the image was doing.
+                         */
+                        'startup' => 'exec /usr/bin/mumble-server -fg',
                         'config_startup' => ['done' => 'Server listening on', 'strip_ansi' => true],
                         'rcon_supported' => false,
                         'query_protocol' => null,

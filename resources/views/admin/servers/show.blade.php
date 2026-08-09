@@ -169,7 +169,7 @@
                         title="Wipe And Reinstall {{ $server->name }}?"
                         message="Everything in the data directory goes: worlds, configs, plugins, saves. The node holds the old contents until the reinstall succeeds and puts them back if it fails, but once it succeeds they are gone."
                         confirm="Wipe And Reinstall">
-                        <x-icon-button icon="trash" variant="danger" title="Wipe And Reinstall" />
+                        <x-icon-button icon="fire" variant="danger" title="Wipe And Reinstall" />
                     </x-confirm-action>
 
                     <x-confirm-action
