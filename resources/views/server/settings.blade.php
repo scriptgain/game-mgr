@@ -62,6 +62,44 @@
                     </x-slot:footer>
                 </x-card>
             </form>
+
+            {{-- Put it on their own website, three ways. Only shown once the
+                 page is actually public, because every snippet here is a URL
+                 that 404s until it is. --}}
+            @if ($statusPage->exists && $statusPage->is_public)
+                <x-card title="Put This On Your Own Site" icon="link"
+                        subtitle="An iframe if you want it to look like this, JSON if you would rather build your own.">
+                    <div class="space-y-5">
+                        <div>
+                            <p class="text-sm font-medium text-slate-900">Embed The Card</p>
+                            <p class="mt-0.5 mb-2 text-sm text-slate-500">
+                                Drop this anywhere in your page. Add <span class="font-mono text-xs">?theme=dark</span> or
+                                <span class="font-mono text-xs">?theme=light</span> to pin it; without one it follows your
+                                visitor's own setting.
+                            </p>
+                            <x-code-pane label="HTML" :code="$embed['iframe']" />
+                        </div>
+
+                        <div>
+                            <p class="text-sm font-medium text-slate-900">Build Your Own</p>
+                            <p class="mt-0.5 mb-2 text-sm text-slate-500">
+                                The same facts as JSON, readable from any origin, cached for thirty seconds. Whatever you
+                                switched off above is absent here too.
+                            </p>
+                            <x-code-pane label="JSON" :code="$embed['json']" />
+                        </div>
+
+                        <div>
+                            <p class="text-sm font-medium text-slate-900">Or Drop In The Widget</p>
+                            <p class="mt-0.5 mb-2 text-sm text-slate-500">
+                                One script tag, no iframe, no styling of ours on your page. Every element carries a class
+                                so you can make it look like your site.
+                            </p>
+                            <x-code-pane label="HTML" :code="$embed['widget']" tall />
+                        </div>
+                    </div>
+                </x-card>
+            @endif
         </div>
 
         <div class="space-y-6">

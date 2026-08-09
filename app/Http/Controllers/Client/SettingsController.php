@@ -14,11 +14,55 @@ class SettingsController extends ServerController
     {
         $this->guard($server, 'control.console');
 
+        $statusPage = $server->statusPage ?? new StatusPage(['slug' => Str::slug($server->name), 'show_players' => true, 'show_address' => true, 'show_uptime' => true, 'show_version' => true]);
+
         return view('server.settings', [
             'title' => $server->name.' Settings',
             'server' => $server->load('node.location', 'template.game', 'allocation', 'statusPage'),
-            'statusPage' => $server->statusPage ?? new StatusPage(['slug' => Str::slug($server->name), 'show_players' => true, 'show_address' => true, 'show_uptime' => true, 'show_version' => true]),
+            'statusPage' => $statusPage,
+            // Built here rather than in the view, which has no business
+            // assembling URLs, and only when there is a published page to
+            // point them at.
+            'embed' => $statusPage->exists && $statusPage->is_public
+                ? $this->embedSnippets($statusPage->slug)
+                : [],
         ]);
+    }
+
+    /**
+     * Copy-paste for somebody's own website.
+     *
+     * Absolute URLs on purpose: these are pasted into a page on another domain
+     * where a relative path means nothing.
+     *
+     * @return array{iframe:string,json:string,widget:string}
+     */
+    private function embedSnippets(string $slug): array
+    {
+        $base = rtrim((string) config('app.url'), '/');
+
+        return [
+            'iframe' => '<iframe src="'.$base.'/status/'.$slug.'/embed"'."\n".
+                '        width="420" height="170" style="border:0"'."\n".
+                '        loading="lazy" title="Server status"></iframe>',
+
+            'json' => $base.'/status/'.$slug.'.json',
+
+            'widget' => '<div id="server-status"></div>'."\n".
+                '<script src="'.$base.'/js/status-widget.js"'."\n".
+                '        data-status-url="'.$base.'/status/'.$slug.'.json"'."\n".
+                '        data-target="#server-status"'."\n".
+                '        data-refresh="60"></script>'."\n\n".
+                '<!-- Style it however you like: -->'."\n".
+                '<style>'."\n".
+                '  .gamemgr-status__head { display: flex; justify-content: space-between; gap: 1rem; }'."\n".
+                '  .gamemgr-status__name { font-weight: 600; }'."\n".
+                '  .gamemgr-status__state--online { color: #059669; }'."\n".
+                '  .gamemgr-status__state--offline { color: #64748b; }'."\n".
+                '  .gamemgr-status__row { display: flex; justify-content: space-between; gap: 1rem; }'."\n".
+                '  .gamemgr-status__label { color: #64748b; }'."\n".
+                '</style>',
+        ];
     }
 
     public function update(Request $request, Server $server)

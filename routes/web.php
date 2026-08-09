@@ -59,6 +59,13 @@ Route::view('/docs', 'docs')->name('docs');
 Route::get('/install/node', [NodeInstallerController::class, 'node'])->name('install.node');
 
 // Public, opt-in status page for a single server. Deliberately outside auth.
+//
+// Three shapes of the same facts: the page to link, JSON so anybody can build
+// their own widget, and a bare card for an iframe on their own site. All three
+// obey the same per-page toggles, and .json is declared BEFORE the plain slug
+// route or a slug could swallow it.
+Route::get('/status/{slug}.json', [Client\StatusPageController::class, 'json'])->name('status.json');
+Route::get('/status/{slug}/embed', [Client\StatusPageController::class, 'embed'])->name('status.embed');
 Route::get('/status/{slug}', [Client\StatusPageController::class, 'show'])->name('status.show');
 
 // A backup download, authorised by its signature rather than by a session, so
