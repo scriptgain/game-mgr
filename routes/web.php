@@ -52,6 +52,12 @@ Route::get('/brand/favicon-apple', [FaviconController::class, 'appleIcon'])->nam
 
 Route::view('/docs', 'docs')->name('docs');
 
+// The API reference, rendered from the same OpenAPI document a client
+// generator would read, so the two can never drift apart. Public for the same
+// reason the guide is: somebody evaluating the panel should be able to see what
+// its API can do before installing anything, and it describes shapes, not data.
+Route::get('/api-docs', [\App\Http\Controllers\ApiDocsController::class, 'show'])->name('api-docs');
+
 // The node installer, served as plain text so `curl … | sudo bash` works.
 // Unauthenticated by necessity: a fresh box has no session, and the script
 // grants nothing on its own. The enroll token in the one-liner is the

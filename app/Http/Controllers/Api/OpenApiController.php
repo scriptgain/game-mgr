@@ -22,7 +22,17 @@ class OpenApiController extends Controller
 {
     public function show()
     {
-        return response()->json([
+        return response()->json($this->document(), 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * The document itself, so the human-readable reference at /api-docs renders
+     * from exactly the same source a client generator consumes. Two
+     * descriptions of one API that can disagree is worse than one.
+     */
+    public function document(): array
+    {
+        return [
             'openapi' => '3.1.0',
             'info' => [
                 'title' => config('app.name', 'GameMGR').' API',
@@ -46,7 +56,7 @@ class OpenApiController extends Controller
                 ['name' => 'client', 'description' => "A customer's own servers. Needs a client token."],
             ],
             'paths' => $this->paths(),
-        ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        ];
     }
 
     private function paths(): array
@@ -93,18 +103,80 @@ class OpenApiController extends Controller
     private function summarise(string $method, string $uri): string
     {
         $segments = array_values(array_filter(explode('/', $uri), fn ($s) => $s !== '' && ! str_starts_with($s, '{')));
-        $subject = str_replace('-', ' ', (string) end($segments));
-        $noun = Str::of($subject)->replace('_', ' ')->singular()->toString();
+        $subject = str_replace(['-', '_'], ' ', (string) end($segments));
+        $noun = Str::of($subject)->singular()->toString();
+
+        // The last segment of an action route is a VERB, not a thing: power,
+        // activate, upload, reinstall. "Create or act on a upload" was both
+        // ungrammatical and wrong about what the call does, so those are
+        // described as the action they are.
+        // No owner suffix on these: the sentence already names what it acts
+        // on, and "Upload a file on one server" reads like a bad translation.
+        if (in_array($method, ['POST', 'PUT'], true) && isset(self::ACTIONS[$subject])) {
+            return self::ACTIONS[$subject];
+        }
+
+        // "Delete a allocation" is the kind of thing that makes generated
+        // documentation look generated.
+        $a = in_array($noun[0] ?? '', ['a', 'e', 'i', 'o', 'u'], true) ? 'an ' : 'a ';
 
         return match ($method) {
-            'GET' => str_contains($uri, '}') && ! str_ends_with($uri, '}')
-                ? Str::ucfirst($subject).' for one record'
-                : (str_ends_with($uri, '}') ? 'Fetch one '.$noun : 'List '.$subject),
-            'POST' => 'Create or act on a '.$noun,
-            'PATCH', 'PUT' => 'Update a '.$noun,
-            'DELETE' => 'Delete a '.$noun,
+            'GET' => str_ends_with($uri, '}')
+                ? 'Fetch one '.$noun
+                : 'List '.$subject.$this->ownerSuffix($uri),
+            'POST' => 'Create '.$a.$noun.$this->ownerSuffix($uri),
+            'PATCH', 'PUT' => 'Update '.$a.$noun,
+            'DELETE' => 'Delete '.$a.$noun,
             default => Str::ucfirst($subject),
         };
+    }
+
+    /**
+     * Action endpoints, spelled out.
+     *
+     * A generated summary is only worth having if it says something a reader
+     * could not work out faster from the URL. These are the ones where the verb
+     * carries the meaning.
+     */
+    private const ACTIONS = [
+        'power' => 'Start, stop, restart or kill the server',
+        'command' => 'Send a console command',
+        'reinstall' => 'Reinstall the server',
+        'suspend' => 'Suspend the server',
+        'unsuspend' => 'Lift a suspension',
+        'transfer' => 'Move the server to another node',
+        'upload' => 'Upload a file',
+        'activate' => 'Make this the active one',
+        'restore' => 'Restore from this backup',
+        'lock' => 'Lock this backup against deletion',
+        'primary' => 'Make this the primary allocation',
+        'run' => 'Run it now, off schedule',
+        'toggle' => 'Turn it on or off',
+        'refresh' => 'Re-check against the source',
+        'kick' => 'Kick this player',
+        'ban' => 'Ban this player',
+        'unban' => 'Lift a ban',
+        'whitelist' => 'Add or remove from the whitelist',
+        'op' => 'Grant or revoke operator',
+        'rename' => 'Rename it',
+        'archive' => 'Compress files into one archive',
+        'extract' => 'Unpack an archive',
+        'mkdir' => 'Create a directory',
+        'write' => 'Write file contents',
+        'test' => 'Send a test message',
+        'sync' => 'Reconcile with the provider',
+    ];
+
+    /** " on one server" and the like, so a nested route says whose it is. */
+    private function ownerSuffix(string $uri): string
+    {
+        foreach (['{server}' => ' on one server', '{node}' => ' on one node', '{user}' => ' for one user'] as $token => $suffix) {
+            if (str_contains($uri, $token)) {
+                return $suffix;
+            }
+        }
+
+        return '';
     }
 
     private function parameters($route, string $method): array

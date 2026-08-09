@@ -234,14 +234,10 @@
         <div class="space-y-6">
             
             <?php
-                $apiRoutes = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes())
+                $apiCount = collect(\Illuminate\Support\Facades\Route::getRoutes()->getRoutes())
                     ->filter(fn ($r) => str_starts_with($r->uri(), 'api/application') || str_starts_with($r->uri(), 'api/client'))
-                    ->map(fn ($r) => [
-                        'method' => collect($r->methods())->first(fn ($m) => ! in_array($m, ['HEAD', 'OPTIONS'])),
-                        'uri' => '/'.$r->uri(),
-                    ])
-                    ->sortBy(fn ($r) => $r['uri'])
-                    ->values();
+                    ->flatMap(fn ($r) => collect($r->methods())->reject(fn ($m) => in_array($m, ['HEAD', 'OPTIONS'])))
+                    ->count();
             ?>
 
             <?php if (isset($component)) { $__componentOriginal53747ceb358d30c0105769f8471417f6 = $component; } ?>
@@ -254,14 +250,40 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['title' => 'Panel API','icon' => 'link']); ?>
+                 <?php $__env->slot('actions', null, []); ?> 
+                    <?php if (isset($component)) { $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.button','data' => ['href' => ''.e(route('api-docs')).'','variant' => 'secondary','size' => 'sm','icon' => 'book']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('button'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['href' => ''.e(route('api-docs')).'','variant' => 'secondary','size' => 'sm','icon' => 'book']); ?>Full Reference <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $attributes = $__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__attributesOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561)): ?>
+<?php $component = $__componentOriginald0f1fd2689e4bb7060122a5b91fe8561; ?>
+<?php unset($__componentOriginald0f1fd2689e4bb7060122a5b91fe8561); ?>
+<?php endif; ?>
+                 <?php $__env->endSlot(); ?>
                 <p class="text-sm text-slate-600">
                     Two scopes, matching Pterodactyl so existing tooling ports across. Application drives
                     provisioning: create an account, create a server, suspend it, change the package, terminate it.
                     Client is scoped to the servers its owner can already reach.
                 </p>
-                <pre class="console-pane vx-scroll mt-3 p-3 text-xs overflow-x-auto"><?php $__currentLoopData = $apiRoutes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $route): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php echo e(str_pad($route['method'], 7)); ?><?php echo e($route['uri']); ?>
-
-<?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></pre>
+                
+                <p class="mt-3 text-sm text-slate-600">
+                    <strong><?php echo e($apiCount); ?> endpoints</strong> across the two scopes are documented at
+                    <a href="<?php echo e(route('api-docs')); ?>" class="text-brand-700 hover:text-brand-800">/api-docs</a>,
+                    with their parameters and a curl example each. The machine-readable source is
+                    <a href="<?php echo e(route('api.openapi')); ?>" class="text-brand-700 hover:text-brand-800">openapi.json</a>,
+                    which is generated from the routes themselves and therefore cannot drift from them.
+                </p>
                 <p class="mt-3 text-xs text-slate-500">
                     Responses carry the Pterodactyl envelope: one object as
                     <span class="font-mono">object</span> and <span class="font-mono">attributes</span>, a list as
