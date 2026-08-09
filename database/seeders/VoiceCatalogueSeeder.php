@@ -108,7 +108,17 @@ class VoiceCatalogueSeeder extends Seeder
                         'runtime' => 'docker',
                         'docker_images' => ['Latest' => 'teamspeak:latest', 'TeamSpeak 3.13' => 'teamspeak:3.13'],
                         'data_path' => '/var/ts3server',
-                        'startup' => 'exec ts3server',
+                        /*
+                         * Through the image's own entrypoint, not around it.
+                         * `exec ts3server` starts the binary as root with no
+                         * ini and no licence file, and the server then refuses
+                         * to start over the licence it was told to accept.
+                         * entrypoint.sh is what drops to the ts3server user,
+                         * writes ts3server.ini from the TS3SERVER_* variables
+                         * and accepts the licence, so the panel calls it and
+                         * lets it exec the server itself.
+                         */
+                        'startup' => 'exec /opt/ts3server/entrypoint.sh ts3server',
                         // What the server prints when it is genuinely up and
                         // listening, rather than when the process merely exists.
                         'config_startup' => ['done' => 'listening on 0.0.0.0:9987', 'strip_ansi' => true],
@@ -172,17 +182,23 @@ class VoiceCatalogueSeeder extends Seeder
                         'docker_images' => ['Latest' => 'mumblevoip/mumble-server:latest'],
                         'data_path' => '/data',
                         /*
-                         * No -ini. The image builds its own configuration from
-                         * the MUMBLE_* variables in its entrypoint, and naming
-                         * a file explicitly bypassed the thing that would have
-                         * written one, so a real server died on
-                         * "Specified ini file could not be opened".
+                         * Through the image's own entrypoint, not around it.
                          *
-                         * Same lesson as Palworld: the image knows how to start
-                         * itself, and a startup command that overrides that has
-                         * to do everything the image was doing.
+                         * First attempt named an ini that nothing wrote, and a
+                         * real server died on "Specified ini file could not be
+                         * opened". Dropping the -ini started it, and hid the
+                         * rest of the same bug: entrypoint.sh is what BUILDS
+                         * that ini out of the MUMBLE_CONFIG_* variables, sets
+                         * the superuser password and drops root. Calling the
+                         * binary directly runs a server with default settings
+                         * and every variable below silently ignored, as root,
+                         * which the server itself warns about in its log.
+                         *
+                         * It appends -fg and -ini itself, so neither belongs
+                         * here. Same lesson as Palworld, twice over: the image
+                         * knows how to start itself.
                          */
-                        'startup' => 'exec /usr/bin/mumble-server -fg',
+                        'startup' => 'exec /entrypoint.sh /usr/bin/mumble-server',
                         'config_startup' => ['done' => 'Server listening on', 'strip_ansi' => true],
                         'rcon_supported' => false,
                         'query_protocol' => null,
@@ -198,7 +214,10 @@ class VoiceCatalogueSeeder extends Seeder
                             ],
                             [
                                 'name' => 'Welcome Text',
-                                'env_variable' => 'MUMBLE_WELCOMETEXT',
+                                // MUMBLE_CONFIG_*, not MUMBLE_*. The entrypoint
+                                // reads only the prefixed form and drops the
+                                // rest without a word.
+                                'env_variable' => 'MUMBLE_CONFIG_welcometext',
                                 'description' => 'Shown to everybody as they connect.',
                                 'default_value' => 'Welcome.',
                                 'rules' => 'nullable|string|max:255',
@@ -207,7 +226,7 @@ class VoiceCatalogueSeeder extends Seeder
                             ],
                             [
                                 'name' => 'Maximum Users',
-                                'env_variable' => 'MUMBLE_USERS',
+                                'env_variable' => 'MUMBLE_CONFIG_users',
                                 'description' => 'How many people can be connected at once.',
                                 'default_value' => '100',
                                 'rules' => 'nullable|integer|min:1|max:1000',
