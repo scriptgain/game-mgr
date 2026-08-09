@@ -34,7 +34,21 @@ class Edition
         $status = LicenceClient::status();
 
         if (! empty($status['ok'])) {
-            $named = $status['licence']['edition'] ?? null;
+            /*
+             * Read from the features map first.
+             *
+             * scriptgain already signs a features map with a per-licence value
+             * overriding the product default, which is precisely what an
+             * edition is. Adding a bespoke top-level field would have been a
+             * second mechanism for the same thing, and the vendor would then
+             * have to keep them in step.
+             *
+             * The top-level key is still honoured, so a vendor response that
+             * does name one directly keeps working.
+             */
+            $named = $status['licence']['features']['edition']
+                ?? $status['licence']['edition']
+                ?? null;
 
             // A licence that verifies but names no edition still belongs to
             // somebody who paid. The benefit of the doubt goes to them and the

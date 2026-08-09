@@ -104,6 +104,30 @@ class EditionGateTest extends TestCase
         $this->assertSame('Free', Edition::label());
     }
 
+    /**
+     * The vendor signs a features map, and the edition rides in it. That is the
+     * mechanism scriptgain already had; inventing a second field for the same
+     * thing would leave two places to keep in step.
+     */
+    public function test_the_edition_is_read_from_the_signed_features_map(): void
+    {
+        Cache::put('licence.status', [
+            'state' => 'valid', 'ok' => true,
+            'licence' => ['valid' => true, 'features' => ['edition' => 'pro', 'seats' => 5]],
+            'message' => 'test', 'checked_at' => now()->toIso8601String(),
+        ], now()->addHour());
+
+        $this->assertSame('pro', Edition::current());
+    }
+
+    /** A vendor that names it directly still works. */
+    public function test_a_top_level_edition_field_is_still_honoured(): void
+    {
+        $this->onEdition('plus');
+
+        $this->assertSame('plus', Edition::current());
+    }
+
     public function test_a_verified_licence_names_the_edition(): void
     {
         $this->onEdition('pro');
