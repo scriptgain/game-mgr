@@ -15,7 +15,7 @@ class Game extends Model
 {
     use Concerns\Auditable;
 
-    protected $fillable = ['uuid', 'name', 'slug', 'category', 'description', 'author', 'icon', 'cover_color'];
+    protected $fillable = ['uuid', 'name', 'slug', 'category', 'description', 'author', 'icon', 'cover_color', 'artwork_path'];
 
     protected static function booted(): void
     {

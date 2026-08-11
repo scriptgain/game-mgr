@@ -232,6 +232,9 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('servers/{server}/unsuspend', [Admin\ServerController::class, 'unsuspend'])->name('servers.unsuspend');
         Route::post('servers/{server}/transfer', [Admin\ServerController::class, 'transfer'])->name('servers.transfer');
         Route::post('servers/{server}/reinstall', [Admin\ServerController::class, 'reinstall'])->name('servers.reinstall');
+        // Before the resource route, or /servers/{server} swallows it.
+        Route::get('servers/template-fields/{template}', [Admin\ServerController::class, 'templateFields'])
+            ->name('servers.template-fields');
         Route::resource('servers', Admin\ServerController::class);
 
         Route::resource('blueprints', Admin\BlueprintController::class)->except(['show']);

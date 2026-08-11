@@ -122,6 +122,29 @@ class ServerController extends Controller
      * @param  array<int|string, string>  $values  posted values, so a rejected
      *                                             POST reopens on what was chosen
      */
+    /**
+     * One template's settings, as HTML for the create wizard.
+     *
+     * The wizard used to render every template's variables into the page and
+     * hide all but one. That was 5.7 MB and 1.6 seconds once the community
+     * catalogue arrived, and the New Server page is the first thing anybody
+     * opens after importing it.
+     *
+     * Returns the same partial the page used to inline, so there is one copy of
+     * the markup, the MCJars picker and the locked-defaults section.
+     */
+    public function templateFields(Template $template, McJars $mcjars)
+    {
+        $template->load('variables');
+
+        return view('admin.servers._template-fields', [
+            'template' => $template,
+            // Keyed by template id because the partial reads it that way, and
+            // it is the shape minecraftPickers already returns.
+            'minecraft' => $this->minecraftPickers(collect([$template]), $mcjars, (array) old('variables', [])),
+        ]);
+    }
+
     private function minecraftPickers($templates, McJars $mcjars, array $values = []): array
     {
         $out = [];

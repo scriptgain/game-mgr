@@ -12,11 +12,33 @@ use Illuminate\Support\Str;
  */
 class GameController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Searched, filtered and paged on the server.
+        //
+        // This used to be ->get() with no paging, which was fine at six games
+        // and shipped a 2.2 MB page at a hundred and ninety two. Filtering in
+        // the browser does not help: the cost is in sending them all.
+        $games = Game::withCount('templates')
+            ->when($request->string('q')->trim()->value(), function ($query, string $term) {
+                $like = '%'.$term.'%';
+                $query->where(fn ($q) => $q
+                    ->where('name', 'like', $like)
+                    ->orWhere('slug', 'like', $like)
+                    ->orWhere('description', 'like', $like));
+            })
+            ->when($request->string('category')->trim()->value(), fn ($query, string $c) => $query->where('category', $c))
+            ->orderBy('name')
+            ->paginate(config('gamemgr.rows_per_page', 24))
+            ->withQueryString();
+
         return view('admin.games.index', [
             'title' => 'Games',
-            'games' => Game::withCount(['templates'])->orderBy('name')->get(),
+            'games' => $games,
+            // Straight off the rows, so the filter can only ever offer a value
+            // that actually matches something.
+            'categories' => Game::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
+            'total' => Game::count(),
         ]);
     }
 
