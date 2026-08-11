@@ -65,6 +65,33 @@ class InstallServer implements ShouldQueue
         $ok = NodeClient::for($server->node)->install($server, function (string $event, string $data) use (
             $server, &$lines, &$lastWrite, &$progress, &$phase
         ) {
+            // The node is asking for a Steam Guard code and the install is
+            // blocked until somebody supplies one.
+            //
+            // Written through immediately rather than waiting for the two
+            // second throttle below: this is the one event where the row IS the
+            // user interface, and a delay here is a person staring at a console
+            // that has stopped with no explanation. The node gives up after ten
+            // minutes, so the seconds matter.
+            if ($event === 'guard') {
+                $phase = 'Waiting For A Steam Guard Code';
+                $lines[] = '[gamemgr] '.$data;
+                $server->forceFill([
+                    'guard_prompt_at' => now(),
+                    'install_phase' => $phase,
+                    'install_log' => implode("\n", $lines),
+                ])->save();
+
+                return;
+            }
+
+            // Anything else means the prompt is over, whether it was answered
+            // or timed out. Cleared here rather than only at the end, so the
+            // code box disappears the moment the install moves on.
+            if ($server->guard_prompt_at) {
+                $server->forceFill(['guard_prompt_at' => null])->save();
+            }
+
             $lines[] = $data;
             // The tail is what anyone reads. Keeping the whole of a SteamCMD
             // install would be megabytes of progress chatter in a row that is
@@ -96,6 +123,10 @@ class InstallServer implements ShouldQueue
             'install_phase' => $ok ? 'Complete' : 'Failed',
             'status' => $ok ? null : 'install_failed',
             'installed_at' => $ok ? now() : null,
+            // Whatever happened, nothing is waiting for a code now. Left set,
+            // the code box would sit on a finished install and accept an answer
+            // that has nowhere to go.
+            'guard_prompt_at' => null,
         ])->save();
 
         // A completed install is the only honest proof that Steam accepted this

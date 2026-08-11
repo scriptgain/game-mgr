@@ -291,6 +291,35 @@ class NodeClient
         return is_array($res) ? $res + ['ok' => (bool) ($res['ok'] ?? false)] : ['ok' => false];
     }
 
+    /**
+     * Hand a Steam Guard code to an install that is blocked waiting for one.
+     *
+     * Deliberately does NOT send daemonPayload(). Every other call does, and
+     * that payload carries STEAM_PASS and a freshly minted STEAM_GUARD_CODE:
+     * sending it here would put the account password on the wire again for a
+     * request that needs five characters and a server id, and would also send a
+     * generated code alongside the typed one for the same login.
+     *
+     * A 409 is the ordinary answer when the install already gave up, not a
+     * failure of this call, so the reason is passed back rather than flattened
+     * into false.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public function guardCode(Server $server, string $code): array
+    {
+        $res = $this->post("/api/servers/{$server->uuid}/guard-code", ['code' => $code], 30);
+
+        if (is_array($res) && ($res['accepted'] ?? false)) {
+            return ['ok' => true];
+        }
+
+        return [
+            'ok' => false,
+            'error' => is_array($res) ? (string) ($res['error'] ?? 'the node did not accept it') : 'no answer from the node',
+        ];
+    }
+
     /** Compress paths into one archive inside the server's own directory. */
     public function archive(Server $server, array $paths, string $target): bool
     {

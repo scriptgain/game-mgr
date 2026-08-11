@@ -44,6 +44,10 @@
          strip flashing on a panel that had already been fixed. The URL now
          changes whenever the file does. --}}
     <script defer src="{{ asset('js/gamemgr.js') }}?v={{ \App\Support\Asset::version('js/gamemgr.js') }}"></script>
+    {{-- Only does anything on a page showing an install in progress. Version
+         query per reference_asset_v_cachebust, or a browser holding the old copy
+         never learns to poll. --}}
+    <script defer src="{{ asset('js/install-watch.js') }}?v={{ \App\Support\Asset::version('js/install-watch.js') }}"></script>
     <x-tailwind-cdn />
     <x-accent-style />
 </head>

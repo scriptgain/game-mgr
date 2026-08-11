@@ -15,6 +15,13 @@
     $pct = $server->install_progress;
     $phase = $server->install_phase ?: ($installing ? 'Waiting For The Node' : null);
     $log = trim((string) $server->install_log);
+
+    // The node stops waiting after ten minutes. Aged out here as well, so a box
+    // that can no longer be answered stops being offered: taking a code that
+    // has nowhere to go is worse than showing none.
+    $awaitingGuard = $installing
+        && $server->guard_prompt_at
+        && $server->guard_prompt_at->gt(now()->subMinutes(10));
 @endphp
 
 @if ($installing || $failed)
@@ -34,7 +41,46 @@
             @endif
         </x-slot:actions>
 
-        <div class="space-y-4">
+        <div class="space-y-4" @if ($installing) data-install-watch="5" @endif>
+            @if ($awaitingGuard)
+                <div class="rounded-lg bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">
+                    <div class="flex gap-3">
+                        <x-icon name="shield" class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div class="min-w-0 flex-1 space-y-3">
+                            <div>
+                                <p class="text-sm font-medium text-amber-900">Steam Is Asking For A Guard Code</p>
+                                <p class="mt-1 text-sm text-amber-800">
+                                    Open the Steam mobile app and type the five characters it shows. The install is
+                                    paused until you do, and stops waiting ten minutes after
+                                    {{ $server->guard_prompt_at->format('H:i') }}. You only have to do this once on
+                                    this node: Steam trusts the machine afterwards.
+                                </p>
+                            </div>
+
+                            {{-- Its own form. A submit inside another form is orphaned, and
+                                 this card sits on pages that already carry one. --}}
+                            <form method="POST" action="{{ route('server.guard-code', $server) }}"
+                                  class="flex flex-wrap items-start gap-2">
+                                @csrf
+                                <div>
+                                    <label for="guard-code" class="sr-only">Steam Guard Code</label>
+                                    <input type="text" name="code" id="guard-code" maxlength="5" size="8"
+                                           autocomplete="one-time-code" autocapitalize="characters"
+                                           autocorrect="off" spellcheck="false" required
+                                           placeholder="XXXXX"
+                                           class="w-28 rounded-lg border-0 px-3 py-2 text-center font-mono text-base uppercase tracking-widest text-slate-900 ring-1 ring-inset ring-amber-300 focus:ring-2 focus:ring-inset focus:ring-amber-500" />
+                                </div>
+                                <x-button type="submit" size="sm">Send Code</x-button>
+                            </form>
+
+                            @error('code')
+                                <p class="text-sm font-medium text-rose-700">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="flex items-baseline justify-between gap-3">
                 <span class="text-sm font-medium {{ $failed ? 'text-rose-700' : 'text-slate-700' }}">
                     {{ $phase ?? 'Unknown' }}

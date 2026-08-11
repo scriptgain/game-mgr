@@ -73,3 +73,31 @@ func contains(haystack, needle string) bool {
 		return false
 	})()
 }
+
+// The live prompt can be answered by a person. A mismatch or a rate limit
+// cannot: Steam has already counted the attempt, and offering a retry box there
+// is how a wrong shared secret becomes a locked account.
+func TestOnlyTheLivePromptIsAnswerable(t *testing.T) {
+	for _, line := range []string{
+		"Steam Guard code:",
+		"Please enter the Steam Guard code from your authenticator app",
+		"Two-factor code:",
+	} {
+		if !answerable(line) {
+			t.Errorf("answerable(%q) = false; nobody could answer a live prompt", line)
+		}
+	}
+
+	for _, line := range []string{
+		"FAILED (Two-factor code mismatch)",
+		"FAILED (Invalid Steam Guard code)",
+		"FAILED (Rate Limit Exceeded)",
+	} {
+		if answerable(line) {
+			t.Errorf("answerable(%q) = true; retrying a spent attempt extends the lockout", line)
+		}
+		if guardPrompt(line) == "" {
+			t.Errorf("guardPrompt(%q) said nothing, so the install would hang", line)
+		}
+	}
+}
