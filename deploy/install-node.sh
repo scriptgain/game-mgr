@@ -227,13 +227,21 @@ APT_PACKAGES=(
     python3
     lib32gcc-s1
     lib32stdc++6
+    # Source dedicated servers are 32-bit and link against these. Without the
+    # i386 libcurl, TF2 dies with "FATAL ERROR: Could not load: replay_srv.so"
+    # on a file that is plainly there and readable, because it is the loader
+    # failing rather than the file missing. Diagnosed on gamemgr001; the
+    # 64-bit module needs neither, which is what makes the asymmetry the tell.
+    libcurl3t64-gnutls:i386
+    libncurses6:i386
+    libtinfo6:i386
 )
 
 wait_for_dpkg
 if ! apt-get install -y -qq --no-install-recommends "${APT_PACKAGES[@]}"; then
     die "Package install failed. Fix apt (check 'apt-get update' output) and re-run."
 fi
-ok "${#APT_PACKAGES[@]} packages present, including tmux, lib32gcc-s1 and lib32stdc++6"
+ok "${#APT_PACKAGES[@]} packages present, including tmux and the 32-bit Source runtime"
 
 # ------------------------------------------------------------- 2. docker
 
@@ -302,6 +310,33 @@ mkdir -p "$NODE_ROOT"
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "$NODE_ROOT" "$STEAMCMD_DIR"
 chmod 0755 "$NODE_ROOT"
 ok "${NODE_ROOT} and ${STEAMCMD_DIR} owned by ${SERVICE_USER}"
+
+# Every Source dedicated server looks for steamclient.so at these two exact
+# paths under the running user's home and nowhere else. Missing, the server
+# still starts but cannot reach Steam, so it never registers on the master
+# list and a Game Server Login Token silently does nothing:
+#
+#   dlopen failed trying to load: ~/.steam/sdk32/steamclient.so
+#
+# Linked rather than copied, so a steamcmd self-update keeps them current.
+SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+if [[ -n "$SERVICE_HOME" ]]; then
+    for arch in 32 64; do
+        install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 "${SERVICE_HOME}/.steam/sdk${arch}"
+        if [[ -f "${STEAMCMD_DIR}/linux${arch}/steamclient.so" ]]; then
+            ln -sfn "${STEAMCMD_DIR}/linux${arch}/steamclient.so" "${SERVICE_HOME}/.steam/sdk${arch}/steamclient.so"
+            chown -h "${SERVICE_USER}:${SERVICE_USER}" "${SERVICE_HOME}/.steam/sdk${arch}/steamclient.so"
+        else
+            # steamcmd unpacks linux32 on first run and linux64 only once it has
+            # updated itself, so a fresh install legitimately has neither yet.
+            WARNINGS+=("steamclient.so for ${arch}-bit is not there yet; it appears after SteamCMD first runs, and the daemon relinks on the next install.")
+        fi
+    done
+    chown -R "${SERVICE_USER}:${SERVICE_USER}" "${SERVICE_HOME}/.steam"
+    ok "steamclient.so linked into ${SERVICE_HOME}/.steam/sdk32 and sdk64"
+else
+    WARNINGS+=("Could not find ${SERVICE_USER}'s home, so the Steam SDK links were skipped. Source servers will start but stay off the master list.")
+fi
 
 # ------------------------------------------------------------- 5. cgroups
 #
