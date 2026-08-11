@@ -91,7 +91,12 @@ if [ $STEAM_RC -ne 0 ]; then
 fi
 
 if [ ! -f "${WIN64_DIR}/deadlock.exe" ]; then
-    echo "[phase 2] ERROR: deadlock.exe not found after ${MAX_RETRIES} attempts"
+    # ${MAX_RETRIES} used to be interpolated here and the retry loop it came
+    # from is gone, so this printed "after  attempts" with a hole in it.
+    echo "[phase 2] ERROR: the game did not download, so there is nothing to run."
+    echo "[phase 2] The most likely cause is that this Steam account does not own"
+    echo "[phase 2] Deadlock. It is invite only, and owning it is the one thing"
+    echo "[phase 2] no amount of configuration here can substitute for."
     exit 1
 fi
 echo "[phase 2] Game files verified."
