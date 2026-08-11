@@ -61,7 +61,39 @@ func (d *Driver) Available(ctx context.Context) (bool, string) {
 		return true, "docker reachable"
 	}
 
-	return true, "docker " + version
+	detail := "docker " + version
+	if note := mapCountNote(); note != "" {
+		detail += ", " + note
+	}
+
+	return true, detail
+}
+
+// mapCountNote warns when the host's vm.max_map_count is too low for a Proton
+// game server, and says nothing otherwise.
+//
+// A container cannot set this: it is a host-wide kernel parameter, and the only
+// symptom of getting it wrong is a Wine process that dies during startup with
+// an allocation failure nobody would connect to a sysctl. Reporting it on the
+// node's own page is the difference between a five second fix and an evening.
+//
+// Not an error, because every other runtime and most Docker templates are
+// entirely happy at the default: this must never stop a node being usable.
+const minMapCount = 2147483642
+
+func mapCountNote() string {
+	raw, err := os.ReadFile("/proc/sys/vm/max_map_count")
+	if err != nil {
+		// Not Linux, or /proc is not mounted. Nothing useful to say.
+		return ""
+	}
+
+	value, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+	if err != nil || value >= minMapCount {
+		return ""
+	}
+
+	return fmt.Sprintf("vm.max_map_count is %d, too low for Proton templates (needs %d)", value, minMapCount)
 }
 
 // container is the name a server's container carries. Prefixed so the daemon

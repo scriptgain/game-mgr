@@ -49,6 +49,31 @@
                             <x-input name="startup" value="{{ old('startup', $server->startup) }}" class="font-mono text-xs" />
                         </x-field>
                     </div>
+
+                    {{-- Always shown rather than revealed by the template picker.
+                         Which templates need an account is a server-side fact, and
+                         a field that appears only after a change event is a field
+                         that is missing when the form comes back with errors. --}}
+                    <div class="mt-4">
+                        <x-field label="Steam Account" :error="$errors->first('steam_account_id')"
+                                 hint="Only used by templates that install a paid game. Leave as anonymous for everything else.">
+                            <x-select name="steam_account_id">
+                                <option value="">Anonymous Download</option>
+                                @foreach ($steamAccounts as $steamAccount)
+                                    <option value="{{ $steamAccount->id }}" @selected(old('steam_account_id', $server->steam_account_id) == $steamAccount->id)>
+                                        {{ $steamAccount->label }}
+                                    </option>
+                                @endforeach
+                            </x-select>
+                        </x-field>
+                        @if ($steamAccounts->isEmpty())
+                            <p class="mt-2 text-xs text-slate-500">
+                                No Steam accounts are registered. Templates for games like ARK: Survival Evolved or Deadlock
+                                cannot install without one.
+                                <a href="{{ route('admin.steam-accounts.create') }}" class="text-brand-600 hover:underline">Add one</a>.
+                            </p>
+                        @endif
+                    </div>
                 </x-card>
 
                 @unless ($server->exists)

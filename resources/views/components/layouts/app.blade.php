@@ -137,7 +137,7 @@
                         ['Mounts', route('admin.mounts.index'), 'folder', request()->routeIs('admin.mounts.*')],
                     ]],
                 ['type' => 'group', 'label' => 'Catalogue', 'icon' => 'cube',
-                    'active' => request()->routeIs('admin.games.*', 'admin.templates.*', 'admin.blueprints.*'),
+                    'active' => request()->routeIs('admin.games.*', 'admin.templates.*', 'admin.blueprints.*', 'admin.steam-accounts.*'),
                     'items' => [
                         ['Games', route('admin.games.index'), 'controller', request()->routeIs('admin.games.*')],
                         // Excludes import explicitly: 'admin.templates.*' matches
@@ -147,6 +147,7 @@
                             request()->routeIs('admin.templates.*') && ! request()->routeIs('admin.templates.import')],
                         ['Import Template', route('admin.templates.import'), 'download', request()->routeIs('admin.templates.import')],
                         ['Blueprints', route('admin.blueprints.index'), 'copy', request()->routeIs('admin.blueprints.*')],
+                        ['Steam Accounts', route('admin.steam-accounts.index'), 'key', request()->routeIs('admin.steam-accounts.*')],
                     ]],
                 ['type' => 'group', 'label' => 'Operations', 'icon' => 'bolt',
                     'active' => request()->routeIs('admin.alerts.*', 'admin.watchdog.*', 'admin.channels.*', 'admin.webhooks.*'),

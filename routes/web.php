@@ -236,6 +236,7 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::resource('blueprints', Admin\BlueprintController::class)->except(['show']);
         Route::resource('mounts', Admin\MountController::class)->except(['show']);
         Route::resource('database-hosts', Admin\DatabaseHostController::class)->except(['show'])->parameters(['database-hosts' => 'host']);
+        Route::resource('steam-accounts', Admin\SteamAccountController::class)->except(['show']);
         Route::resource('watchdog', Admin\WatchdogController::class)->except(['show'])->parameters(['watchdog' => 'rule']);
         Route::post('channels/{channel}/test', [Admin\ChannelController::class, 'test'])->name('channels.test');
         Route::resource('channels', Admin\ChannelController::class)->except(['show'])->parameters(['channels' => 'channel']);

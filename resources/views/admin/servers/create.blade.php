@@ -832,6 +832,35 @@
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0 translate-y-1"
                      x-transition:enter-end="opacity-100 translate-y-0">
+                    {{-- Same shape as the variable blocks below: one per template,
+                         all in the DOM, Alpine shows the chosen one. Only rendered
+                         for templates that install a paid game, so the common case
+                         never sees a Steam question it has no answer for. --}}
+                    @foreach ($templates->where('requires_steam_account', true) as $template)
+                        <div x-show="templateId === '{{ $template->id }}'" x-cloak>
+                            <x-card title="Steam Account" icon="key"
+                                    subtitle="{{ $template->game?->name ?: $template->name }} cannot be downloaded anonymously. Pick an account that owns it.">
+                                @if ($steamAccounts->isEmpty())
+                                    <x-alert type="warn">
+                                        No Steam accounts are registered, so this install will fail at the login step.
+                                        <a href="{{ route('admin.steam-accounts.create') }}" class="font-medium underline">Add one first</a>.
+                                    </x-alert>
+                                @else
+                                    <x-field label="Steam Account" :error="$errors->first('steam_account_id')"
+                                             hint="Stored once in Admin, never shown to the client who owns this server.">
+                                        <x-select name="steam_account_id">
+                                            @foreach ($steamAccounts as $steamAccount)
+                                                <option value="{{ $steamAccount->id }}" @selected(old('steam_account_id') == $steamAccount->id)>
+                                                    {{ $steamAccount->label }}
+                                                </option>
+                                            @endforeach
+                                        </x-select>
+                                    </x-field>
+                                @endif
+                            </x-card>
+                        </div>
+                    @endforeach
+
                     <x-card title="Game Settings"
                             subtitle="These are baked into the startup command. The template defaults are already filled in.">
                         @foreach ($templates as $template)

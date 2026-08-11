@@ -47,13 +47,9 @@ class Totp
 
     private static function hotp(string $key, int $counter): string
     {
-        $bin = "\0\0\0\0" . pack('N', $counter); // 8-byte big-endian counter
-        $hash = hash_hmac('sha1', $bin, $key, true);
-        $offset = ord($hash[19]) & 0xf;
-        $val = ((ord($hash[$offset]) & 0x7f) << 24)
-            | ((ord($hash[$offset + 1]) & 0xff) << 16)
-            | ((ord($hash[$offset + 2]) & 0xff) << 8)
-            | (ord($hash[$offset + 3]) & 0xff);
+        // The HMAC and dynamic truncation are shared with SteamGuard, which
+        // renders the same value into a different alphabet entirely.
+        $val = Hotp::truncate($key, $counter);
 
         return str_pad((string) ($val % 1000000), 6, '0', STR_PAD_LEFT);
     }
