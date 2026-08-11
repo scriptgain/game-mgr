@@ -1105,6 +1105,65 @@ class CatalogueSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Deadlock',
+                'slug' => 'deadlock',
+                'category' => 'game',
+                'description' => 'Valve\'s Source 2 hero shooter. Invite only, and the only game here with no dedicated server build at all.',
+                'author' => 'GameMGR',
+                'icon' => 'target',
+                'cover_color' => '#7c2d12',
+                'templates' => [
+                    [
+                        'name' => 'Deadlock (Deadworks)',
+                        'default_port' => 27015,
+                        'default_protocol' => 'both',
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'both', 'port' => 27015],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port_offset' => 0],
+                        ],
+                        'author' => 'GameMGR',
+                        'description' => implode(' ', [
+                            'Valve ships no dedicated server for Deadlock, so this installs the GAME, app 1422450, about 40 GiB, with an account that owns it and runs it under Proton with a virtual display.',
+                            'It runs Deadworks rather than the stock binary, which is what makes server-side plugins possible: drop a compiled .dll into game/bin/win64/managed/plugins through the file manager.',
+                            'The host needs vm.max_map_count raised to 2147483642. Without it the server dies during startup with nothing that points at the cause, and the node page reports it.',
+                            'Budget 8 GiB of memory and four cores per instance. Deadlock is 6v6, so one instance is twelve slots, and with no GPU the rendering falls back to software even headless.',
+                            'Deadlock is invite only and there is no server browser: players join with connect <address> from the console.',
+                        ]),
+                        'runtime' => 'docker',
+                        'docker_images' => ['Deadworks 0.4.13' => 'ghcr.io/scriptgain/deadlock-proton:0.4.13'],
+
+                        // EVERYTHING under one root. The Docker driver binds a
+                        // single host path, and Proton, the .NET cache, the game
+                        // files and the Steam sentry all have to survive a
+                        // container being recreated. Point this at the image's
+                        // default /home/container and the server re-downloads
+                        // forty gigabytes every restart.
+                        'data_path' => '/home/steam',
+
+                        // The image has its own ENTRYPOINT and the driver
+                        // replaces it with /bin/sh -c <startup>, so the startup
+                        // command has to invoke it. Left as a game binary the
+                        // container starts, does nothing, and exits 0.
+                        'startup' => 'exec /usr/local/bin/entrypoint.sh',
+
+                        'steam_app_id' => 1422450,
+                        'steam_anonymous' => false,
+                        'requires_steam_account' => true,
+                        'rcon_supported' => true,
+                        'rcon_protocol' => 'source',
+                        'rcon_port_offset' => 0,
+                        'config_stop' => ['value' => 'quit'],
+                        'variables' => [
+                            ['name' => 'Map', 'env_variable' => 'SERVER_MAP', 'default_value' => 'dl_midtown', 'rules' => 'required|string|max:40', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Server Password', 'env_variable' => 'SERVER_PASSWORD', 'default_value' => '', 'rules' => 'nullable|alpha_dash|max:40', 'description' => 'Leave blank for an open server.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'RCON Password', 'env_variable' => 'RCON_PASSWORD', 'default_value' => '', 'rules' => 'nullable|alpha_dash|max:40', 'description' => 'RCON listens on the game port once this is set.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Extra Arguments', 'env_variable' => 'DEADWORKS_ARGS', 'default_value' => '', 'rules' => 'nullable|string|max:300', 'description' => 'Appended verbatim to the server command line.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Proton Version', 'env_variable' => 'PROTON_VERSION', 'default_value' => 'GE-Proton10-33', 'rules' => 'required|string|max:40', 'description' => 'Anything earlier than GE-Proton10-33 lacks the SteamClient interface this needs. Changing it re-downloads Proton on the next start.', 'user_viewable' => true, 'user_editable' => false],
+                        ],
+                    ],
+                ],
+            ],
+            [
                 'name' => 'Team Fortress 2',
                 'slug' => 'team-fortress-2',
                 'description' => 'Source 1 class shooter. Old, small and cheap to run, which makes it the best thing in this catalogue to test a node with.',
