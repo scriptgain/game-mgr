@@ -1,0 +1,1745 @@
+{
+    "7-days-to-die": {
+        "name": "7 Days To Die",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/7_days_to_die/egg-pterodactyl-7-days-to-die.json",
+        "sha256": "82364f473acff9e64b750fd6c90ad2d270b532b25bcc2af579073a7ba197ea4b",
+        "fetched_at": "2026-08-11"
+    },
+    "abiotic-factor": {
+        "name": "Abiotic Factor",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/abiotic_factor/egg-pterodactyl-abiotic-factor.json",
+        "sha256": "58cbfc7591c94c254d4f7d61cc90b4d3288b06e672e83d966ab2001df9566c51",
+        "fetched_at": "2026-08-11"
+    },
+    "altv": {
+        "name": "alt:V",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/altv/egg-pterodactyl-alt--v.json",
+        "sha256": "8006dde1c25e706c3b57fb2b147d34cd4b9f05dd7974ae4cc6f65b6452cb8dea",
+        "fetched_at": "2026-08-11"
+    },
+    "always-auth": {
+        "name": "Always Auth",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/alwaysauth/egg-pterodactyl-always-auth.json",
+        "sha256": "d9a390a45b32b9744d966e7432adc71b8c9621bf9b9b0662d1125683e9840770",
+        "fetched_at": "2026-08-11"
+    },
+    "american-truck-simulator-dedicated-server": {
+        "name": "American Truck Simulator Dedicated Server",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/truck-simulator/american-truck-simulator/egg-pterodactyl-american-truck-simulator-dedicated-server.json",
+        "sha256": "5032fab9ffb9cf54c6c78e91ffad572973bde98b048cdfe764c35602116f098c",
+        "fetched_at": "2026-08-11"
+    },
+    "among-us-impostor-server": {
+        "name": "Among Us - Impostor Server",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/among_us/impostor_server/egg-pterodactyl-among-us--impostor-server.json",
+        "sha256": "f86d20571d14de8ac34aefa35727e9e6401c99162001b545552b552721af073b",
+        "fetched_at": "2026-08-11"
+    },
+    "archean": {
+        "name": "Archean",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/archean/egg-pterodactyl-archean.json",
+        "sha256": "69207a3f7e21bade9e1111f37d4b99801cc443fb1fda8353dfe304f4892d0de2",
+        "fetched_at": "2026-08-11"
+    },
+    "ark-survival-ascended": {
+        "name": "ARK: Survival Ascended",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/ark_survival_ascended/egg-pterodactyl-a-r-k--survival-ascended.json",
+        "sha256": "bfaea51b4f407179348875bb64e358320f7f14a923a6c8f1556e0c2b631c8d7e",
+        "fetched_at": "2026-08-11"
+    },
+    "ark-survival-evolved": {
+        "name": "Ark: Survival Evolved",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/ark_survival_evolved/egg-pterodactyl-ark--survival-evolved.json",
+        "sha256": "8882b9482036b9dd5b7790ebcfcf99bfe37930df7088de0ffc29f0f6544bee1c",
+        "fetched_at": "2026-08-11"
+    },
+    "arma-3": {
+        "name": "Arma 3",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/arma/arma3/egg-pterodactyl-arma3.json",
+        "sha256": "80914ee29401a21c6bf923cec08df0377e3bef6cdea631612d1b30a71c572eba",
+        "fetched_at": "2026-08-11"
+    },
+    "arma-reforger": {
+        "name": "Arma Reforger",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/arma/arma_reforger/egg-pterodactyl-arma-reforger.json",
+        "sha256": "81d6194c865a7f2976e87269c3d6e0b93a3f3fed605ac254e42d18d5a40ff579",
+        "fetched_at": "2026-08-11"
+    },
+    "assaultcube": {
+        "name": "AssaultCube",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/cubeengine/assaultcube/egg-pterodactyl-assault-cube.json",
+        "sha256": "51e591bcc5a72b88baec1dd245db313b51ce9b32a008d613128ca9692d085b25",
+        "fetched_at": "2026-08-11"
+    },
+    "assetto-corsa": {
+        "name": "Assetto Corsa",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/assetto_corsa/egg-pterodactyl-assetto-corsa.json",
+        "sha256": "a2e2d6ac5eff271c8127bb1c6b860ff41220d32c068d01255fee34cd119d3136",
+        "fetched_at": "2026-08-11"
+    },
+    "assetto-corsa-freeroam-ai": {
+        "name": "Assetto Corsa (Freeroam + AI)",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/assetto_corsa/egg-pterodactyl-assetto-corsa--freeroam--a-i.json",
+        "sha256": "8a8ac15cddc92ce7faaeeb58918bb706aab4f24cb7e612c3d797b2f3e6433cf4",
+        "fetched_at": "2026-08-11"
+    },
+    "astro-colony": {
+        "name": "Astro Colony",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/astro_colony/egg-pterodactyl-astro-colony.json",
+        "sha256": "37e22e521fb83471341831e0213180acd617a1f5428781d85e166792b1b9eb52",
+        "fetched_at": "2026-08-11"
+    },
+    "astroneer-dedicated-server": {
+        "name": "Astroneer Dedicated Server",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/astroneer/egg-pterodactyl-astroneer-dedicated-server.json",
+        "sha256": "96389abbe6a6343884c7ad65fb28df1c21d84e01580b72c989801e7f52773885",
+        "fetched_at": "2026-08-11"
+    },
+    "attack-of-the-b-team": {
+        "name": "Attack of the B-Team",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/attack-of-the-bteam/egg-pterodactyl-attack-of-the-b--team.json",
+        "sha256": "c5d69c28823fa3517c6b76d3e5c9f8245403574943c875b50f0f16a9a3be279b",
+        "fetched_at": "2026-08-11"
+    },
+    "avorion": {
+        "name": "Avorion",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/avorion/egg-pterodactyl-avorion.json",
+        "sha256": "b9343e40537d376c4b6263d7637bef8c0023106686b7d47dec4be60c616098c3",
+        "fetched_at": "2026-08-11"
+    },
+    "banana-shooter": {
+        "name": "Banana Shooter",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/banana_shooter/pterodactyl-egg-banana-shooter.json",
+        "sha256": "c20f9d2285d2bfd0c254098714fa050329489581bf5e08ea6c87257c3cc14f46",
+        "fetched_at": "2026-08-11"
+    },
+    "barotrauma": {
+        "name": "Barotrauma",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/barotrauma/egg-pterodactyl-barotrauma.json",
+        "sha256": "c7612883dab23c7e1bb466f850d2e5f497891ed4dc507fb183bc164791adcc4f",
+        "fetched_at": "2026-08-11"
+    },
+    "battalion-legacy": {
+        "name": "BATTALION: Legacy",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/battalion_legacy/egg-pterodactyl-b-a-t-t-a-l-i-o-n--legacy.json",
+        "sha256": "08a6f2a02f7b7c251d6b17c38a14150fe26580370bd6f3cfe37a0294baae50dc",
+        "fetched_at": "2026-08-11"
+    },
+    "beammp-servers": {
+        "name": "BeamMP Servers",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/beamng/beammp/egg-pterodactyl-beam-m-p-servers.json",
+        "sha256": "74ae5a8b4bd9e51d7497886cd2c416a1ce717df88767870f360112d786c05f9c",
+        "fetched_at": "2026-08-11"
+    },
+    "bettercrewlink-server": {
+        "name": "BetterCrewlink Server",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/among_us/bettercrewlink_server/egg-pterodactyl-better-crewlink-server.json",
+        "sha256": "96cc41eddfd2bbaaaf234735c7ce431ff9cfd14f6729830b95f8ff706cf323c2",
+        "fetched_at": "2026-08-11"
+    },
+    "black-mesa": {
+        "name": "Black Mesa",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/black_mesa/egg-pterodactyl-black-mesa.json",
+        "sha256": "167e0a10d3aba137030a41d1cc38075cf154d4c7008191da441daca330e7ff14",
+        "fetched_at": "2026-08-11"
+    },
+    "blightfall": {
+        "name": "Blightfall",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/blightfall/egg-pterodactyl-blightfall.json",
+        "sha256": "30c80afcd071589791496fde62e2a0f7b31a2912dcdaf88c2e7991a3ad8b58d6",
+        "fetched_at": "2026-08-11"
+    },
+    "brickadia": {
+        "name": "Brickadia",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/brickadia/pterodactyl-egg-brickadia.json",
+        "sha256": "0f0a1e1db6a3d9782d0075fa533ee22c045514e2d969e0307456144dfa8185fc",
+        "fetched_at": "2026-08-11"
+    },
+    "bungeecord": {
+        "name": "Bungeecord",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/bungeecord/pterodactyl-egg-bungeecord.json",
+        "sha256": "13fcb6f711738507b8ca96abaa27903f69c8b8e01c3f27652f746b3f7107a926",
+        "fetched_at": "2026-08-11"
+    },
+    "citadel-forged-with-fire": {
+        "name": "Citadel: Forged with Fire",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/citadel/egg-pterodactyl-citadel--forged-with-fire.json",
+        "sha256": "9093d60ce064b725a861db3e66408ad29885f9a1e2b16302a22bf5c4d257c716",
+        "fetched_at": "2026-08-11"
+    },
+    "classicubemgc": {
+        "name": "ClassiCube(MGC)",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/classicube/mcgalaxy/egg-pterodactyl-classi-cube--m-g-c.json",
+        "sha256": "9d7cadea33c0a70dc9e7aaf09c29181e9565ac5fe7f38e54b4b8dc063c99bc7c",
+        "fetched_at": "2026-08-11"
+    },
+    "clone-hero": {
+        "name": "Clone Hero",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/clone_hero/egg-pterodactyl-clone-hero.json",
+        "sha256": "97183f164308e96e9b4bf2febb6b0956205bebbcda4abbfcbd556f7624610d69",
+        "fetched_at": "2026-08-11"
+    },
+    "clusterio": {
+        "name": "Clusterio",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/factorio/clusterio/egg-pterodactyl-clusterio.json",
+        "sha256": "fbea7bdaf64948e97863bd66ad278dfee0bfc85c8b671eb65414567a1005f442",
+        "fetched_at": "2026-08-11"
+    },
+    "colony-survival": {
+        "name": "Colony Survival",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/colony_survival/egg-pterodactyl-colony-survival.json",
+        "sha256": "1625bcb1916d66efd22dd823610248f5d11b1de0a93efa65f60355bf4c37a98e",
+        "fetched_at": "2026-08-11"
+    },
+    "conan-exiles": {
+        "name": "Conan Exiles",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/conan_exiles/pterodactyl-egg-conan-exiles-legacy.json",
+        "sha256": "4d052eb81e2b217f02c87e4fb7a9b2c5cfaff1e6ea039bba773d7dba84d534bd",
+        "fetched_at": "2026-08-11"
+    },
+    "conan-exiles-enhanced": {
+        "name": "Conan Exiles Enhanced",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/conan_exiles/pterodactyl-egg-conan-exiles-enhanced.json",
+        "sha256": "c8245dd231943a91548a6c684f4d837a8a88b5adacad2c3a7ddf0240117e276b",
+        "fetched_at": "2026-08-11"
+    },
+    "core-keeper": {
+        "name": "Core Keeper",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/core_keeper/egg-pterodactyl-core-keeper.json",
+        "sha256": "732ed8890cf65daf389a9125d662af4cd65e7f63bab14647f05def5151cbc26d",
+        "fetched_at": "2026-08-11"
+    },
+    "counter-strike-2": {
+        "name": "Counter-Strike 2",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/counter_strike/counter_strike_2/egg-pterodactyl-counter--strike2.json",
+        "sha256": "9d8b99bfecf416e5953779f6c69b76fba909da78e25e43d9add9d20539be99b4",
+        "fetched_at": "2026-08-11"
+    },
+    "counter-strike-source": {
+        "name": "Counter-Strike: Source",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/counter_strike/counter_strike_source/egg-pterodactyl-counter--strike--source.json",
+        "sha256": "5442515b38a6864f0cf49c357ffe75603ee0378eddd370fffedb063d29cc5206",
+        "fetched_at": "2026-08-11"
+    },
+    "craftopia": {
+        "name": "Craftopia",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/craftopia/egg-pterodactyl-craftopia.json",
+        "sha256": "56532ca0c1f78693abc0f6df612426efda7cac5b130071098c04b2c8ca119bd1",
+        "fetched_at": "2026-08-11"
+    },
+    "crewlink-server": {
+        "name": "Crewlink server",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/among_us/crewlink_server/egg-pterodactyl-crewlink-server.json",
+        "sha256": "a2ada2b2e0b7be8be2ce128b7fc8801302f698db10b499192241e833fc177f9a",
+        "fetched_at": "2026-08-11"
+    },
+    "cryofall": {
+        "name": "CryoFall",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/cryofall/egg-pterodactyl-cryo-fall.json",
+        "sha256": "55de262d4b5425e42e0367e4764d447a22125a8190a773af0b384e3b52e39bcd",
+        "fetched_at": "2026-08-11"
+    },
+    "cs2d": {
+        "name": "CS2D",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/cs2d/egg-pterodactyl-c-s2-d.json",
+        "sha256": "5bc3a47c70d64e52439c004934ce8208a708bb3873a5178a4c7327458abca668",
+        "fetched_at": "2026-08-11"
+    },
+    "cube-2-sauerbraten": {
+        "name": "Cube 2: Sauerbraten",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/cubeengine/cube2/egg-pterodactyl-cube2--sauerbraten.json",
+        "sha256": "fe3b9c5346faac03a06e35d6a7d482903d0fd2282d6333dabf1a9e6eb2501951",
+        "fetched_at": "2026-08-11"
+    },
+    "cuberite": {
+        "name": "Cuberite",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/cuberite/egg-pterodactyl-cuberite.json",
+        "sha256": "d146f7eeca90f8fcffdd3edfc291cdd8ce9e4b4af7ed0e0757df74e12b6c7233",
+        "fetched_at": "2026-08-11"
+    },
+    "cubic-odyssey": {
+        "name": "Cubic Odyssey",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/cubic_odyssey/pterodactyl-egg-cubic-odyssey.json",
+        "sha256": "94a0870d52e79e6f111c754babf6963605acaa6b40f7c0d138be180fee6794a6",
+        "fetched_at": "2026-08-11"
+    },
+    "curseforge-generic": {
+        "name": "CurseForge Generic",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/curseforge/egg-pterodactyl-curse-forge-generic.json",
+        "sha256": "16f3d959301e4a23806a00fcc22332854ee1c00566777b2438dd2363759fda84",
+        "fetched_at": "2026-08-11"
+    },
+    "custom-hlds-engine-game": {
+        "name": "Custom HLDS Engine Game",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/hlds_server/vanilla/egg-pterodactyl-custom-h-l-d-s-engine-game.json",
+        "sha256": "fcc84c4e541f190bc93944d7c87a50f303275f931f0c73250fa2a4a9bb6d2afa",
+        "fetched_at": "2026-08-11"
+    },
+    "custom-rehlds-engine-game": {
+        "name": "Custom ReHLDS Engine Game",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/hlds_server/rehlds/egg-pterodactyl-custom-re-h-l-d-s-engine-game.json",
+        "sha256": "e3b7042b9fc9656f8d32c57b720bfb61c1a29b352cfa4c7739fdfb3581dab4a5",
+        "fetched_at": "2026-08-11"
+    },
+    "dayz": {
+        "name": "DayZ",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/dayz/egg-pterodactyl-day-z.json",
+        "sha256": "efa91a0d2b86c31dbfa5abf20604e42de787c0f46068ad18c90e9ac397bc8bf2",
+        "fetched_at": "2026-08-11"
+    },
+    "ddnet": {
+        "name": "DDNet",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/ddnet/egg-pterodactyl-d-d-net.json",
+        "sha256": "8733a8cb201de84e0278f7557d2f685665e89906c90893b629626e9aa9d1e10a",
+        "fetched_at": "2026-08-11"
+    },
+    "ddracenetwork": {
+        "name": "DDRaceNetwork",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/ddracenetwork/egg-pterodactyl-d-d-race-network.json",
+        "sha256": "bbbb8515b063ef6c021f05f8e979608bd50ffe711baaabcec9418598f26e655e",
+        "fetched_at": "2026-08-11"
+    },
+    "dead-matter": {
+        "name": "Dead Matter",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/dead_matter/egg-pterodactyl-dead-matter.json",
+        "sha256": "053e912300c89c8c73b456f2de76b8e065a7f70ac2c4c1d48d1244f8320a7e0a",
+        "fetched_at": "2026-08-11"
+    },
+    "dont-starve-together": {
+        "name": "Don't Starve Together",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/dont_starve/egg-pterodactyl-don-t-starve-together.json",
+        "sha256": "fed98480bcff3a91e9a1a24a226d6c699d915d035adfa6d78fa941a21723a4a3",
+        "fetched_at": "2026-08-11"
+    },
+    "eco": {
+        "name": "Eco",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/eco/egg-pterodactyl-eco.json",
+        "sha256": "b162df0089fc19d7d551a6b02c26144bd2d0729107918c895ef6ea5247e39a8c",
+        "fetched_at": "2026-08-11"
+    },
+    "empyrion-galactic-survival": {
+        "name": "Empyrion: Galactic Survival",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/empyrion/egg-pterodactyl-empyrion--galactic-survival.json",
+        "sha256": "2dbb609afb42c940be3ef0d8dd22a8084fb33a14330306e3767f0e60f20b43b9",
+        "fetched_at": "2026-08-11"
+    },
+    "enshrouded": {
+        "name": "Enshrouded",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/enshrouded/egg-pterodactyl-enshrouded.json",
+        "sha256": "50e03286e68f9e2ecad51486fb506c85e1ea97aff00b09dce6d9916c407293c9",
+        "fetched_at": "2026-08-11"
+    },
+    "et-legacy": {
+        "name": "ET Legacy",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/wolfenstein_enemy_territory/etlegacy/egg-pterodactyl-e-t-legacy.json",
+        "sha256": "6098462bac0b2b082d3d6a98717828928ac482a8b6220cc11d08a559d4528145",
+        "fetched_at": "2026-08-11"
+    },
+    "euro-truck-simulator-2-dedicated-server": {
+        "name": "Euro Truck Simulator 2 Dedicated server",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/truck-simulator/euro-truck-simulator2/egg-pterodactyl-euro-truck-simulator2-dedicated-server.json",
+        "sha256": "9d39797be5531262016829180d076ea85958aaa751885a290ffab8965f856663",
+        "fetched_at": "2026-08-11"
+    },
+    "fabric": {
+        "name": "Fabric",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/fabric/egg-pterodactyl-fabric.json",
+        "sha256": "0e06c53cd9877276c9e73540d4bdb072d6301889dba2b1ce51f60fac8bd82994",
+        "fetched_at": "2026-08-11"
+    },
+    "factorio": {
+        "name": "Factorio",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/factorio/factorio/egg-pterodactyl-factorio.json",
+        "sha256": "8aee840b97ffc8e89c6b9d2e318140760031c814882a22e892debf76ed469ea0",
+        "fetched_at": "2026-08-11"
+    },
+    "factorio-arm64": {
+        "name": "Factorio ARM64",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/factorio/factorio/egg-pterodactyl-factorio-a-r-m64.json",
+        "sha256": "7bc19872f6abf9ed9156bc66665be4bcc2238f6bee6b5129ab92f3bc50d7c874",
+        "fetched_at": "2026-08-11"
+    },
+    "factorio-modupdate": {
+        "name": "Factorio-ModUpdate",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/factorio/factorio-modupdate/egg-pterodactyl-factorio--mod-update.json",
+        "sha256": "9f23d8f05655171f93518000ee887284385c4a7093389ba053f5fe923f397330",
+        "fetched_at": "2026-08-11"
+    },
+    "feed-the-beast": {
+        "name": "Feed the Beast",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/ftb/outdated/egg-pterodactyl-feed-the-beast.json",
+        "sha256": "b5aff2d32355f806e3dcdd1db5606418e05bb13e698550f6fc32bd6f444cec28",
+        "fetched_at": "2026-08-11"
+    },
+    "fivem": {
+        "name": "FiveM",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/fivem/egg-pterodactyl-five-m.json",
+        "sha256": "44f470286e86211376586161b897df89161d9d055d3edd67a43b84a1fc5e0978",
+        "fetched_at": "2026-08-11"
+    },
+    "fof": {
+        "name": "Fof",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/fof/egg-pterodactyl-fof.json",
+        "sha256": "881bf545a31ccb0dc7c5ec28f9a578cd652176e7db73948fce7673eac9193e41",
+        "fetched_at": "2026-08-11"
+    },
+    "folia": {
+        "name": "Folia",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/folia/egg-pterodactyl-folia.json",
+        "sha256": "3205e75ce7b495d187eb46dd9cf71a511a1c8935518e12403b1e7dc4423824c2",
+        "fetched_at": "2026-08-11"
+    },
+    "forge-minecraft": {
+        "name": "Forge Minecraft",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/forge/pterodactyl-egg-forge-minecraft.json",
+        "sha256": "58a0c50686dd8ca334ac367e25af751eff0074dc5ad52362b3dfe7833a03cf97",
+        "fetched_at": "2026-08-11"
+    },
+    "foundry": {
+        "name": "Foundry",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/foundry/egg-pterodactyl-foundry.json",
+        "sha256": "6f11abf47363858ab0a958ac761c16fadf7dc3b3bb4b072ec2abfbacf35e57df",
+        "fetched_at": "2026-08-11"
+    },
+    "foundry-vtt": {
+        "name": "Foundry VTT",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/foundry_vtt/egg-pterodactyl-foundry-v-t-t.json",
+        "sha256": "985bc6f27d1d433b79dd99e1d1d31db6ace6d3bea7b6509960b1c8ff1a293f2c",
+        "fetched_at": "2026-08-11"
+    },
+    "frozen-flame": {
+        "name": "Frozen Flame",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/frozen_flame/egg-pterodactyl-frozen-flame.json",
+        "sha256": "5223221784011fbb858c62dd9ea65b26ada5e35071f27f73d217c53d9018a74b",
+        "fetched_at": "2026-08-11"
+    },
+    "ftb-modpacksch-server": {
+        "name": "FTB-modpacks.ch Server",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/ftb/outdated/egg-pterodactyl-f-t-b-modpacks-ch-server.json",
+        "sha256": "c80d725d44d3e7cc1b0dfca5937e61d430986aea4958eb995132753a183f87af",
+        "fetched_at": "2026-08-11"
+    },
+    "ftb-revelation": {
+        "name": "FTB Revelation",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/ftb/outdated/egg-pterodactyl-f-t-b-revelation.json",
+        "sha256": "d84d878a4d26fc57a0116b02f75dacd444c19d72d79ed3215644e31abf6268fd",
+        "fetched_at": "2026-08-11"
+    },
+    "ftb-server": {
+        "name": "FTB Server",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/ftb/egg-pterodactyl-f-t-b-server.json",
+        "sha256": "0b30e912d208d1d46cbfc7cea8dbb5b0ef771c94d9ea2651bd47a8372ff9b874",
+        "fetched_at": "2026-08-11"
+    },
+    "garrys-mod-reworked": {
+        "name": "Garry's Mod - Reworked",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/gmod/egg-pterodactyl-garry-s-mod--reworked.json",
+        "sha256": "61c8d2a4d0f668205110938d1f4d476f442a7a4a1b142c0cc82023529055a039",
+        "fetched_at": "2026-08-11"
+    },
+    "glowstone": {
+        "name": "Glowstone",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/glowstone/egg-pterodactyl-glowstone.json",
+        "sha256": "5ac5a1c2a545a18b5d2b64123a4334c4883938aa9d9adc9b03d7ee68a67b287f",
+        "fetched_at": "2026-08-11"
+    },
+    "gomint": {
+        "name": "GoMint",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/gomint/egg-pterodactyl-go-mint.json",
+        "sha256": "4ec7201fd2f86e2d3523af277cc160838428743ede3cb5c197414d63f667a04a",
+        "fetched_at": "2026-08-11"
+    },
+    "grand-theft-auto-connected": {
+        "name": "Grand Theft Auto Connected",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/gtac/egg-pterodactyl-grand-theft-auto-connected.json",
+        "sha256": "0ea78ef795bf3363bf4d2f73a8416ea5f4b03b6f5f0c8e699071a180f07fd6cb",
+        "fetched_at": "2026-08-11"
+    },
+    "ground-branch": {
+        "name": "Ground Branch",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/ground_branch/egg-pterodactyl-ground-branch.json",
+        "sha256": "f6e52c31efcbfb622c7215f4c82ab517a4537ec01270c163cd6ed901023e7566",
+        "fetched_at": "2026-08-11"
+    },
+    "hexxit": {
+        "name": "Hexxit",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/hexxit/egg-pterodactyl-hexxit.json",
+        "sha256": "5777dbe25dcfea97842d13d9894518f98fe7c394726a98ebc35d97f445ad03ae",
+        "fetched_at": "2026-08-11"
+    },
+    "hogwarp": {
+        "name": "Hogwarp",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/hogwarp/egg-pterodactyl-hogwarp.json",
+        "sha256": "2942035005a7eae1ca68e1608000765f462192068308e018b0bbcf708b49f4fb",
+        "fetched_at": "2026-08-11"
+    },
+    "holdfast-naw": {
+        "name": "Holdfast NaW",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/holdfast/egg-pterodactyl-holdfast-na-w.json",
+        "sha256": "d364584f2faf88404e31dac4f5bd393b0cf64bc8f52abf75e60d8a2e623cc91c",
+        "fetched_at": "2026-08-11"
+    },
+    "humanitz": {
+        "name": "HumanitZ",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/humanitz/egg-pterodactyl-humanit-z.json",
+        "sha256": "e7119c6be46044c44e640c7b5b70fa266564d1e3d1961019d447c1edcd9926a4",
+        "fetched_at": "2026-08-11"
+    },
+    "hurtworld": {
+        "name": "Hurtworld",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/hurtworld/egg-pterodactyl-hurtworld.json",
+        "sha256": "8abaaf1be2285942572eb5cae634c8eec757442a6593dafef0e4367548f5fdcf",
+        "fetched_at": "2026-08-11"
+    },
+    "hytale": {
+        "name": "Hytale",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/hytale/pterodactyl-egg-hytale.json",
+        "sha256": "225f038a2273f01897d3152c0ae175c6ce181366b881fc572da52de970b39b24",
+        "fetched_at": "2026-08-11"
+    },
+    "icarus": {
+        "name": "Icarus",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/icarus/pterodactyl-egg-icarus.json",
+        "sha256": "41bc3a39f57f541fd49a35bd4d5faa4042cedf903e74332ce5620fe604922934",
+        "fetched_at": "2026-08-11"
+    },
+    "insurgency-sandstorm": {
+        "name": "Insurgency: Sandstorm",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/insurgency_sandstorm/egg-pterodactyl-insurgency--sandstorm.json",
+        "sha256": "8911e89175442cbe0070bdb5106c3fba6aa8a2fc2b618b44bfcb650df6fe7800",
+        "fetched_at": "2026-08-11"
+    },
+    "iosoccer-server": {
+        "name": "Iosoccer server",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/iosoccer/egg-pterodactyl-iosoccer-server.json",
+        "sha256": "42cd543d5595295001d9c3378085861cd2a98e3cee7446c0b60fcb7c87e18340",
+        "fetched_at": "2026-08-11"
+    },
+    "ketting": {
+        "name": "Ketting",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/ketting/egg-pterodactyl-ketting.json",
+        "sha256": "bb6f5b58aebe5d61255d31fedd3bf18974c26ddff88b8fdfee53cfd3c24725da",
+        "fetched_at": "2026-08-11"
+    },
+    "killing-floor-2": {
+        "name": "Killing Floor 2",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/killing_floor_2/egg-pterodactyl-killing-floor2.json",
+        "sha256": "5687e4616fbf0ada4102983e912e0f9bdae3d1d22c3fad414ec723a548069dbe",
+        "fetched_at": "2026-08-11"
+    },
+    "kissmp-server": {
+        "name": "KissMP Server",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/beamng/kissmp/egg-pterodactyl-kiss-m-p-server.json",
+        "sha256": "d298273aa644fa36c3c823bc8874a50f9ec6434b01f9dd5f306dc3bd0dacbda4",
+        "fetched_at": "2026-08-11"
+    },
+    "krypton": {
+        "name": "Krypton",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/krypton/egg-pterodactyl-krypton.json",
+        "sha256": "507449e94e4e8d35baab7c3e7e9642c0d2679d40636f41e0bf38840d23a2fb2d",
+        "fetched_at": "2026-08-11"
+    },
+    "ksp-dmp": {
+        "name": "KSP DMP",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/ksp/egg-pterodactyl-k-s-p-d-m-p.json",
+        "sha256": "d74a3ea3a30030fa3b5e66e4d50604ae7bff958021f0950c5cd8d9fe54a289ba",
+        "fetched_at": "2026-08-11"
+    },
+    "lac-online-public-server": {
+        "name": "LAC-Online Public Server",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/losangelescrimes/egg-pterodactyl-l-a-c--online-public-server.json",
+        "sha256": "04409e363abf843d53d22577938edc66ca3b4acfcfea590291cbd73801be0e68",
+        "fetched_at": "2026-08-11"
+    },
+    "leaguesandbox": {
+        "name": "LeagueSandbox",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/leaguesandbox/egg-pterodactyl-league-sandbox.json",
+        "sha256": "681d6b3d96689006a3a2774821061e2538e7356177b965b8b7124e0e5821f010",
+        "fetched_at": "2026-08-11"
+    },
+    "left-4-dead": {
+        "name": "Left 4 Dead",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/left4dead/egg-pterodactyl-left4-dead.json",
+        "sha256": "543f922505a23672846077422876dc306be4a2b65d183931ebb4e915ea81079d",
+        "fetched_at": "2026-08-11"
+    },
+    "left-4-dead-2": {
+        "name": "Left 4 Dead 2",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/left4dead_2/egg-pterodactyl-left4-dead2.json",
+        "sha256": "c5d2fbbabf6b46585d1130e0485cebbeff7dc4970b330fa538d4d7fa728c6219",
+        "fetched_at": "2026-08-11"
+    },
+    "limbo": {
+        "name": "Limbo",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/limbo/egg-pterodactyl-limbo.json",
+        "sha256": "660afeecfad2f15ce2f1a5123aab3fba2ca91382cdf24c4c07532c71e12dfe88",
+        "fetched_at": "2026-08-11"
+    },
+    "liteloader-bedrock-dedicated-server": {
+        "name": "Liteloader Bedrock Dedicated Server",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/LiteLoader-bedrock/egg-pterodactyl-liteloader-bedrock-dedicated-server.json",
+        "sha256": "0568f6a82f0d14072c0f973b26d002b3fd27cc7d3b95b19a52f62245fdb8cdf3",
+        "fetched_at": "2026-08-11"
+    },
+    "longvinter": {
+        "name": "Longvinter",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/longvinter/egg-pterodactyl-longvinter.json",
+        "sha256": "bfff912a73b6c9d3a3f56193234363d2248b3adc95085127941d65d054f52a40",
+        "fetched_at": "2026-08-11"
+    },
+    "magma": {
+        "name": "Magma",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/magma/egg-pterodactyl-magma.json",
+        "sha256": "652658a5979f51c9ccc46f76fda9fc9193e3f406f94898135a0ab0b735866c9f",
+        "fetched_at": "2026-08-11"
+    },
+    "midnight-ghost-hunt": {
+        "name": "Midnight Ghost Hunt",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/midnight_ghost_hunt/egg-pterodactyl-midnight-ghost-hunt.json",
+        "sha256": "d1d25e2584e0820f16c6e99d76c56eb1763afa56b03f03dce07abaf284fb915e",
+        "fetched_at": "2026-08-11"
+    },
+    "mindustry": {
+        "name": "Mindustry",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/mindustry/egg-pterodactyl-mindustry.json",
+        "sha256": "eedbd6996b12970328029ca1885bc5e74a3c237f1699d5187b86d779ff24f285",
+        "fetched_at": "2026-08-11"
+    },
+    "minetest": {
+        "name": "Minetest",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/minetest/egg-pterodactyl-minetest.json",
+        "sha256": "018d3e55e4e7333cad40c155cd2eb9c43357c017c64d4dcac9edff6b5c1d5202",
+        "fetched_at": "2026-08-11"
+    },
+    "modiverse": {
+        "name": "Modiverse",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/modiverse/egg-pterodactyl-modiverse.json",
+        "sha256": "eb15f3cf54bbb59ce42033348d46284723d8da126f727330a1e6fff065619bd7",
+        "fetched_at": "2026-08-11"
+    },
+    "modrinth-generic": {
+        "name": "Modrinth Generic",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/modrinth/egg-pterodactyl-modrinth-generic.json",
+        "sha256": "06b29a95b6cfd917af620d72dfdc813b31421c743d2bb0228af13369a2378952",
+        "fetched_at": "2026-08-11"
+    },
+    "mohaa": {
+        "name": "mohaa",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/mohaa/egg-pterodactyl-mohaa.json",
+        "sha256": "08157caff544ed5df27ced6d869afdc065fd1f1d85b9fec7d3e8b87b8b796f46",
+        "fetched_at": "2026-08-11"
+    },
+    "mohistmc": {
+        "name": "MohistMC",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/mohist/egg-pterodactyl-mohist.json",
+        "sha256": "bb9d7cd6d987ced357adb2788c9f65ae39ccb453fb4304c7c52dc5cc529730f2",
+        "fetched_at": "2026-08-11"
+    },
+    "mordhau": {
+        "name": "Mordhau",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/mordhau/egg-pterodactyl-mordhau.json",
+        "sha256": "32a68b2ad64d047e965ad5bcdadf6f278ba60399ddf4c68d92c39a5c7b021eae",
+        "fetched_at": "2026-08-11"
+    },
+    "mordhau-wine": {
+        "name": "Mordhau Wine",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/mordhau/egg-pterodactyl-mordhau-wine.json",
+        "sha256": "ab62026b47d5e49f701f2ae28923f38c44d02afee4e33810f76839f8c9c30957",
+        "fetched_at": "2026-08-11"
+    },
+    "mount-blade-ii-bannerlord": {
+        "name": "Mount & Blade II: Bannerlord",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/mount_blade_II_bannerlord/egg-pterodactyl-mount--blade-i-i--bannerlord.json",
+        "sha256": "7e03c9af22a5ad4f0e0c14ebeb965b5ad2a2c4f82f080498627a8bc809cf5a46",
+        "fetched_at": "2026-08-11"
+    },
+    "multi-theft-auto": {
+        "name": "Multi Theft Auto",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/mtasa/egg-pterodactyl-multi-theft-auto.json",
+        "sha256": "b2af5b9935b22d7ad9527dfa23e8d3a7235263c4026d4f707c31598e5c964ba0",
+        "fetched_at": "2026-08-11"
+    },
+    "mumble-server": {
+        "name": "Mumble Server",
+        "category": "Voice",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/voice/refs/heads/main/mumble/egg-pterodactyl-mumble-server.json",
+        "sha256": "d745977c2dc8b5e7a8285dd8f5cdc081c4ea6f038c6266f813d493f71c94be8a",
+        "fetched_at": "2026-08-11"
+    },
+    "myth-of-empires": {
+        "name": "Myth of Empires",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/myth_of_empires/egg-pterodactyl-myth-of-empires.json",
+        "sha256": "af1d17c0ecbf4502a4d34c5a51c1b3e7706622d020bfb9d4686a784dd9f70929",
+        "fetched_at": "2026-08-11"
+    },
+    "nanolimbo": {
+        "name": "NanoLimbo",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/nanolimbo/egg-pterodactyl-nano-limbo.json",
+        "sha256": "319a89e74074306b1e78b98f2161e176f0b9bb74bcff00af8a904bde54fd834c",
+        "fetched_at": "2026-08-11"
+    },
+    "nazi-zombies-portable": {
+        "name": "Nazi Zombies: Portable",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/nazi_zombies_portable/egg-pterodactyl-nazi-zombies--portable.json",
+        "sha256": "b6562550d0ccb544d7ed21dbc773b8d44659b32f2970778934b7d854d4b7c0c2",
+        "fetched_at": "2026-08-11"
+    },
+    "necesse": {
+        "name": "Necesse",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/necesse/egg-pterodactyl-necesse.json",
+        "sha256": "297daf53e7e811a0a6edd84937d2b55b38098a433c677ac07091c9bed3a260c1",
+        "fetched_at": "2026-08-11"
+    },
+    "neoforge": {
+        "name": "NeoForge",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/neoforge/egg-pterodactyl-neo-forge.json",
+        "sha256": "1c13510d9fd6557113fceac58c1fb16228a2014e18d9edc4a38df4cac3af0cc5",
+        "fetched_at": "2026-08-11"
+    },
+    "neosvr": {
+        "name": "NeosVR",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/neosvr/egg-pterodactyl-neos-v-r.json",
+        "sha256": "75dabc9b90ecead62b94d0062315136bb4b0734b428648a3eae30099c45814e8",
+        "fetched_at": "2026-08-11"
+    },
+    "neverwinter-nights-enhanced-edition": {
+        "name": "Neverwinter Nights: Enhanced Edition",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/neverwinter_nights_ee/egg-pterodactyl-neverwinter-nights--enhanced-edition.json",
+        "sha256": "ca648b20b540e033787ca5f3fee55cab2bd08b544e9254d7a65c775df08af15d",
+        "fetched_at": "2026-08-11"
+    },
+    "night-of-the-dead": {
+        "name": "Night Of The Dead",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/night_of_the_dead/egg-pterodactyl-night-of-the-dead.json",
+        "sha256": "b401e066a9769661b513aa5e720fb6fe562a85c3fb01421f71460f07478725db",
+        "fetched_at": "2026-08-11"
+    },
+    "nightingale": {
+        "name": "Nightingale",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/nightingale/pterodactyl-egg-nightingale.json",
+        "sha256": "b25024b1764ba8bb7c3466af16ba8eadb9f679a714b6a65bdc06fa440fd2df87",
+        "fetched_at": "2026-08-11"
+    },
+    "nmrih": {
+        "name": "nmrih",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/nmrih/egg-pterodactyl-nmrih.json",
+        "sha256": "f810be2147222ccfda9b0f065e8758ceed7d853f1031fefca344ac0982e235df",
+        "fetched_at": "2026-08-11"
+    },
+    "no-love-lost": {
+        "name": "No Love Lost",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/no_love_lost/egg-pterodactyl-no-love-lost.json",
+        "sha256": "1702a5590045a784c7ba899d3e1a8082dd444d90ea5fd7a5b3116dc100252aed",
+        "fetched_at": "2026-08-11"
+    },
+    "no-one-survived": {
+        "name": "No One Survived",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/no_one_survived/egg-pterodactyl-no-one-survived.json",
+        "sha256": "f316235cc1d0d434f897b77a177a582d36871bf45c9e17d58127552df9038722",
+        "fetched_at": "2026-08-11"
+    },
+    "nova-life-amboise": {
+        "name": "Nova-Life: Amboise",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/novalife_amboise/egg-pterodactyl-nova--life--amboise.json",
+        "sha256": "abbe5075f348eca6d42d839d984133312d312ca2be538257f58683d57cdc7213",
+        "fetched_at": "2026-08-11"
+    },
+    "nukkit": {
+        "name": "Nukkit",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/nukkit/egg-pterodactyl-nukkit.json",
+        "sha256": "3db6f6966d3e440acbb8c4390eb3f151ec7cbc3aaac3916fc7db01e6d3a007c5",
+        "fetched_at": "2026-08-11"
+    },
+    "one-hour-one-life": {
+        "name": "One Hour One Life",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/OneHourOneLife/pterodactyl-egg-one-hour-one-life.json",
+        "sha256": "b5c3784d8eb2e7cc26bf46432d8c0c97f90d8e3ce2cc854d578c31fb4948666b",
+        "fetched_at": "2026-08-11"
+    },
+    "onset": {
+        "name": "Onset",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/onset/egg-pterodactyl-onset.json",
+        "sha256": "38a32b77de26cf3dd0ebc8a6a065ab4c19257f12e183b08e5a50aeac02ce323a",
+        "fetched_at": "2026-08-11"
+    },
+    "open-fortress": {
+        "name": "Open Fortress",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/open_fortress/egg-pterodactyl-open-fortress.json",
+        "sha256": "74dd09b0ddd23a8ae505ff0e8e8266bd8b16e3c4c6238cad0563dc035f615e5f",
+        "fetched_at": "2026-08-11"
+    },
+    "openarena": {
+        "name": "OpenArena",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openarena/egg-pterodactyl-open-arena.json",
+        "sha256": "ef0a8e8398fc769a987c80bdbb37f24749d7c98d396c0f1cdab7101cd8e844e6",
+        "fetched_at": "2026-08-11"
+    },
+    "openmp": {
+        "name": "OpenMP",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/openmp/egg-pterodactyl-open-m-p.json",
+        "sha256": "7db06f02afc7603e3339de656fc02e36ec2bb6b4b1bf32c9bb341cc2fbefe220",
+        "fetched_at": "2026-08-11"
+    },
+    "openra": {
+        "name": "OpenRA",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openra/openra_red_alert/egg-pterodactyl-open-r-a.json",
+        "sha256": "0bb2b8b04f95a6c0af3580f062d8356beb16ed8e6af5d573fb4ff3beff03f2a5",
+        "fetched_at": "2026-08-11"
+    },
+    "openra-dune2000": {
+        "name": "OpenRA - Dune2000",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openra/openra_dune2000/egg-pterodactyl-open-r-a--dune2000.json",
+        "sha256": "c4a70c45d39b8a69f3da182f3cbaf052b0d62f04a1d106e72f7ca6e58c2c7ffa",
+        "fetched_at": "2026-08-11"
+    },
+    "openra-tiberian-dawn": {
+        "name": "OpenRA - Tiberian Dawn",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openra/openra_tiberian_dawn/egg-pterodactyl-open-r-a--tiberian-dawn.json",
+        "sha256": "76e5c0a571edc280daf438b6d97330748e6096186466e5aff3e1426c5e2b829a",
+        "fetched_at": "2026-08-11"
+    },
+    "openrct2": {
+        "name": "OpenRCT2",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openrct2/egg-pterodactyl-open-r-c-t2.json",
+        "sha256": "3dd90ebad526b5241a837b726be0d063d414df62101b96f0b11d19a6e1d46a5b",
+        "fetched_at": "2026-08-11"
+    },
+    "openttd": {
+        "name": "OpenTTD",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/openttd/egg-pterodactyl-open-t-t-d-server.json",
+        "sha256": "1b0f6b0ca1c2dfa043e1d316438442215023a738f15add731b06b8081cea15f0",
+        "fetched_at": "2026-08-11"
+    },
+    "operation-harsh-doorstop": {
+        "name": "Operation Harsh Doorstop",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/operation_harsh_doorstop/egg-pterodactyl-operation-harsh-doorstop.json",
+        "sha256": "b49380cdc53997838b6c706fac794327e189e2ae1a95190c889c408cdfdbcf29",
+        "fetched_at": "2026-08-11"
+    },
+    "palworld": {
+        "name": "Palworld",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/palworld/egg-pterodactyl-palworld.json",
+        "sha256": "a0eca9803d2321733cef8824627e5e388be4fd917c88914684ec1cccb78b6946",
+        "fetched_at": "2026-08-11"
+    },
+    "palworld-proton": {
+        "name": "Palworld Proton",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/palworld/egg-pterodactyl-palworld-proton.json",
+        "sha256": "43adddf590c9c4a6706dd76fc895c50321f35db37d0b978b235fea7f4a87d8e1",
+        "fetched_at": "2026-08-11"
+    },
+    "paper": {
+        "name": "Paper",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/paper/pterodactyl-egg-paper.json",
+        "sha256": "7f6796b4b5fcee550399d8aa42a742edcd5b01e0e026e58b1642415fb84eee57",
+        "fetched_at": "2026-08-11"
+    },
+    "path-of-titans": {
+        "name": "Path Of Titans",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/path_of_titans/egg-pterodactyl-path-of-titans.json",
+        "sha256": "31c2724ce0fffaf7c520cc6acba29eb6bee8c976db55916b2d824f6edd0f0f20",
+        "fetched_at": "2026-08-11"
+    },
+    "pavlov-vr": {
+        "name": "Pavlov VR",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/pavlov_vr/egg-pterodactyl-pavlov-v-r.json",
+        "sha256": "8132c73c984be876dfb1ed5d8daebbf5be9e689139a20a3c53f8b46b4b2fd01f",
+        "fetched_at": "2026-08-11"
+    },
+    "pixark": {
+        "name": "PixARK",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/pixark/egg-pterodactyl-pix-a-r-k.json",
+        "sha256": "d7b3dc36808ee164eff3bc763e42e0166ca6e0137313fa02b053c46699c25414",
+        "fetched_at": "2026-08-11"
+    },
+    "pocketminemp": {
+        "name": "PocketmineMP",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/pocketmine_mp/egg-pterodactyl-pocketmine-m-p.json",
+        "sha256": "1029350c7055e36b4c89bf84420751f3b62db733fb40baf724d4223e81ead1cf",
+        "fetched_at": "2026-08-11"
+    },
+    "portal-knights": {
+        "name": "Portal Knights",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/portal_knights/egg-pterodactyl-portal-knights.json",
+        "sha256": "175bf4719591233e5a5522e2bee470acc951be463c3629476a42c2879531e44e",
+        "fetched_at": "2026-08-11"
+    },
+    "post-scriptum": {
+        "name": "Post Scriptum",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/post_scriptum/egg-pterodactyl-post-scriptum.json",
+        "sha256": "107e9cd0b53f6b65c6f2f2019c6b64cd880cf18ec3de946b0ece0fbd4e19ccdf",
+        "fetched_at": "2026-08-11"
+    },
+    "powernukkitx": {
+        "name": "PowerNukkitX",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/PowerNukkitX/egg-pterodactyl-power-nukkit-x.json",
+        "sha256": "91194dcac5c6e6a5cfe7d34d296fe42aee3db130cc85aa057cfe8e36f19c72df",
+        "fetched_at": "2026-08-11"
+    },
+    "project-zomboid": {
+        "name": "Project Zomboid",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/project_zomboid/egg-pterodactyl-project-zomboid.json",
+        "sha256": "9a62501a7d313e7e2f20534ed448267d91eb9d1d297592256949a127c63d3926",
+        "fetched_at": "2026-08-11"
+    },
+    "purpur": {
+        "name": "Purpur",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/purpur/egg-pterodactyl-purpur.json",
+        "sha256": "2ffacd62882c5627e790242316bbdb3e61373a49793bc23b4a1ac992212a5a66",
+        "fetched_at": "2026-08-11"
+    },
+    "purpur-geyser-floodgate": {
+        "name": "Purpur-Geyser-Floodgate",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/crossplay/purpur-geysermc-floodgate/egg-pterodactyl-purpur--geyser--floodgate.json",
+        "sha256": "36bb1fc955c787a1dfd1a107d714be8fcde20ec891ba71314b0a74af4cfa2851",
+        "fetched_at": "2026-08-11"
+    },
+    "qanga": {
+        "name": "QANGA",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/qanga/egg-pterodactyl-q-a-n-g-a.json",
+        "sha256": "022a564e3986836e0e3bdcdd55a1c09984215529b3b8041c21a8e2130d006ce7",
+        "fetched_at": "2026-08-11"
+    },
+    "quake-live": {
+        "name": "Quake Live",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/quake_live/egg-pterodactyl-quake-live.json",
+        "sha256": "39d0cca6b0e9cf6e3dadae816a63478f4a2f10a97ed5ffea70b84b8a202a49f3",
+        "fetched_at": "2026-08-11"
+    },
+    "quilt": {
+        "name": "Quilt",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/quilt/egg-pterodactyl-quilt.json",
+        "sha256": "3b4fac03b873541b174acc48800a33c42b6433afe43880ca839fe9437f2fe195",
+        "fetched_at": "2026-08-11"
+    },
+    "ragecoop": {
+        "name": "RageCOOP",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/ragecoop/egg-pterodactyl-rage-c-o-o-p.json",
+        "sha256": "c2ab563b8d83cfbbf73f5e0af928afaf41d7fae492b1ef139344be01a9f4351c",
+        "fetched_at": "2026-08-11"
+    },
+    "ragemp": {
+        "name": "Rage.MP",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/ragemp/egg-pterodactyl-rage--m-p.json",
+        "sha256": "4e543378b431b8151ee47f3a76a179b34d984dc5380520c4d258ce97db6ba040",
+        "fetched_at": "2026-08-11"
+    },
+    "redm": {
+        "name": "RedM",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/rdr/redm/egg-pterodactyl-red-m.json",
+        "sha256": "f67b353f7dd55e9b1ab8f923d8f6a7086e0e4b8ec8548afa9047d47dc2ec7db8",
+        "fetched_at": "2026-08-11"
+    },
+    "resonite": {
+        "name": "Resonite",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/resonite/egg-pterodactyl-resonite.json",
+        "sha256": "d10e71b039a4e2c7c64ba69842c69ed8167048d0d385a53203a16b81dafc6e75",
+        "fetched_at": "2026-08-11"
+    },
+    "rimworld-open-world": {
+        "name": "Rimworld: Open World",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/rimworld/open_world/egg-pterodactyl-rimworld--open-world.json",
+        "sha256": "cb62886d7d370a453f4acceabc7ea0620f03e982e42a442fda71433c1d29a2f4",
+        "fetched_at": "2026-08-11"
+    },
+    "rimworld-together": {
+        "name": "Rimworld Together",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/rimworld/together/egg-pterodactyl-rimworld-together.json",
+        "sha256": "57e7b506a9b01a50cca8efc17c80c5e1eb131f4004556ddfb328c57ec06b3bd7",
+        "fetched_at": "2026-08-11"
+    },
+    "rising-world-java-legacy": {
+        "name": "Rising World Java Legacy",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/rising_world/legacy/egg-pterodactyl-rising-world-java-legacy.json",
+        "sha256": "7b5f3313de09147faf5ac7e3b4b81ac9b283a83260c8f431ea2490e91260bd13",
+        "fetched_at": "2026-08-11"
+    },
+    "rising-world-unity": {
+        "name": "Rising World Unity",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/rising_world/unity/egg-pterodactyl-rising-world-unity.json",
+        "sha256": "0f575d982cf2d8afc0c43fb6582717ac4121268cc34aa249762744b263d3edc3",
+        "fetched_at": "2026-08-11"
+    },
+    "risk-of-rain-2": {
+        "name": "Risk of Rain 2",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/risk_of_rain_2/egg-pterodactyl-risk-of-rain2.json",
+        "sha256": "ba70e182d4d7c8c63e1018d6d8ccca08a9eaa2cea225eaeaad9122321bc3cd3c",
+        "fetched_at": "2026-08-11"
+    },
+    "runescape-dragonwilds": {
+        "name": "RuneScape: Dragonwilds",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/runescape_dragonwilds/egg-pterodactyl-runescape-dragonwilds.json",
+        "sha256": "253744c861172e6b1148a82340754687045349b0e6e9ab08e6c55e38353894b1",
+        "fetched_at": "2026-08-11"
+    },
+    "rust-autowipe": {
+        "name": "Rust Autowipe",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/rust/rust_autowipe/egg-pterodactyl-rust-autowipe.json",
+        "sha256": "55788a99f476eb2992e53f6d435e75ce2766d44646624517bacfe4929290a1ba",
+        "fetched_at": "2026-08-11"
+    },
+    "rust-staging": {
+        "name": "Rust Staging",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/rust/rust_staging/egg-pterodactyl-rust-staging.json",
+        "sha256": "bb98cd2e3f2631423612b4afba46307f2c030e4d8f28d6de220f49c5cf7020cc",
+        "fetched_at": "2026-08-11"
+    },
+    "sa-mp": {
+        "name": "SA-MP",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/gta/samp/egg-pterodactyl-s-a--m-p.json",
+        "sha256": "c73b291a32779087766d687f9c105faa7c8e55a605104b769ef7c19c5a2b6549",
+        "fetched_at": "2026-08-11"
+    },
+    "satisfactory": {
+        "name": "Satisfactory",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/satisfactory/egg-pterodactyl-satisfactory.json",
+        "sha256": "40ed3e44844996e84f4fcfd7549d13addae5457497b9e5790c86e707d3614c03",
+        "fetched_at": "2026-08-11"
+    },
+    "scpsl": {
+        "name": "SCP:SL",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/scpsl/dedicated/egg-pterodactyl-s-c-p--s-l.json",
+        "sha256": "04f04b34d195462fdb817f7e338b3b154d6f02bb22795e9957ee5979f7d35c6a",
+        "fetched_at": "2026-08-11"
+    },
+    "scpsl-exiled": {
+        "name": "SCP:SL - Exiled",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/scpsl/exiled/pterodactyl-egg-s-c-p-s-l-exiled.json",
+        "sha256": "84e6d3332f864a5cd0fc9cfa0718a61020af5dc25a617dd73e66b13376a025c8",
+        "fetched_at": "2026-08-11"
+    },
+    "smalland-survive-the-wilds": {
+        "name": "Smalland: Survive the Wilds",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/smalland_survive_the_wilds/egg-pterodactyl-smalland--survive-the-wilds.json",
+        "sha256": "e61d56bddc0a8aed1873f75f080da67967f0f1981ab40ad3b3a9c9dc687f0db1",
+        "fetched_at": "2026-08-11"
+    },
+    "solace-crafting": {
+        "name": "Solace Crafting",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/solace_crafting/egg-pterodactyl-solace-crafting.json",
+        "sha256": "e08d632291237b79ac4c6e53e78b196c9279b4c1d01be01c1c9beecde8f14c02",
+        "fetched_at": "2026-08-11"
+    },
+    "soldat": {
+        "name": "Soldat",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/soldat/egg-pterodactyl-soldat.json",
+        "sha256": "b105959a8acd5bcf18f47e25df3045119d5fb84bbf736464a4be3de569bde985",
+        "fetched_at": "2026-08-11"
+    },
+    "sons-of-the-forest": {
+        "name": "Sons Of The Forest",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/sonsoftheforest/egg-pterodactyl-sons-of-the-forest.json",
+        "sha256": "11ce27db5b4a37d05e24f78c62fee76f4060f6cfc6c032f09b1aadac8c4a3ad0",
+        "fetched_at": "2026-08-11"
+    },
+    "soulmask": {
+        "name": "Soulmask",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/soulmask/egg-pterodactyl-soulmask.json",
+        "sha256": "0b478bf8098498cc6ec67cd240734376c22c615b721f1ad99f314965ba99c793",
+        "fetched_at": "2026-08-11"
+    },
+    "sourcecoop": {
+        "name": "SourceCoop",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/sourcecoop/egg-pterodactyl-source-coop.json",
+        "sha256": "a6ed18505ba21bf7335563555436f78803471e8eccb8a13e23626c40ac8d3522",
+        "fetched_at": "2026-08-11"
+    },
+    "space-engineers": {
+        "name": "Space Engineers",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/space_engineers/default/egg-pterodactyl-space-engineers.json",
+        "sha256": "d92e08d1e85400f01ae0f73420ff6afe8213c732e8c9455920252f9f3f5e03ce",
+        "fetched_at": "2026-08-11"
+    },
+    "space-engineers-torch-server": {
+        "name": "Space Engineers - Torch Server",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/space_engineers/torch/egg-pterodactyl-space-engineers--torch-server.json",
+        "sha256": "bf193ed7cdc0d9b89b0242b73a5ab58a6fa992555990ac51efa9da3b58da2e31",
+        "fetched_at": "2026-08-11"
+    },
+    "space-station-14": {
+        "name": "Space Station 14",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/spacestation_14/egg-pterodactyl-spacestation14.json",
+        "sha256": "dccd835990a273af41a44aa3618bbb941170b941c6cab79f5d11e91711493a4e",
+        "fetched_at": "2026-08-11"
+    },
+    "spigot": {
+        "name": "Spigot",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/spigot/egg-pterodactyl-spigot.json",
+        "sha256": "bc09e2df046df86ded07d3913b7a88eb73c8f8259622dd654d4336af28313d3d",
+        "fetched_at": "2026-08-11"
+    },
+    "sponge": {
+        "name": "Sponge",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/spongevanilla/egg-pterodactyl-sponge-vanilla.json",
+        "sha256": "5a7d83bd28374bea3c17e34ba5aa68443553ba8dbc9a2fc287c38bef80cee774",
+        "fetched_at": "2026-08-11"
+    },
+    "spongeforge": {
+        "name": "SpongeForge",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/spongeforge/egg-pterodactyl-sponge-forge.json",
+        "sha256": "f16b7399f5e2365bd5a51ed9e0f2c73c4b711609e77bb806588e294c66562592",
+        "fetched_at": "2026-08-11"
+    },
+    "squad": {
+        "name": "Squad",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/squad/egg-pterodactyl-squad.json",
+        "sha256": "7621a5d26125fe4c76f9b84b6aa8d1fafc521f032a008d2857c4d3c084f8ba41",
+        "fetched_at": "2026-08-11"
+    },
+    "starbound": {
+        "name": "Starbound",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/starbound/egg-pterodactyl-starbound.json",
+        "sha256": "a99ccdd21d0b95616fa0c9662acc45d376884bb92d5562bc1c87cb9d344c671d",
+        "fetched_at": "2026-08-11"
+    },
+    "starmade": {
+        "name": "starmade",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/starmade/egg-pterodactyl-starmade.json",
+        "sha256": "f40c704dffb65d3d6aa734af188e151b3bfcca5ac19168f2b8f19b23e60c284b",
+        "fetched_at": "2026-08-11"
+    },
+    "starrupture": {
+        "name": "StarRupture",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/star_rupture/pterodactyl-egg-star-rupture.json",
+        "sha256": "4100575692e44516840ab8190461200c03b66ac10edc4bfd213b01ce501a7343",
+        "fetched_at": "2026-08-11"
+    },
+    "stationeers": {
+        "name": "Stationeers",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/stationeers/stationeers_vanilla/egg-pterodactyl-stationeers.json",
+        "sha256": "04b1e46c25b68e5065feb368000fb72dbc67f64cee462eb7379e7b703a63de5f",
+        "fetched_at": "2026-08-11"
+    },
+    "stationeers-bepinex": {
+        "name": "Stationeers (BepInEx)",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/stationeers/stationeers_bepinex/egg-pterodactyl-stationeers--bep-in-ex.json",
+        "sha256": "c996f8134df2b9c305dbce16ce816d5d4338e815798f1641a7f5d07495a89e47",
+        "fetched_at": "2026-08-11"
+    },
+    "stay-in-tarkov": {
+        "name": "Stay In Tarkov",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/eft/egg-pterodactyl-stay-in-tarkov.json",
+        "sha256": "ec202a2a6951f5a6af65bdc4cfb825e43a6117c8e6e51e0f0f30c706d6294132",
+        "fetched_at": "2026-08-11"
+    },
+    "stormworks-build-and-rescue": {
+        "name": "Stormworks: Build and Rescue",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/stormworks/egg-pterodactyl-stormworks--build-and-rescue.json",
+        "sha256": "0621a13093d61594e100f764058f1f19daaa844d142f3dbd7171d39746870884",
+        "fetched_at": "2026-08-11"
+    },
+    "subnautica": {
+        "name": "Subnautica",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/subnautica_nitrox_mod/egg-pterodactyl-subnautica.json",
+        "sha256": "931d9a85b25d1c97c1830d8cbea669a6a334a28c053ecaa2086be09ed7255a09",
+        "fetched_at": "2026-08-11"
+    },
+    "supertuxkart": {
+        "name": "SuperTuxKart",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/SuperTuxKart/egg-pterodactyl-super-tux-kart.json",
+        "sha256": "4bd08657e152631c91aed565f58aed189902992db31eb7a172db994ab39f4229",
+        "fetched_at": "2026-08-11"
+    },
+    "sven-co-op": {
+        "name": "Sven Co-op",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/svencoop/egg-pterodactyl-sven-co-op.json",
+        "sha256": "6dc71120583eda39e0142ca717fb9a9cad27e55cb6d4768106a746e7ed612b6c",
+        "fetched_at": "2026-08-11"
+    },
+    "swords-n-magic-and-stuff": {
+        "name": "Swords 'n Magic and Stuff",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/swords_'n_Magic_and_Stuff/egg-pterodactyl-swords-n-magic-and-stuff.json",
+        "sha256": "0497205f6a3b11b793b3afe70d964ebcae5c9dbbea355ba77dfd7da56756d4b4",
+        "fetched_at": "2026-08-11"
+    },
+    "tachyon": {
+        "name": "Tachyon",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/ftl_tachyon/egg-pterodactyl-tachyon.json",
+        "sha256": "bc2196e139c7ccd4069688e415a59931c43b80ed4406c9fc109e8975fe9dec25",
+        "fetched_at": "2026-08-11"
+    },
+    "team-fortress-2-classic": {
+        "name": "Team Fortress 2 Classic",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/team_fortress_2_classic/egg-pterodactyl-team-fortress2-classic.json",
+        "sha256": "430220fa5702951ed5873af1e06e83962b0011646526b9c1cb0adf9e264859e5",
+        "fetched_at": "2026-08-11"
+    },
+    "teamspeak6-server": {
+        "name": "Teamspeak6 Server",
+        "category": "Voice",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/voice/refs/heads/main/ts6/pterodactyl-egg-teamspeak6-server.json",
+        "sha256": "696f81d851e1b65f2ec09276fa403f2078a0218551c981dd064615d3a93b5309",
+        "fetched_at": "2026-08-11"
+    },
+    "teeworlds": {
+        "name": "Teeworlds",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/teeworlds/egg-pterodactyl-teeworlds.json",
+        "sha256": "f1eee4093a6d108e40a4d9020056e4c8f68cc6a37c5486619be8b4fa5ce8ef97",
+        "fetched_at": "2026-08-11"
+    },
+    "tekkit": {
+        "name": "Tekkit",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/Tekkit/egg-pterodactyl-tekkit.json",
+        "sha256": "df07f1e65b75787350d4feb52aba45e955cc1f68a1cecd99aa84d05ca1df7d81",
+        "fetched_at": "2026-08-11"
+    },
+    "tekkit-2": {
+        "name": "Tekkit 2",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/Tekkit-2/egg-pterodactyl-tekkit2.json",
+        "sha256": "384fdc39cc743cf4ace839ba07a1dbe2736befd6535442aaafe2cd37410fb695",
+        "fetched_at": "2026-08-11"
+    },
+    "tekkit-classic": {
+        "name": "Tekkit Classic",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/tekkit-classic/egg-pterodactyl-tekkit-classic.json",
+        "sha256": "e35dd0a903173d263d3f57deb61a5da211cddf5315a83242f1d46a28e49ca187",
+        "fetched_at": "2026-08-11"
+    },
+    "tekkit-legends": {
+        "name": "Tekkit Legends",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/tekkit-legends/egg-pterodactyl-tekkit-legends.json",
+        "sha256": "1bd82a285ad509c29bfe41b485d75a9f74f6da178e92536fcfbb0954e4277ac6",
+        "fetched_at": "2026-08-11"
+    },
+    "tekkit-smp": {
+        "name": "Tekkit SMP",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/tekkit-smp/egg-pterodactyl-tekkit-smp.json",
+        "sha256": "c63345fd1560e1a80dd194de27b50adce8e6f6b0362043e4da36bf724c59403d",
+        "fetched_at": "2026-08-11"
+    },
+    "terraria-vanilla": {
+        "name": "Terraria Vanilla",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/terraria/vanilla/egg-pterodactyl-terraria-vanilla.json",
+        "sha256": "c6d0c28175edcac48fa176faa73467948e44bc1c72b7b40fd5cb073da5c53365",
+        "fetched_at": "2026-08-11"
+    },
+    "terratech-worlds": {
+        "name": "TerraTech Worlds",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/terratech_worlds/egg-pterodactyl-terra-tech-worlds.json",
+        "sha256": "e51f0c7cab6ea9e114d506e5006138d215c789df422e7c39d400fb05f47d3129",
+        "fetched_at": "2026-08-11"
+    },
+    "the-1122-pack": {
+        "name": "The 1.12.2 Pack",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/the-1-12-2-pack/egg-pterodactyl-the1-12-2-pack.json",
+        "sha256": "8e00ead8468224b55697bfbc3ccc1bd02a2dd16d4064c11e9f12f3bfcbdea8eb",
+        "fetched_at": "2026-08-11"
+    },
+    "the-1710-pack": {
+        "name": "The 1.7.10 Pack",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/technic/the-1-7-10-pack/egg-pterodactyl-the1-7-10-pack.json",
+        "sha256": "1b6b49c416d2c04d0c69e7756c9a3aee9a8e81c23d9e23255fbe1b9d6fd357bc",
+        "fetched_at": "2026-08-11"
+    },
+    "the-battle-for-wesnoth": {
+        "name": "The Battle for Wesnoth",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/thebattleforwesnoth/egg-pterodactyl-the-battle-for-wesnoth.json",
+        "sha256": "b46ec2bac1864de5e1f8a6fbb6219a51382525cd6c120bca86a2b1d3c8f6fd6c",
+        "fetched_at": "2026-08-11"
+    },
+    "the-bus": {
+        "name": "The Bus",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/the_bus/pterodactyl-egg-the-bus.json",
+        "sha256": "430e281fe4033f2c57162d68df54e79e8157b82b53e5eb325221f549b774f3fa",
+        "fetched_at": "2026-08-11"
+    },
+    "the-forest": {
+        "name": "The Forest",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/the_forest/egg-pterodactyl-the-forest.json",
+        "sha256": "41e9cc96e0d1e6e180e00e670c51096e725f15bbd99c44ca6aaedaaa867cc84d",
+        "fetched_at": "2026-08-11"
+    },
+    "the-front": {
+        "name": "The Front",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/thefront/egg-pterodactyl-the-front.json",
+        "sha256": "b7c524b129b78ee0dcc6fa864c1aca75c6b6e357f1ee09306c47c1d6122be14c",
+        "fetched_at": "2026-08-11"
+    },
+    "the-isle": {
+        "name": "The Isle",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/the_isle/evrima/pterodactyl-egg-the-isle.json",
+        "sha256": "56fef18f2d10859067550a4fc49573c2e272d9cdaabc224db176722a13561cee",
+        "fetched_at": "2026-08-11"
+    },
+    "the-lord-of-the-rings-return-to-moria": {
+        "name": "The Lord of the Rings: Return to Moria",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/lotr_moria/egg-pterodactyl-lotr-return-to-moria.json",
+        "sha256": "973c1686d56a05cb15f0ef20d8ce0ee7c98824b83b24c8bc489f3164476a156a",
+        "fetched_at": "2026-08-11"
+    },
+    "the-ship-murder-party": {
+        "name": "The Ship: Murder Party",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/the_ship/egg-pterodactyl-the-ship.json",
+        "sha256": "cc99069c8688527508d8343c59e8f226cd0b150b94cf3793608cd99737c6e957",
+        "fetched_at": "2026-08-11"
+    },
+    "tmodloader": {
+        "name": "tModloader",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/terraria/tmodloader/egg-pterodactyl-t-modloader.json",
+        "sha256": "5735222af56f6e94bc9bec9288c246eae7de4408fc10ed46bd4471a0d98ebe1e",
+        "fetched_at": "2026-08-11"
+    },
+    "tower-unite": {
+        "name": "Tower Unite",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/tower_unite/egg-pterodactyl-tower-unite.json",
+        "sha256": "2dd86682f0fcc3853527bbdccee66e0d0a9a24dd1b93f2b489af9fd741de3e2a",
+        "fetched_at": "2026-08-11"
+    },
+    "trackmania-2020": {
+        "name": "Trackmania (2020)",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/trackmania2020/pterodactyl-egg-trackmania2020.json",
+        "sha256": "4b5a46efd27d7995055b7299e8b991cf9c43c8268026afb6a0e03f26fb8af98c",
+        "fetched_at": "2026-08-11"
+    },
+    "travertine": {
+        "name": "Travertine",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/travertine/egg-pterodactyl-travertine.json",
+        "sha256": "aa972e38f754df0c2d53625aa2f03b52044721e90e7983ebeb0f4aa202ec17c8",
+        "fetched_at": "2026-08-11"
+    },
+    "ts3-manager": {
+        "name": "TS3 Manager",
+        "category": "Voice",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/voice/refs/heads/main/ts3_manager/egg-pterodactyl-t-s3-manager.json",
+        "sha256": "134220579cf6ac0c2380a0593d56b22baa08bf9aa8750c1471d4791eb9b92be1",
+        "fetched_at": "2026-08-11"
+    },
+    "tshock": {
+        "name": "tshock",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/terraria/tshock/egg-pterodactyl-tshock.json",
+        "sha256": "8c1b564d3d1c4792d88e28ab0387bda7355b0325c500b1c576dbe1ff93ab55a6",
+        "fetched_at": "2026-08-11"
+    },
+    "tshock-legacy": {
+        "name": "tshock legacy",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/terraria/tshock/egg-pterodactyl-tshock-legacy.json",
+        "sha256": "7bc4c7a72d80a09a35c265ce83e2444fca8a17952d7087909facd734fe1ab26e",
+        "fetched_at": "2026-08-11"
+    },
+    "unturned": {
+        "name": "Unturned",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/unturned/egg-pterodactyl-unturned.json",
+        "sha256": "4ccb56083cf0b6aa7654fede57c8a54ce4943afbc07b23a5bd7d26883aa62dd2",
+        "fetched_at": "2026-08-11"
+    },
+    "urban-terror": {
+        "name": "Urban Terror",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/urbanterror/egg-pterodactyl-urban-terror.json",
+        "sha256": "c07c4619808f0b194d6397794d69e2975013e098f2efaf2fa72dc78eb71d58c5",
+        "fetched_at": "2026-08-11"
+    },
+    "v-rising": {
+        "name": "V Rising",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/v_rising/v_rising_vanilla/egg-pterodactyl-v-rising.json",
+        "sha256": "afb81c8bba441c2346ffa2258b6270f90f17a7f15315bc0273b8d6d2140b895a",
+        "fetched_at": "2026-08-11"
+    },
+    "v-rising-bepinex": {
+        "name": "V Rising BepInEx",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/v_rising/v_rising_bepinex/egg-pterodactyl-v-rising-bep-in-ex.json",
+        "sha256": "054c538525a16e4f929fa01f757b56589c69e6cbe782e283d870cb5067f00e75",
+        "fetched_at": "2026-08-11"
+    },
+    "valheim": {
+        "name": "Valheim",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/valheim/valheim_vanilla/egg-pterodactyl-valheim.json",
+        "sha256": "b6e8cdf200763bee1ea447527cbefc5265bb0238f7878c08565741660e2ad29e",
+        "fetched_at": "2026-08-11"
+    },
+    "valheim-bepinex": {
+        "name": "Valheim BepINex",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/valheim/valheim_bepinex/egg-pterodactyl-valheim-bep-i-nex.json",
+        "sha256": "a46bcce17f4244fd34812e675c00b846778aff9b42fb169aa0680ae817698e11",
+        "fetched_at": "2026-08-11"
+    },
+    "valheim-plus-mod": {
+        "name": "Valheim Plus Mod",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/valheim/valheim_plus/egg-pterodactyl-valheim-plus-mod.json",
+        "sha256": "74f6e99bd6c1bcc38954492b5abecea682e4d00d3c25a7b6d33e0f9d86089f2a",
+        "fetched_at": "2026-08-11"
+    },
+    "vanilla-bedrock": {
+        "name": "Vanilla Bedrock",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/bedrock/egg-pterodactyl-vanilla-bedrock.json",
+        "sha256": "bf780eddefc49541c4ebf2a08ea98e22758991f59390ba6bec9149895e8f84d9",
+        "fetched_at": "2026-08-11"
+    },
+    "vanilla-bedrock-arm64": {
+        "name": "Vanilla Bedrock ARM64",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/bedrock/bedrock/egg-pterodactyl-vanilla-bedrock-a-r-m64.json",
+        "sha256": "c06c1468d9052f02cc0a3d973c4d6f6819ffd0fa5a398b3e37714ba480e1739e",
+        "fetched_at": "2026-08-11"
+    },
+    "vanilla-minecraft": {
+        "name": "Vanilla Minecraft",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/vanilla/pterodactyl-egg-vanilla-minecraft.json",
+        "sha256": "9456d0b0e93112ee92ef071e7738d73b3c76a62fb6103fb37c8a8c8e8372a515",
+        "fetched_at": "2026-08-11"
+    },
+    "vanillacord": {
+        "name": "VanillaCord",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/java/vanillacord/egg-pterodactyl-vanilla-cord.json",
+        "sha256": "c501d45416b18db6fbe607bc93d554fa56a586c85005677f2c4dd6a80e004f72",
+        "fetched_at": "2026-08-11"
+    },
+    "vein": {
+        "name": "VEIN",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/vein/egg-pterodactyl-v-e-i-n.json",
+        "sha256": "930d1676e250858ae39dcd0c3b9d2571fcd6da7327524832b081a2b8f36505ac",
+        "fetched_at": "2026-08-11"
+    },
+    "velocity": {
+        "name": "Velocity",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/velocity/egg-pterodactyl-velocity.json",
+        "sha256": "e9fe3acb612d90c8c91aef3426dc986aecc9cc00827c23a5a79a75deeb18f675",
+        "fetched_at": "2026-08-11"
+    },
+    "veloren": {
+        "name": "Veloren",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/veloren/egg-pterodactyl-veloren.json",
+        "sha256": "8bb1efafd20f78dfba082e596e3d3ebf6cdfd59f149d4d71200259da187883e4",
+        "fetched_at": "2026-08-11"
+    },
+    "venice-unleashed": {
+        "name": "Venice Unleashed",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/venice_unleashed/egg-pterodactyl-venice-unleashed.json",
+        "sha256": "984dae04b1834acd56562b72a13f6930586b9a14fb70270467902056687597b4",
+        "fetched_at": "2026-08-11"
+    },
+    "viaaas": {
+        "name": "VIAaaS",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/viaaas/egg-pterodactyl-v-i-aaa-s.json",
+        "sha256": "d73350bf3faacbfd313ae8e1c7d29a664b96bf21cc9f3fdf2d125aad19e2b694",
+        "fetched_at": "2026-08-11"
+    },
+    "viaproxy": {
+        "name": "ViaProxy",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/viaproxy/egg-pterodactyl-via-proxy.json",
+        "sha256": "7680421c7fc98235057ec4f2169afdba971c8f143dc9d424dff2c1d672420e23",
+        "fetched_at": "2026-08-11"
+    },
+    "vintage-story": {
+        "name": "Vintage Story",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/vintage_story/egg-pterodactyl-vintage-story.json",
+        "sha256": "2c45f70ff747110366a698eee461220987ed520d23567bd420eb84c4f07bb4e1",
+        "fetched_at": "2026-08-11"
+    },
+    "voyagers-of-nera": {
+        "name": "Voyagers of Nera",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/voyagers_of_nera/pterodactyl-egg-voyagers-of-nera.json",
+        "sha256": "cd96b7ef43502c9e6cf59cd1e15b2f535b382713d45f08ff479051090d07fdc8",
+        "fetched_at": "2026-08-11"
+    },
+    "waterdog": {
+        "name": "Waterdog",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/cross_platform/waterdog/egg-pterodactyl-waterdog.json",
+        "sha256": "6fa6a44481648232b3190b3e60fea8a7bed639eb7177acbc42138fabcdb71a0f",
+        "fetched_at": "2026-08-11"
+    },
+    "waterdog-pe": {
+        "name": "Waterdog PE",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/bedrock/waterdog_pe/egg-pterodactyl-waterdog-p-e.json",
+        "sha256": "035249c694937727dd0d9b19a1d181ce69dffb23620c8384f38246f2168228c1",
+        "fetched_at": "2026-08-11"
+    },
+    "waterfall": {
+        "name": "Waterfall",
+        "category": "Minecraft",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/minecraft/refs/heads/main/proxy/java/waterfall/egg-pterodactyl-waterfall.json",
+        "sha256": "d583fd0e4d1ca0b1e74f6e406de89dd6dc00e99e1d73080faf63c4eb4948c7f2",
+        "fetched_at": "2026-08-11"
+    },
+    "wine-generic": {
+        "name": "Wine Generic",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/wine/generic/egg-pterodactyl-wine-generic.json",
+        "sha256": "11845dc5b46215f142ffca2162e00dbdcb0201bb2a1589dba1be5a7f57f842d0",
+        "fetched_at": "2026-08-11"
+    },
+    "world-of-padman": {
+        "name": "World of PADMAN",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/world_of_padman/pterodactyl-egg-world-of-p-a-d-m-a-n.json",
+        "sha256": "cf4722e03e9280bff5f5eda97c2e824300584b976902c87b811336014d74b1f6",
+        "fetched_at": "2026-08-11"
+    },
+    "wreckfest": {
+        "name": "Wreckfest",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/wreckfest/pterodactyl-egg-wreckfest.json",
+        "sha256": "cdb563160f19127776f9a5f1dff5ad4290fc115bf2e9d97703624a230b3155ff",
+        "fetched_at": "2026-08-11"
+    },
+    "wreckfest-2": {
+        "name": "Wreckfest 2",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/wreckfest_2/egg-pterodactyl-wreckfest2.json",
+        "sha256": "47623a72b7b190d4b4891bc1884757a3b59bd0638658d6b915950b8dd927619f",
+        "fetched_at": "2026-08-11"
+    },
+    "wurm-unlimited": {
+        "name": "Wurm Unlimited",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/wurm_unlimited/egg-pterodactyl-wurm-unlimited.json",
+        "sha256": "d959a5453530f8f63fae3fb7058f9eab689241b955f4238a3e2bda525a67f527",
+        "fetched_at": "2026-08-11"
+    },
+    "xonotic": {
+        "name": "Xonotic",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/xonotic/egg-pterodactyl-xonotic.json",
+        "sha256": "8fdbf058f8422d7534bec2cf61e3bf59e50d1ce52ed7786e9e75f7d0747ca036",
+        "fetched_at": "2026-08-11"
+    },
+    "zandronum": {
+        "name": "Zandronum",
+        "category": "Games Standalone",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-standalone/refs/heads/main/doom/zandronum/egg-pterodactyl-zandronum.json",
+        "sha256": "0a72fb4a5151d42aed522ad4b273108fbfa1f44951139c5d44e248006665d8a2",
+        "fetched_at": "2026-08-11"
+    },
+    "zombie-survival-game-online": {
+        "name": "Zombie Survival Game Online",
+        "category": "Games Steamcmd",
+        "source": "https://raw.githubusercontent.com/pelican-eggs/games-steamcmd/refs/heads/main/zombie_survival_game_online/egg-pterodactyl-zombie-survival-game-online.json",
+        "sha256": "3e400cffdae020a93e10e29ccad696c4e8699388c4a8d21a774574763ec53ec0",
+        "fetched_at": "2026-08-11"
+    }
+}

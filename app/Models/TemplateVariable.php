@@ -22,6 +22,15 @@ class TemplateVariable extends Model
         'user_viewable', 'user_editable', 'rules', 'sort',
     ];
 
+    /**
+     * The default the database used to hold.
+     *
+     * `rules` became TEXT so community definitions with enormous `in:` lists fit,
+     * and MySQL will not take a DEFAULT on TEXT. Keeping it here means every
+     * caller that omits the field behaves exactly as before.
+     */
+    protected $attributes = ['rules' => 'nullable|string'];
+
     protected function casts(): array
     {
         return ['user_viewable' => 'boolean', 'user_editable' => 'boolean'];

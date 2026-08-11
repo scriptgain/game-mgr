@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Game;
-use App\Services\EggImporter;
+use App\Services\TemplateImporter;
 use App\Support\Edition;
 use Illuminate\Http\Request;
 
@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
  * definitions covering every game anyone has asked for. Reading that format
  * means GameMGR starts with the whole catalogue instead of an empty one.
  *
- * The parser lives in EggImporter, named after the file format it reads. That
+ * The parser lives in TemplateImporter, named after the file format it reads. That
  * name is internal only: nothing the user sees mentions it.
  */
 class TemplateImportController extends Controller
@@ -30,9 +30,9 @@ class TemplateImportController extends Controller
         ]);
     }
 
-    public function store(Request $request, EggImporter $importer)
+    public function store(Request $request, TemplateImporter $importer)
     {
-        // Importing an egg is what turns GameMGR from "the games we ship" into
+        // Importing a definition is what turns GameMGR from "the games we ship" into
         // "any game with a Pterodactyl egg", which is most of the value of the
         // paid editions and the one thing the free edition holds back.
         if (! Edition::allows('templates.import')) {

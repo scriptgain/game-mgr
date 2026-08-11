@@ -613,13 +613,13 @@
                         </template>
 
                         {{-- These two are machine formats. They arrive from an
-                             imported egg and from the MCJars API, nobody writes
+                             imported definition and from the MCJars API, nobody writes
                              them by hand, and a structured editor for a shape
                              nobody authors buys nothing. They are checked for
                              being parseable, which is the failure that matters. --}}
                         <div class="grid gap-4 lg:grid-cols-2">
                             <x-field label="Config Files (Pterodactyl Format)" :error="$errors->first('config_files_raw')"
-                                     hint="JSON, as an imported egg supplies it. Leave empty unless you have one.">
+                                     hint="JSON, as an imported definition supplies it. Leave empty unless you have one.">
                                 <textarea name="config_files_raw" rows="6" spellcheck="false" x-model="filesJson" class="{{ $textarea }}"></textarea>
                                 <p class="mt-1 text-xs text-rose-600" x-show="jsonError(filesJson)" x-cloak
                                    x-text="'Not valid JSON: ' + jsonError(filesJson)"></p>
