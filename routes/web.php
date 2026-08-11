@@ -235,6 +235,8 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         // Before the resource route, or /servers/{server} swallows it.
         Route::get('servers/template-fields/{template}', [Admin\ServerController::class, 'templateFields'])
             ->name('servers.template-fields');
+        Route::get('servers/{server}/install-progress', [Admin\ServerController::class, 'installProgress'])
+            ->name('servers.install-progress');
         Route::resource('servers', Admin\ServerController::class);
 
         Route::resource('blueprints', Admin\BlueprintController::class)->except(['show']);
