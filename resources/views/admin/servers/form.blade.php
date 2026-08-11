@@ -160,6 +160,7 @@
                         <x-field label="Backups" required hint="Locked backups sit outside this cap.">
                             <x-input type="number" name="backup_limit" value="{{ old('backup_limit', $server->backup_limit ?? 5) }}" required />
                         </x-field>
+                        <x-toggle name="start_on_install" :checked="(bool) old('start_on_install', $server->start_on_install ?? true)" label="Start When The Install Finishes" />
                         <x-toggle name="auto_restart" :checked="(bool) old('auto_restart', $server->auto_restart ?? true)" label="Restart After A Crash" />
                         <x-toggle name="auto_update" :checked="(bool) old('auto_update', $server->auto_update ?? false)" label="Update Game Files Automatically" />
                     </div>

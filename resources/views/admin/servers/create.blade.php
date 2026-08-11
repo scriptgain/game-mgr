@@ -712,6 +712,9 @@
                                 </div>
 
                                 <div class="section-divider mt-5 space-y-4 pt-5">
+                                    <x-toggle name="start_on_install" :checked="(bool) old('start_on_install', $server->start_on_install ?? true)"
+                                              label="Start When The Install Finishes"
+                                              description="A large game can take an hour to download. This brings it up the moment it is ready rather than leaving it offline until somebody looks." />
                                     <x-toggle name="auto_restart" :checked="(bool) old('auto_restart', $server->auto_restart)"
                                               label="Restart After A Crash"
                                               description="The watchdog brings it back unless it was stopped on purpose." />

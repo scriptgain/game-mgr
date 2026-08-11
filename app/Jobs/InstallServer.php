@@ -147,7 +147,71 @@ class InstallServer implements ShouldQueue
 
         if (! $ok) {
             Log::warning('GameMGR install failed for server '.$server->uuid);
+
+            return;
         }
+
+        $this->startIfWanted($server);
+    }
+
+    /**
+     * Bring the server up now that it has files.
+     *
+     * A fifteen gigabyte install otherwise finishes into silence and the server
+     * sits offline until somebody notices, which for an unattended install
+     * means until the morning.
+     *
+     * Deliberately after the status write above. `isControllable()` is
+     * `status === null`, and the row was still "installing" a few lines ago:
+     * asking the node to start before that lands means refusing our own
+     * request. The save has happened, so the model in hand is already correct.
+     */
+    private function startIfWanted(Server $server): void
+    {
+        if (! $server->start_on_install) {
+            return;
+        }
+
+        // A reinstall of a server somebody had deliberately stopped must not
+        // start it behind their back. Only the first install of a server, and a
+        // reinstall of one that was up, should end with it running.
+        if ($server->stopped_intentionally && $server->power_state !== 'running') {
+            return;
+        }
+
+        if (! $server->isControllable()) {
+            return;
+        }
+
+        $result = NodeClient::for($server->node)->power($server, 'start');
+
+        if (! ($result['ok'] ?? false)) {
+            // Not a failed install. The files are there and the server is
+            // usable; only the convenience of it already being up was lost, so
+            // this is recorded rather than thrown.
+            Log::warning('GameMGR installed server '.$server->uuid.' but could not start it: '
+                .($result['error'] ?? 'no answer from the daemon'));
+            AuditLog::record(
+                'server.autostart_failed',
+                'Installed "'.$server->name.'" but it would not start',
+                $server,
+                $server->id,
+            );
+
+            return;
+        }
+
+        $server->forceFill([
+            'power_state' => $result['state'] ?? 'starting',
+            'last_started_at' => now(),
+            // Nobody stopped this one. Left set from a previous stop, the
+            // watchdog would read the server as deliberately down and decline
+            // to restart it if it crashed on first boot.
+            'stopped_intentionally' => false,
+            'cached_at' => now(),
+        ])->save();
+
+        AuditLog::record('server.autostart', 'Started "'.$server->name.'" after installing it', $server, $server->id);
     }
 
     /**
