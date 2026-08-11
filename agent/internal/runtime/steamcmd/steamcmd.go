@@ -149,6 +149,19 @@ func (d *Driver) runScriptFile(ctx context.Context, script, dir string, w io.Wri
 	}
 	cmd.Stderr = cmd.Stdout
 
+	// An open stdin, so a Steam Guard code can be answered rather than only
+	// reported. Left unset, Go gives the child /dev/null, and steamcmd at a
+	// two-factor prompt then neither reads a code nor sees EOF: it sleeps until
+	// something kills it. That was the six hour hang.
+	//
+	// Nothing is written here unless a prompt actually appears, so an ordinary
+	// install behaves exactly as before.
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	defer stdin.Close()
+
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("steamcmd would not start: %w", err)
 	}
@@ -191,9 +204,30 @@ func (d *Driver) runScriptFile(ctx context.Context, script, dir string, w io.Wri
 		// six hours, holding a queue worker, with a console that had simply
 		// stopped moving. Nothing about that says "authorize this node".
 		//
-		// So the prompt is treated as the terminal condition it actually is:
-		// kill it now and say what to do about it.
+		// So the prompt is treated as the terminal condition it actually is,
+		// unless somebody is watching and can answer it.
 		if reason := guardPrompt(line); reason != "" {
+			// Only the live prompt can be answered. A mismatch or a rate limit
+			// has already consumed an attempt, and offering a retry box there
+			// walks the account straight into a longer lockout.
+			if asker, ok := w.(runtime.GuardPrompter); ok && answerable(line) {
+				code, err := asker.AskSteamGuard(ctx, "Steam is asking for a Steam Guard code for this account.")
+				if err == nil && strings.TrimSpace(code) != "" {
+					if _, err := io.WriteString(stdin, strings.TrimSpace(code)+"\n"); err == nil {
+						fmt.Fprintln(w, "[gamemgr] Steam Guard code sent")
+
+						continue
+					}
+				}
+
+				// Fall through to the kill below. err covers the wait expiring
+				// and the panel hanging up, and both mean nobody is going to
+				// answer, which is the same situation as having nobody to ask.
+				if err != nil {
+					reason = "No Steam Guard code was entered, so the install was stopped. " + reason
+				}
+			}
+
 			stalled = reason
 			_ = cmd.Process.Kill()
 
@@ -323,6 +357,32 @@ func guardPrompt(line string) string {
 	}
 
 	return ""
+}
+
+// answerable separates the live prompt, which a person can still satisfy, from
+// the outcomes that are already spent.
+//
+// A mismatch or a rate limit has consumed an attempt. Steam counts those, and
+// putting a retry box in front of somebody there is how a wrong secret turns
+// into a locked account: they try again, it fails again, and the lockout gets
+// longer each time. Those stop the install and explain themselves instead.
+func answerable(line string) bool {
+	lower := strings.ToLower(line)
+
+	// Checked FIRST, and this ordering is the whole function. Steam's failure
+	// lines quote the thing that failed, so "FAILED (Two-factor code mismatch)"
+	// contains "two-factor code" and matched the prompt test outright. That put
+	// a retry box in front of an attempt Steam had already counted, which is
+	// precisely the walk into a longer lockout this is meant to prevent.
+	for _, spent := range []string{"failed", "mismatch", "invalid", "rate limit", "denied", "expired"} {
+		if strings.Contains(lower, spent) {
+			return false
+		}
+	}
+
+	return strings.Contains(lower, "steam guard code") ||
+		strings.Contains(lower, "two-factor code") ||
+		strings.Contains(lower, "twofactor code")
 }
 
 func branchNote(branch string) string {

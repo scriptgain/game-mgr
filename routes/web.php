@@ -103,6 +103,7 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::get('/', [Client\ConsoleController::class, 'show'])->name('console');
         Route::post('/power', [Client\ConsoleController::class, 'power'])->name('power');
         Route::post('/command', [Client\ConsoleController::class, 'command'])->name('command');
+        Route::post('/guard-code', [Client\ConsoleController::class, 'guardCode'])->name('guard-code');
         Route::get('/stats', [Client\ConsoleController::class, 'stats'])->name('stats');
 
         Route::get('/files', [Client\FileController::class, 'index'])->name('files');

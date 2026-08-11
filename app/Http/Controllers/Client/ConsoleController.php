@@ -77,6 +77,55 @@ class ConsoleController extends ServerController
         return back()->with('status', 'Sent '.$action.' to the server.');
     }
 
+    /**
+     * Answer the Steam Guard prompt an install is blocked on.
+     *
+     * The whole point of the feature: without this the only ways through a
+     * challenge are to store the account's shared secret or to have a shell on
+     * the node, and a client has neither.
+     *
+     * Gated on control.start rather than a permission of its own. Whoever may
+     * start this server may finish installing it, and inventing a permission
+     * that exists for one prompt would mean every existing subuser silently
+     * lacking it.
+     */
+    public function guardCode(Request $request, Server $server)
+    {
+        $this->guard($server, 'control.start');
+
+        $data = $request->validate([
+            // Steam's alphabet, five characters. Validated here as well as on
+            // the node because a wrong code costs one of a small number of
+            // attempts before Steam rate limits the account, and a typo caught
+            // in the browser costs nothing.
+            'code' => ['required', 'string', 'regex:/\A[23456789BCDFGHJKMNPQRTVWXYbcdfghjkmnpqrtvwxy]{5}\z/'],
+        ], [
+            'code.regex' => 'A Steam Guard code is five characters and never contains A, E, I, O, S, U, Z, 0 or 1.',
+        ]);
+
+        if (! $server->guard_prompt_at) {
+            return back()->with('error', 'That install is not waiting for a code right now.');
+        }
+
+        $result = NodeClient::for($server->node)->guardCode($server, mb_strtoupper($data['code']));
+
+        if (! $result['ok']) {
+            return back()->with('error', 'The node did not accept it: '.$result['error'].'.');
+        }
+
+        // Cleared here as well as by the job, so the box goes away on the
+        // redirect rather than on the job's next event, which during a quiet
+        // stretch of an install can be seconds later.
+        $server->forceFill(['guard_prompt_at' => null])->save();
+
+        // The code itself is never logged. It is single use and expires in
+        // seconds, but an audit log is exported and read by people who have no
+        // business seeing anybody's second factor.
+        $this->log($server, 'server.guard_code', 'Answered a Steam Guard prompt during install');
+
+        return back()->with('status', 'Code sent. The install should continue in a moment.');
+    }
+
     public function command(Request $request, Server $server)
     {
         $this->guard($server, 'control.command');

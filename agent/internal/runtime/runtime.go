@@ -177,6 +177,20 @@ func (s Server) PublishedPorts() []AllocatedPort {
 
 // Driver is what a runtime backend must provide. Every method takes a context
 // so a wedged install cannot pin a goroutine forever.
+// GuardPrompter is an install writer that can ask a human a question and wait
+// for the answer.
+//
+// Implemented by the SSE stream the panel is watching, and type asserted rather
+// than added to Driver, because only one driver ever needs it and only on the
+// install path. A writer that does not implement it is not a failure: the
+// steamcmd driver falls back to stopping with an explanation, which is what a
+// scheduled auto-update with nobody watching should do anyway.
+//
+// The prompt text is shown to whoever is looking at the install console.
+type GuardPrompter interface {
+	AskSteamGuard(ctx context.Context, prompt string) (string, error)
+}
+
 type Driver interface {
 	// Name is the runtime key the panel stores on a template: docker,
 	// steamcmd or linuxgsm.

@@ -44,10 +44,17 @@ type Server struct {
 	// already up, and a node that just enrolled has to start accepting the
 	// panel without waiting for a restart.
 	token atomic.Value
+
+	// Joins an install blocked at a Steam Guard prompt to the code somebody
+	// types into the panel, which arrives on a separate request entirely.
+	guard *guardBroker
 }
 
 func New(cfg config.Config, drivers gruntime.Registry, version string, sup *supervise.Supervisor, fw *firewall.Manager) *Server {
-	s := &Server{cfg: cfg, drivers: drivers, started: time.Now(), version: version, sup: sup, fw: fw}
+	s := &Server{
+		cfg: cfg, drivers: drivers, started: time.Now(),
+		version: version, sup: sup, fw: fw, guard: newGuardBroker(),
+	}
 	s.token.Store(cfg.Token)
 
 	return s
@@ -81,6 +88,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/servers/{uuid}/power", s.auth(http.HandlerFunc(s.power)))
 	mux.Handle("POST /api/servers/{uuid}/command", s.auth(http.HandlerFunc(s.command)))
 	mux.Handle("POST /api/servers/{uuid}/install", s.auth(http.HandlerFunc(s.install)))
+	mux.Handle("POST /api/servers/{uuid}/guard-code", s.auth(http.HandlerFunc(s.guardCode)))
+	mux.Handle("GET /api/servers/{uuid}/guard-code", s.auth(http.HandlerFunc(s.guardPending)))
 	mux.Handle("POST /api/servers/{uuid}/update", s.auth(http.HandlerFunc(s.update)))
 	mux.Handle("GET /api/servers/{uuid}/stats", s.auth(http.HandlerFunc(s.stats)))
 	mux.Handle("GET /api/servers/{uuid}/stream", s.auth(http.HandlerFunc(s.stream)))
@@ -357,6 +366,9 @@ func (s *Server) install(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
+	// The install stream is the only one a driver can ask a question on, because
+	// it is the only request still open while somebody types the answer.
+	sse.askable(s.guard, srv.UUID)
 
 	// A wipe moves the old data aside rather than deleting it, and only drops it
 	// once the reinstall has actually worked. Deleting first and failing second
@@ -914,6 +926,60 @@ func (s *Server) hydrate(r *http.Request, srv gruntime.Server) (gruntime.Server,
 }
 
 // --------------------------------------------------------------------- utils
+
+// guardCode hands a Steam Guard code to an install that is blocked waiting for
+// one.
+//
+// A separate request from the install itself, because the install is holding an
+// SSE stream open while steamcmd sits at its prompt and cannot read a body it
+// already consumed. They are joined by the server UUID through the broker.
+func (s *Server) guardCode(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "could not read the code")
+
+		return
+	}
+
+	code := strings.TrimSpace(body.Code)
+	if code == "" {
+		writeErr(w, http.StatusBadRequest, "no code given")
+
+		return
+	}
+	// Steam Guard codes are five characters from a fixed alphabet. Anything
+	// else is a paste error, and sending it wastes one of a small number of
+	// attempts before Steam starts rate limiting the account.
+	if len(code) > 16 {
+		writeErr(w, http.StatusBadRequest, "that is too long to be a Steam Guard code")
+
+		return
+	}
+
+	if !s.guard.submit(uuid, code) {
+		// Not an error the caller did anything wrong: the usual cause is that
+		// the install already gave up, which the panel should say plainly
+		// rather than reporting as a failure to deliver.
+		writeErr(w, http.StatusConflict, errGuardNoOne.Error())
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"accepted": true})
+}
+
+// guardPending says whether a server is sitting at a prompt right now.
+//
+// The panel needs this because the guard event is not replayed: reload the
+// install page while an install waits and the code box would otherwise be gone,
+// with the install still blocked and no way to answer it.
+func (s *Server) guardPending(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"pending": s.guard.pending(r.PathValue("uuid"))})
+}
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
