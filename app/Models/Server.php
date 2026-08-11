@@ -32,7 +32,7 @@ class Server extends Model
         'template_id', 'steam_account_id', 'allocation_id', 'runtime', 'image', 'startup',
         'memory', 'swap', 'disk', 'io', 'cpu', 'threads', 'oom_disabled',
         'database_limit', 'allocation_limit', 'backup_limit', 'status',
-        'installed_at', 'auto_restart', 'auto_update',
+        'installed_at', 'auto_restart', 'auto_update', 'start_on_install',
 
         // Reported by the node daemon, never sourced from a request: no
         // controller validates these and no form posts them. They were left out
@@ -58,6 +58,7 @@ class Server extends Model
             'auto_restart' => 'boolean',
             'stopped_intentionally' => 'boolean',
             'auto_update' => 'boolean',
+            'start_on_install' => 'boolean',
             'installed_at' => 'datetime',
             'install_started_at' => 'datetime',
             'last_started_at' => 'datetime',

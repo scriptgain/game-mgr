@@ -226,6 +226,7 @@ class ServerController extends Controller
                 'database_limit' => $data['database_limit'],
                 'allocation_limit' => $data['allocation_limit'],
                 'backup_limit' => $data['backup_limit'],
+                'start_on_install' => (bool) ($data['start_on_install'] ?? true),
                 'auto_restart' => (bool) ($data['auto_restart'] ?? true),
                 'auto_update' => (bool) ($data['auto_update'] ?? false),
                 'status' => 'installing',
@@ -429,6 +430,7 @@ class ServerController extends Controller
             'database_limit' => $data['database_limit'],
             'allocation_limit' => $data['allocation_limit'],
             'backup_limit' => $data['backup_limit'],
+            'start_on_install' => (bool) ($data['start_on_install'] ?? false),
             'auto_restart' => (bool) ($data['auto_restart'] ?? false),
             'auto_update' => (bool) ($data['auto_update'] ?? false),
         ]);
@@ -879,6 +881,7 @@ class ServerController extends Controller
             'database_limit' => ['required', 'integer', 'between:0,50'],
             'allocation_limit' => ['required', 'integer', 'between:0,50'],
             'backup_limit' => ['required', 'integer', 'between:0,200'],
+            'start_on_install' => ['nullable', 'boolean'],
             'auto_restart' => ['nullable', 'boolean'],
             'auto_update' => ['nullable', 'boolean'],
         ]);
