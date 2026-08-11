@@ -39,7 +39,7 @@ class Template extends Model
         'features', 'file_denylist', 'force_outgoing_ip',
         'rcon_supported', 'rcon_protocol', 'query_protocol',
         'rcon_port_offset', 'query_port_offset', 'mod_sources',
-        'imported_from', 'imported_at',
+        'imported_from', 'imported_at', 'customised_at',
     ];
 
     protected function casts(): array
@@ -60,6 +60,7 @@ class Template extends Model
             'rcon_supported' => 'boolean',
             'force_outgoing_ip' => 'boolean',
             'imported_at' => 'datetime',
+            'customised_at' => 'datetime',
         ];
     }
 

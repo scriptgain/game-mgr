@@ -6,6 +6,7 @@ use App\Models\Game;
 use App\Models\Template;
 use App\Models\TemplatePort;
 use App\Models\TemplateVariable;
+use App\Services\TemplateImporter;
 use Illuminate\Database\Seeder;
 
 /**
@@ -32,7 +33,106 @@ use Illuminate\Database\Seeder;
  */
 class CatalogueSeeder extends Seeder
 {
+    /** Templates left alone because an admin had edited them. */
+    private array $skipped = [];
+
     public function run(): void
+    {
+        $this->hand();
+        $this->library();
+
+        if ($this->skipped) {
+            $this->command?->warn('Left '.count($this->skipped).' customised template(s) alone: '.implode(', ', $this->skipped));
+        }
+    }
+
+    /**
+     * The vendored community library.
+     *
+     * Two hundred and fifty definitions live in database/catalogue as ordinary
+     * files, fetched deliberately by gamemgr:fetch-catalogue and committed, so
+     * a fresh install has a real catalogue without reaching the network and
+     * every install has the same one.
+     *
+     * Runs AFTER the hand-written set and never touches a template that already
+     * exists. The nine written by hand are better than their community
+     * equivalents in the ways that matter here, with real port roles, startup
+     * markers and prose descriptions, so where both describe the same thing the
+     * hand-written one wins.
+     */
+    private function library(): void
+    {
+        $root = database_path('catalogue');
+        if (! is_dir($root)) {
+            return;
+        }
+
+        $importer = new TemplateImporter;
+        $imported = 0;
+
+        foreach (glob($root.'/*/*.json') ?: [] as $path) {
+            $source = 'catalogue:'.basename(dirname($path)).'/'.basename($path);
+
+            // Keyed on where it came from, so a re-seed is a no-op rather than
+            // a second copy of all two hundred and fifty. This is the whole
+            // reason the seeder can keep running on every deploy.
+            if (Template::where('imported_from', $source)->exists()) {
+                continue;
+            }
+
+            $decoded = json_decode((string) file_get_contents($path), true);
+            if (! is_array($decoded)) {
+                continue;
+            }
+
+            try {
+                $template = $importer->import($decoded, null, $source);
+            } catch (\Throwable $e) {
+                // One bad file must not stop the other two hundred and forty
+                // nine. The fetcher validates before writing, so this is for
+                // whatever the validator does not catch.
+                $this->command?->warn('Skipped '.basename($path).': '.$e->getMessage());
+
+                continue;
+            }
+
+            // A community template that duplicates a hand-written one is
+            // dropped rather than left alongside it, because two entries called
+            // "Valheim Dedicated" under one game is a worse catalogue than one.
+            $duplicate = Template::where('game_id', $template->game_id)
+                ->where('name', $template->name)
+                ->whereNull('imported_from')
+                ->exists();
+
+            if ($duplicate) {
+                $template->delete();
+
+                continue;
+            }
+
+            // The category comes from the folder the definition was vendored into,
+            // which is the only place that fact exists: a definition file never says
+            // what kind of thing it is. Only filled when empty, so a category
+            // an admin set by hand is not overwritten on the next seed.
+            if ($template->game && blank($template->game->category)) {
+                $template->game->update(['category' => match (basename(dirname($path))) {
+                    'games-steamcmd', 'games-standalone' => 'game',
+                    'minecraft' => 'minecraft',
+                    'voice' => 'voice',
+                    default => 'other',
+                }]);
+            }
+
+            $imported++;
+        }
+
+        if ($imported) {
+            $this->command?->info("Imported {$imported} template(s) from the vendored catalogue.");
+        }
+    }
+
+    /** The hand-written set, which covers all three runtimes properly. */
+    private function hand(): void
     {
         foreach ($this->catalogue() as $gameData) {
             $templates = $gameData['templates'];
@@ -44,6 +144,20 @@ class CatalogueSeeder extends Seeder
                 $vars = $t['variables'] ?? [];
                 $ports = $t['ports'] ?? [];
                 unset($t['variables'], $t['ports']);
+
+                // A template somebody has edited is theirs, not ours.
+                //
+                // This used to be an unconditional updateOrCreate, which meant
+                // every panel update silently reverted any change an admin had
+                // made to a shipped template. It reverted the TF2 template's
+                // licensed Steam login twice in one evening on gamemgr001, and
+                // nothing anywhere said the update had done it.
+                $existing = Template::where('game_id', $game->id)->where('name', $t['name'])->first();
+                if ($existing?->customised_at) {
+                    $this->skipped[] = $game->name.' / '.$t['name'];
+
+                    continue;
+                }
 
                 $template = Template::updateOrCreate(
                     ['game_id' => $game->id, 'name' => $t['name']],

@@ -1088,6 +1088,11 @@ document.addEventListener('alpine:init', () => {
                 }
             });
 
+            // Watchers only fire on change, so the template chosen at seed time
+            // would otherwise show an empty settings step until it was changed
+            // and changed back.
+            this.loadTemplateFields();
+
             if (this.step === this.total) this.buildSummary();
         },
 
@@ -1218,12 +1223,15 @@ document.addEventListener('alpine:init', () => {
                 if (value !== undefined && value !== null) this.res[key] = Number(value);
             });
 
-            // The template swap reveals a different block of variable inputs, so
-            // blueprint environment values are applied once that has settled.
-            this.$nextTick(() => {
+            // The template swap FETCHES a different block of variable inputs,
+            // so blueprint values wait for that rather than for a tick. It used
+            // to be $nextTick, which was right while every template's inputs
+            // were already in the page; against a fetch it writes into a
+            // container that is still empty and the values vanish silently.
+            Promise.resolve(this.loadTemplateFields()).then(() => this.$nextTick(() => {
                 const env = b.environment || {};
                 Object.keys(env).forEach((key) => this.setVariable(this.templateId, key, String(env[key])));
-            });
+            }));
         },
 
         clearBlueprint() {
@@ -1442,6 +1450,53 @@ document.addEventListener('alpine:init', () => {
             // Nor may a blueprint keep its badge once it no longer applies.
             const b = this.data.blueprints.find((x) => String(x.id) === String(this.blueprintId));
             if (b && String(b.template_id) !== String(this.templateId)) this.blueprintId = '';
+
+            this.loadTemplateFields();
+        },
+
+        /**
+         * Fetch the chosen template's settings and put them on the page.
+         *
+         * Every template's settings used to be rendered into the page at once
+         * and hidden with x-show, which was 5.7 MB and 1.6 seconds once the
+         * community catalogue landed. Only the chosen one is fetched now.
+         *
+         * Cached per template, because switching back and forth while deciding
+         * is normal and re-fetching would lose anything already typed into a
+         * field the operator had filled in on a previous visit.
+         */
+        loadTemplateFields() {
+            const host = document.getElementById('template-fields');
+            if (!host) return Promise.resolve();
+
+            const id = String(this.templateId || '');
+            if (!id) { host.innerHTML = ''; return Promise.resolve(); }
+
+            this.fieldCache = this.fieldCache || {};
+            if (this.fieldCache[id] !== undefined) {
+                host.innerHTML = this.fieldCache[id];
+                return Promise.resolve();
+            }
+
+            // Tracked so anything waiting on the fields (a blueprint applying
+            // its values, the review step reading them) can await the same
+            // promise rather than racing an empty container.
+            const url = host.getAttribute('data-template-fields-url').replace('__ID__', encodeURIComponent(id));
+            this.fieldsReady = fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then((r) => (r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))))
+                .then((html) => {
+                    this.fieldCache[id] = html;
+                    // Still the current template? The operator may have moved on
+                    // while this was in flight, and writing stale settings over
+                    // the new ones would be worse than a slow load.
+                    if (String(this.templateId) === id) host.innerHTML = html;
+                })
+                .catch(() => {
+                    host.innerHTML = '<div class="rounded-lg bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-inset ring-rose-200">'
+                        + 'Could not load this template\'s settings. Reload the page and try again.</div>';
+                });
+
+            return this.fieldsReady;
         },
 
         // --------------------------------------------------------- navigation

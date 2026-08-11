@@ -171,11 +171,26 @@ class McJarsTest extends TestCase
 
     // ----------------------------------------------------------- happy path
 
+    /**
+     * The picker is fetched, not inlined.
+     *
+     * The wizard used to render every template's settings into the page and
+     * hide all but one, which was 5.7 MB once the community catalogue arrived.
+     * These assertions followed the markup to where it now lives: the same
+     * partial, rendered for one template on request.
+     */
+    private function fields(\App\Models\Template $template)
+    {
+        return $this->actingAs($this->admin)
+            ->get(route('admin.servers.template-fields', ['template' => $template->id]));
+    }
+
+
     public function test_the_create_wizard_offers_the_types_and_versions_mcjars_lists(): void
     {
         $this->fakeMcJars();
 
-        $response = $this->actingAs($this->admin)->get(route('admin.servers.create'));
+        $response = $this->fields($this->minecraft);
 
         $response->assertOk();
         $response->assertSee('Server Software');
@@ -245,11 +260,14 @@ class McJarsTest extends TestCase
 
         $this->assertNull($this->palworld->mcjarsPicker());
 
-        $response = $this->actingAs($this->admin)->get(route('admin.servers.create'));
+        // A template that never asked for a picker must not be given one.
+        $response = $this->fields($this->palworld);
 
         $response->assertOk();
-        // One picker on the page, for the one template that asked for it.
-        $this->assertSame(1, substr_count($response->getContent(), 'Server Software'));
+        $this->assertSame(0, substr_count($response->getContent(), 'Server Software'));
+
+        // And the one that did asks for exactly one.
+        $this->assertSame(1, substr_count($this->fields($this->minecraft)->getContent(), 'Server Software'));
     }
 
     // ------------------------------------------------------------- failures
@@ -258,7 +276,7 @@ class McJarsTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('Connection timed out after 4000 milliseconds'));
 
-        $response = $this->actingAs($this->admin)->get(route('admin.servers.create'));
+        $response = $this->fields($this->minecraft);
 
         $response->assertOk();
         $response->assertSee('Live Version List Unavailable');
@@ -274,7 +292,7 @@ class McJarsTest extends TestCase
         // 200, JSON, and nothing like the documented shape.
         Http::fake(['*' => Http::response(['hello' => 'world'], 200)]);
 
-        $response = $this->actingAs($this->admin)->get(route('admin.servers.create'));
+        $response = $this->fields($this->minecraft);
 
         $response->assertOk();
         $response->assertSee('Live Version List Unavailable');

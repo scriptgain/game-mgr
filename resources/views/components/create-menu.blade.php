@@ -16,7 +16,7 @@
             'items' => [
                 ['Server', 'admin.servers.create', 'server', 'A game server on one of your nodes'],
                 ['Template', 'admin.templates.create', 'cube', 'How a game installs and starts'],
-                ['Import An Egg', 'admin.templates.import', 'download', 'Bring in a Pterodactyl egg definition'],
+                ['Import A Template', 'admin.templates.import', 'download', 'Bring in a definition from another panel'],
                 ['Game', 'admin.games.create', 'controller', 'A title to group templates under'],
                 ['Blueprint', 'admin.blueprints.create', 'sparkles', 'A named size operators can pick'],
             ],

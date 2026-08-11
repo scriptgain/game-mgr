@@ -866,78 +866,19 @@
 
                     <x-card title="Game Settings"
                             subtitle="These are baked into the startup command. The template defaults are already filled in.">
-                        @foreach ($templates as $template)
-                            @php
-                                // A Minecraft template draws its type, version
-                                // and build through the MCJars picker instead
-                                // of as three text boxes, so those variables
-                                // come out of the generic loop. When MCJars is
-                                // unreachable the picker owns nothing and they
-                                // go back to being text boxes, which is exactly
-                                // what this screen did before.
-                                $picker = $minecraft[$template->id]['picker'] ?? null;
-                                $mc = $minecraft[$template->id]['payload'] ?? null;
-                                $owned = $picker && $mc['available'] ? $picker->ownedVariableIds() : [];
+                        {{-- Loaded when a template is chosen, not all at once.
 
-                                $editable = $template->variables
-                                    ->filter(fn ($v) => $v->user_editable && ! in_array($v->id, $owned, true));
-                                // NOT $locked. _variable.blade.php reads a
-                                // $locked flag to decide whether to render a
-                                // setting read only, and @include shares the
-                                // including scope, so a collection called
-                                // $locked here made every control on this step
-                                // a padlock and a value.
-                                $lockedVars = $template->variables
-                                    ->reject(fn ($v) => $v->user_editable || in_array($v->id, $owned, true));
-                            @endphp
-                            {{-- Every template's inputs are in the DOM, and every
-                                 one but the chosen template's is disabled, so only
-                                 the live template's values are ever posted. --}}
-                            <div data-vars="{{ $template->id }}" x-show="templateId === '{{ $template->id }}'"
-                                 @if (! $loop->first) x-cloak @endif>
-                                @if ($template->variables->isEmpty())
-                                    <x-empty-state icon="bolt" title="Nothing To Configure"
-                                                   description="This template exposes no settings. Move straight on to the review." />
-                                @else
-                                    <div class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-                                        @if ($picker)
-                                            @include('admin.servers._minecraft', [
-                                                'picker' => $picker,
-                                                'mc' => $mc,
-                                                'owner' => $template->id,
-                                                'group' => 'variables',
-                                            ])
-                                        @endif
-                                        @foreach ($editable as $variable)
-                                            @include('admin.servers._variable', ['variable' => $variable, 'owner' => $template->id])
-                                        @endforeach
-                                    </div>
-
-                                    @if ($lockedVars->isNotEmpty())
-                                        {{-- Open state lives in the wizard, not here: a failed submit
-                                             has to be able to reveal whatever it could not focus. --}}
-                                        <div class="section-divider mt-6 pt-5">
-                                            <button type="button" @click="showLocked = !showLocked"
-                                                    class="inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-slate-600 transition hover:text-slate-900">
-                                                <x-icon name="chevron-down" class="w-4 h-4 transition-transform"
-                                                        ::class="showLocked && 'rotate-180'" />
-                                                <span x-text="showLocked ? 'Hide Template Defaults' : 'Show Template Defaults'">Show Template Defaults</span>
-                                                <x-badge>{{ $lockedVars->count() }}</x-badge>
-                                            </button>
-                                            <p class="mt-1.5 text-sm text-slate-500">
-                                                Settings the template keeps to itself. The owner never sees them, and they are
-                                                usually right as they are.
-                                            </p>
-                                            <div x-show="showLocked" x-cloak class="mt-4 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
-                                                @foreach ($lockedVars as $variable)
-                                                    @include('admin.servers._variable', ['variable' => $variable, 'owner' => $template->id])
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endif
+                             Rendering every template's settings behind x-show
+                             produced a 5.7 MB page at two hundred and fifty nine
+                             templates. The same partial renders here for the one
+                             template that matters, fetched from
+                             admin.servers.template-fields. --}}
+                        <div id="template-fields"
+                             data-template-fields-url="{{ route('admin.servers.template-fields', ['template' => '__ID__']) }}">
+                            <div class="py-8 text-center text-sm text-slate-500" data-fields-loading>
+                                Loading this template's settings...
                             </div>
-                        @endforeach
+                        </div>
                     </x-card>
                 </div>
 
