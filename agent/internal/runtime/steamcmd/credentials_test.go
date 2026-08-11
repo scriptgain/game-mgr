@@ -73,6 +73,85 @@ func TestCredentialsNeverReachTheCommandLine(t *testing.T) {
 	}
 }
 
+// A Steam Guard code has to be primed before the login that consumes it.
+// Emitted after, it answers nothing: @NoPromptForPassword has already turned
+// the challenge into a failure rather than an interactive prompt, and the
+// install dies with "Two-factor code mismatch" while the code sits in the file
+// looking perfectly correct.
+func TestSteamGuardCodeIsSetBeforeLogin(t *testing.T) {
+	const code = "K9J4M"
+
+	dir := t.TempDir()
+	driver := &Driver{}
+
+	script, err := driver.writeRunscript(runtime.Server{
+		UUID:       "11111111-2222-3333-4444-555555555555",
+		SteamAppID: 232250,
+		Environment: map[string]string{
+			"STEAM_USER":       "someuser",
+			"STEAM_PASS":       "hunter2",
+			"STEAM_GUARD_CODE": code,
+		},
+	}, dir)
+	if err != nil {
+		t.Fatalf("writeRunscript: %v", err)
+	}
+
+	body, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	guard := strings.Index(string(body), "set_steam_guard_code "+code)
+	if guard < 0 {
+		t.Fatalf("the guard code is missing, so a protected account cannot log in:\n%s", body)
+	}
+	login := strings.Index(string(body), "login someuser")
+	if login < 0 {
+		t.Fatalf("the login line is missing:\n%s", body)
+	}
+	if guard > login {
+		t.Fatalf("set_steam_guard_code comes after login, which answers nothing:\n%s", body)
+	}
+
+	// The code is as sensitive as the password for the thirty seconds it lives,
+	// and travels the same way: in the file, never on argv.
+	if strings.Contains(script, code) {
+		t.Fatalf("the runscript path leaks the guard code: %s", script)
+	}
+}
+
+// An account with no Steam Guard must not get an empty command. "set_steam_guard_code"
+// with nothing after it is not a no-op: steamcmd takes the next line as its
+// argument, eats the login, and the install fails somewhere unrelated.
+func TestNoGuardCodeEmitsNoGuardLine(t *testing.T) {
+	dir := t.TempDir()
+	driver := &Driver{}
+
+	for _, env := range []map[string]string{
+		{"STEAM_USER": "someuser", "STEAM_PASS": "hunter2"},
+		{"STEAM_USER": "someuser", "STEAM_PASS": "hunter2", "STEAM_GUARD_CODE": ""},
+		{"STEAM_USER": "someuser", "STEAM_PASS": "hunter2", "STEAM_GUARD_CODE": "   "},
+	} {
+		script, err := driver.writeRunscript(runtime.Server{
+			UUID:        "11111111-2222-3333-4444-555555555555",
+			SteamAppID:  232250,
+			Environment: env,
+		}, dir)
+		if err != nil {
+			t.Fatalf("writeRunscript: %v", err)
+		}
+
+		body, err := os.ReadFile(script)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if strings.Contains(string(body), "set_steam_guard_code") {
+			t.Fatalf("emitted a guard line for %v:\n%s", env, body)
+		}
+	}
+}
+
 // An anonymous install must not invent a login line.
 func TestAnonymousInstallUsesAnonymousLogin(t *testing.T) {
 	dir := t.TempDir()

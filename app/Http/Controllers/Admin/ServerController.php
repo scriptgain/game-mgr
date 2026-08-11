@@ -12,6 +12,7 @@ use App\Models\Location;
 use App\Models\Node;
 use App\Models\Server;
 use App\Models\ServerVariable;
+use App\Models\SteamAccount;
 use App\Models\Template;
 use App\Models\TemplateVariable;
 use App\Models\User;
@@ -98,6 +99,7 @@ class ServerController extends Controller
             'templates' => $templates,
             'blueprints' => $blueprints,
             'locations' => $locations,
+            'steamAccounts' => SteamAccount::orderBy('label')->get(),
             // Everything the wizard needs client side, as one JSON island. The
             // view stays markup and the behaviour stays in public/js.
             'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints, $locations, $server),
@@ -167,6 +169,17 @@ class ServerController extends Controller
             )]);
         }
 
+        // Refused here rather than at install time. Without an account the
+        // steamcmd login is anonymous, Steam answers "missing file permissions",
+        // and that reads like a filesystem problem on the node rather than a
+        // server that was created without the credential it needs.
+        if ($template->requires_steam_account && blank($data['steam_account_id'] ?? null)) {
+            return back()->withInput()->withErrors(['steam_account_id' => sprintf(
+                '%s cannot be downloaded anonymously. Pick a Steam account that owns it.',
+                $template->game?->name ?: $template->name
+            )]);
+        }
+
         // Variables are validated against the template's own rules before
         // anything is written, so a bad value cannot leave a half-built server.
         $variableValues = $this->validatedVariables($request, $template);
@@ -189,6 +202,11 @@ class ServerController extends Controller
                 'owner_id' => $data['owner_id'],
                 'node_id' => $node->id,
                 'template_id' => $template->id,
+                // Only kept for a template that asked for one. A stray binding on
+                // an anonymous template would put STEAM_USER and STEAM_PASS into
+                // that server's environment for no reason, which is a credential
+                // in a place nothing needs it.
+                'steam_account_id' => $template->requires_steam_account ? ($data['steam_account_id'] ?? null) : null,
                 // Set after the reservation, because which row is primary is an
                 // answer the planner gives: it is the one carrying the game role.
                 'allocation_id' => null,
@@ -386,6 +404,7 @@ class ServerController extends Controller
             'templates' => Template::with('game')->orderBy('name')->get(),
             'blueprints' => Blueprint::with('template')->orderBy('name')->get(),
             'locations' => Location::orderBy('name')->get(),
+            'steamAccounts' => SteamAccount::orderBy('label')->get(),
         ]);
     }
 
@@ -397,6 +416,9 @@ class ServerController extends Controller
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'owner_id' => $data['owner_id'],
+            'steam_account_id' => $server->template?->requires_steam_account
+                ? ($data['steam_account_id'] ?? null)
+                : null,
             'image' => $data['image'] ?: $server->image,
             'startup' => $data['startup'] ?: $server->startup,
             'memory' => $data['memory'],
@@ -846,6 +868,7 @@ class ServerController extends Controller
             'location_id' => ['nullable', 'exists:locations,id'],
             'node_id' => ['nullable', 'exists:nodes,id'],
             'allocation_id' => ['nullable', 'exists:allocations,id'],
+            'steam_account_id' => ['nullable', 'exists:steam_accounts,id'],
             'image' => ['nullable', 'string', 'max:255'],
             'startup' => ['nullable', 'string', 'max:2000'],
             'memory' => ['required', 'integer', 'min:0'],

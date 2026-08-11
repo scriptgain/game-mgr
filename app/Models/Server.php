@@ -29,7 +29,7 @@ class Server extends Model
 
     protected $fillable = [
         'uuid', 'uuid_short', 'name', 'description', 'owner_id', 'node_id',
-        'template_id', 'allocation_id', 'runtime', 'image', 'startup',
+        'template_id', 'steam_account_id', 'allocation_id', 'runtime', 'image', 'startup',
         'memory', 'swap', 'disk', 'io', 'cpu', 'threads', 'oom_disabled',
         'database_limit', 'allocation_limit', 'backup_limit', 'status',
         'installed_at', 'auto_restart', 'auto_update',
@@ -136,6 +136,15 @@ class Server extends Model
     public function allocation(): BelongsTo
     {
         return $this->belongsTo(Allocation::class);
+    }
+
+    /**
+     * The Steam account paid game files are downloaded with, when the template
+     * needs one. Null is the normal case: most dedicated servers are anonymous.
+     */
+    public function steamAccount(): BelongsTo
+    {
+        return $this->belongsTo(SteamAccount::class);
     }
 
     public function allocations(): HasMany
@@ -461,6 +470,53 @@ class Server extends Model
         foreach ($this->portMap() as $role => $port) {
             if (in_array($role, ['query', 'rcon'], true)) {
                 $env['SERVER_'.mb_strtoupper($role).'_PORT'] = (string) $port;
+            }
+        }
+
+        // The bound Steam account, minted fresh on every call.
+        //
+        // This is deliberately not stored anywhere. daemonPayload() re-runs
+        // this method for each dispatch, so the Guard code is always seconds
+        // old, which is the only way a thirty second TOTP can work through a
+        // panel. The shared secret that produces it never leaves this process.
+        //
+        // Written last on purpose: these three names are reserved, and a
+        // template that happens to declare a STEAM_PASS variable must not be
+        // able to override the real credential with whatever a client typed.
+        if ($account = $this->steamAccount) {
+            $env['STEAM_USER'] = (string) $account->username;
+            $env['STEAM_PASS'] = (string) $account->password;
+            $env['STEAM_GUARD_CODE'] = $account->guardCode();
+        }
+
+        return $env;
+    }
+
+    /**
+     * Environment names that must never be rendered, logged or serialised.
+     *
+     * environment() is read by more than the daemon: the admin server view
+     * lists it, the API returns it, and an audit entry can carry it. Anything
+     * showing that map to a human has to filter through here first.
+     */
+    public const REDACTED_ENV = ['STEAM_USER', 'STEAM_PASS', 'STEAM_GUARD_CODE'];
+
+    /**
+     * The environment with the credentials masked, for display.
+     *
+     * STEAM_USER is masked along with the secrets. It is not itself a secret,
+     * but a username is half of a credential and there is no screen that needs
+     * to show which Steam account is being used in this form: the server's
+     * Steam account binding says that already, by label.
+     *
+     * @return array<string, string>
+     */
+    public function displayEnvironment(): array
+    {
+        $env = $this->environment();
+        foreach (self::REDACTED_ENV as $key) {
+            if (array_key_exists($key, $env)) {
+                $env[$key] = '••••••••';
             }
         }
 
