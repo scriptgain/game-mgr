@@ -162,6 +162,7 @@ func (d *Driver) runScriptFile(ctx context.Context, script, dir string, w io.Wri
 	scanner.Split(scanLinesOrReturns)
 
 	lastProgress := ""
+	stalled := ""
 	for scanner.Scan() {
 		line := strings.TrimSpace(supervise.StripANSI(scanner.Text()))
 		if line == "" {
@@ -179,6 +180,35 @@ func (d *Driver) runScriptFile(ctx context.Context, script, dir string, w io.Wri
 		}
 
 		fmt.Fprintf(w, "[steamcmd] %s\n", line)
+
+		// A Steam Guard prompt is a hang, not a failure, and it is the worst
+		// shape a failure can take here.
+		//
+		// @NoPromptForPassword suppresses the PASSWORD prompt and nothing else,
+		// which is easy to misread as covering this too. steamcmd still stops at
+		// the two-factor prompt, and with stdin at /dev/null it neither reads a
+		// code nor gives up: it sat in nanosleep for the full install timeout,
+		// six hours, holding a queue worker, with a console that had simply
+		// stopped moving. Nothing about that says "authorize this node".
+		//
+		// So the prompt is treated as the terminal condition it actually is:
+		// kill it now and say what to do about it.
+		if reason := guardPrompt(line); reason != "" {
+			stalled = reason
+			_ = cmd.Process.Kill()
+
+			break
+		}
+	}
+
+	if stalled != "" {
+		// Drained so the kill does not race the pipe, and Wait is expected to
+		// report the signal rather than a clean exit.
+		_ = cmd.Wait()
+
+		fmt.Fprintf(w, "[gamemgr] %s\n", stalled)
+
+		return fmt.Errorf("steamcmd stopped at a Steam Guard prompt: %s", stalled)
 	}
 
 	if err := cmd.Wait(); err != nil {
@@ -260,6 +290,39 @@ func (d *Driver) writeRunscript(s runtime.Server, dir string) (string, error) {
 	}
 
 	return script, nil
+}
+
+// guardPrompt recognises the point where steamcmd has stopped and is waiting
+// for a two-factor code nobody can type, and returns what the operator should
+// do about it. Empty means the line is ordinary output.
+//
+// Matched on the prompt text rather than on a timeout, because a legitimate
+// steamcmd install is silent for long stretches while it verifies a large app,
+// and a timeout long enough not to kill those is too long to be useful here.
+func guardPrompt(line string) string {
+	lower := strings.ToLower(line)
+
+	switch {
+	case strings.Contains(lower, "steam guard code"),
+		strings.Contains(lower, "two-factor code"),
+		strings.Contains(lower, "twofactor code"):
+		return "Steam asked for a Steam Guard code and there is no way to answer one from here. " +
+			"Either store the account's shared secret on it in the panel, or authorise this node once by hand: " +
+			"run steamcmd as the game account with -H set, log in, and type the code from your phone. " +
+			"Steam then trusts this machine and later installs need no code."
+
+	case strings.Contains(lower, "two-factor code mismatch"),
+		strings.Contains(lower, "invalid steam guard code"):
+		return "Steam rejected the Steam Guard code. If the account has a shared secret stored, check it is the " +
+			"Base64 value from an authenticator export rather than something else; a wrong seed produces codes of " +
+			"the right shape that never work."
+
+	case strings.Contains(lower, "rate limit exceeded"):
+		return "Steam is rate limiting this account, usually after several rejected codes. Wait a few minutes " +
+			"before trying again; retrying immediately extends the limit."
+	}
+
+	return ""
 }
 
 func branchNote(branch string) string {
