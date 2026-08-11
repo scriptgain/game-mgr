@@ -15,6 +15,20 @@
 
     var every = Math.max(2, parseInt(root.getAttribute('data-install-watch'), 10) || 5) * 1000;
 
+    /* Show the END of the log, which is the only part anyone is watching.
+     *
+     * The pane is a capped scroll box and a reload starts it at the top, so
+     * polling produced a log that visibly refreshed and never moved: the newest
+     * lines were always just off the bottom. Done on every load rather than only
+     * while installing, because a failed install is read the same way, from the
+     * error backwards. */
+    function pinToBottom() {
+        var pane = root.querySelector('.gm-code-pre');
+        if (pane) pane.scrollTop = pane.scrollHeight;
+    }
+
+    pinToBottom();
+
     function typing() {
         var field = document.getElementById('guard-code');
         if (!field) return false;
