@@ -98,6 +98,15 @@ class InstallServer implements ShouldQueue
             'installed_at' => $ok ? now() : null,
         ])->save();
 
+        // A completed install is the only honest proof that Steam accepted this
+        // account on this node, which means steamcmd has written its sentry file
+        // and later installs will not be challenged. Recorded here rather than
+        // when the install was dispatched, because an install that failed proves
+        // nothing at all about the sentry.
+        if ($ok && $server->steam_account_id && $server->node_id) {
+            $server->steamAccount?->markAuthorized($server->node_id);
+        }
+
         AuditLog::record(
             $ok ? 'server.installed' : 'server.install_failed',
             ($ok ? 'Installed "' : 'Install failed for "').$server->name.'"',

@@ -991,6 +991,86 @@ class CatalogueSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Team Fortress 2',
+                'slug' => 'team-fortress-2',
+                'description' => 'Source 1 class shooter. Old, small and cheap to run, which makes it the best thing in this catalogue to test a node with.',
+                'author' => 'GameMGR',
+                'icon' => 'target',
+                'cover_color' => '#b45309',
+                'templates' => [
+                    [
+                        'name' => 'TF2 Dedicated',
+                        'default_port' => 27015,
+                        'default_protocol' => 'udp',
+                        // Same collapse as CS2: one allocation on 27015 carrying all
+                        // three roles, because Source puts the A2S query and RCON on
+                        // the game port rather than on ports of their own.
+                        'ports' => [
+                            ['role' => 'game', 'label' => 'Game Port', 'protocol' => 'udp', 'port' => 27015],
+                            ['role' => 'query', 'label' => 'Query Port', 'protocol' => 'udp', 'port_offset' => 0],
+                            ['role' => 'rcon', 'label' => 'RCON Port', 'protocol' => 'tcp', 'port_offset' => 0],
+                        ],
+                        'author' => 'GameMGR',
+                        'description' => implode(' ', [
+                            'SteamCMD native, app 232250, anonymous login. Roughly 15 GiB, and it will run in 1 GiB of memory, so this is the cheapest realistic end to end test of a new node.',
+                            'Ports: 27015/udp game and Steam query, 27015/tcp RCON.',
+                            'A 32 bit binary, so the node needs i386 multiarch. The node installer enables it; a hand built node that skipped it fails with "srcds_linux: No such file or directory" on a file that is plainly there, which is the loader failing, not the file missing.',
+                            'Without a Game Server Login Token the server stays off the master list. One per server, tied to app 232250.',
+                            'Useful trick: setting this template to a licensed Steam account instead of anonymous is the cheapest way to exercise the Steam Guard path, because the download works either way.',
+                        ]),
+                        'runtime' => 'steamcmd',
+                        'steam_app_id' => 232250,
+                        // True because it is true: 232250 downloads without an account.
+                        // Flip it off on a copy of this template to test a licensed
+                        // login; do not misrepresent the game's real requirement here.
+                        'steam_anonymous' => true,
+
+                        // Shell expansion, not {{PLACEHOLDER}}. The steamcmd driver
+                        // exports the environment before it runs this, and the braces
+                        // form reached CS2 as literal text once already.
+                        'startup' => <<<'SH'
+                        P=${SERVER_PORT:-27015}
+
+                        set -- -game tf -console -usercon -norestart \
+                          -ip 0.0.0.0 -port "$P" \
+                          +maxplayers "${MAX_PLAYERS:-24}" \
+                          +map "${START_MAP:-cp_dustbowl}" \
+                          +sv_pure "${SV_PURE:-1}" \
+                          +hostname "${SERVER_NAME:-A GameMGR TF2 Server}"
+
+                        # Empty values are omitted rather than passed. A blank
+                        # sv_setsteamaccount makes the Steam login fail outright,
+                        # where leaving it out merely keeps the server off the
+                        # master list.
+                        [ -n "${GSLT:-}" ] && set -- "$@" +sv_setsteamaccount "$GSLT"
+                        [ -n "${RCON_PASSWORD:-}" ] && set -- "$@" +rcon_password "$RCON_PASSWORD"
+                        [ -n "${SERVER_PASSWORD:-}" ] && set -- "$@" +sv_password "$SERVER_PASSWORD"
+
+                        exec ./srcds_run "$@"
+                        SH,
+                        'config_startup' => ['done' => 'Connection to Steam servers successful', 'strip_ansi' => true],
+                        'config_stop' => ['value' => 'quit'],
+                        'config_logs' => ['custom' => false],
+                        'rcon_supported' => true,
+                        'rcon_protocol' => 'source',
+                        'query_protocol' => 'a2s',
+                        'rcon_port_offset' => 0,
+                        'query_port_offset' => 0,
+                        'mod_sources' => ['workshop'],
+                        'update_command' => 'app_update 232250 validate',
+                        'variables' => [
+                            ['name' => 'Server Name', 'env_variable' => 'SERVER_NAME', 'default_value' => 'A GameMGR TF2 Server', 'rules' => 'required|string|max:60', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Starting Map', 'env_variable' => 'START_MAP', 'default_value' => 'cp_dustbowl', 'rules' => 'required|string|max:60', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Max Players', 'env_variable' => 'MAX_PLAYERS', 'default_value' => '24', 'rules' => 'required|integer|between:2,32', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Pure Server', 'env_variable' => 'SV_PURE', 'default_value' => '1', 'rules' => 'required|integer|in:-1,0,1,2', 'description' => 'How strictly client files are checked. 1 is the normal setting; -1 turns the check off and is what custom content servers use.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Game Server Login Token', 'env_variable' => 'GSLT', 'default_value' => '', 'rules' => 'nullable|alpha_num|max:64', 'description' => 'From steamcommunity.com/dev/managegameservers, one per server, tied to app 232250. Without one the server stays off the master list.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'RCON Password', 'env_variable' => 'RCON_PASSWORD', 'default_value' => '', 'rules' => 'nullable|alpha_dash|max:40', 'description' => 'RCON stays off until this is set. It then listens on the game port over TCP.', 'user_viewable' => true, 'user_editable' => true],
+                            ['name' => 'Server Password', 'env_variable' => 'SERVER_PASSWORD', 'default_value' => '', 'rules' => 'nullable|alpha_dash|max:40', 'description' => 'Leave blank for an open server. This is what players type to join, not the RCON password.', 'user_viewable' => true, 'user_editable' => true],
+                        ],
+                    ],
+                ],
+            ],
+            [
                 'name' => 'Palworld',
                 'slug' => 'palworld',
                 'description' => 'Creature collecting survival. Memory hungry and update happy.',

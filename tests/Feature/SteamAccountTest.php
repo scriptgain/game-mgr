@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\InstallServer;
 use App\Models\Game;
 use App\Models\Location;
 use App\Models\Node;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Support\SteamGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -246,6 +248,36 @@ class SteamAccountTest extends TestCase
         ])->assertRedirect();
 
         $this->assertSame([], $this->account->fresh()->authorized_nodes);
+    }
+
+    /**
+     * A completed install records the node as authorized.
+     *
+     * This is here because the marking was written, unit tested against the
+     * model, and then never called from anywhere: authorized_nodes could only
+     * ever stay empty, and the "already authorized" notice on the account form
+     * could never appear. A test on the model alone did not catch that, because
+     * the model was fine. Only running the job does.
+     */
+    public function test_a_successful_install_marks_the_node_authorized(): void
+    {
+        Http::fake(['*' => Http::response("event: message\ndata: [gamemgr] install complete\n\n", 200)]);
+
+        (new InstallServer($this->server->id))->handle();
+
+        $this->assertSame([$this->server->node_id], $this->account->fresh()->authorized_nodes);
+        $this->assertNotNull($this->server->fresh()->installed_at);
+    }
+
+    /** A failed install proves nothing about the sentry, so it must record nothing. */
+    public function test_a_failed_install_does_not_mark_the_node_authorized(): void
+    {
+        Http::fake(['*' => Http::response("event: error\ndata: Two-factor code mismatch\n\n", 200)]);
+
+        (new InstallServer($this->server->id))->handle();
+
+        $this->assertEmpty($this->account->fresh()->authorized_nodes ?? []);
+        $this->assertSame('install_failed', $this->server->fresh()->status);
     }
 
     public function test_authorized_nodes_records_where_the_sentry_took(): void

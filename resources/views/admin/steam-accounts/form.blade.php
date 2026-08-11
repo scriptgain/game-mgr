@@ -28,10 +28,10 @@
                 </x-card>
 
                 <x-card title="Steam Guard" icon="shield"
-                        subtitle="Without this, the first install on each node has to be authorized by hand on that box.">
+                        subtitle="Optional. Leave it blank and authorize each node once by hand instead.">
                     <div class="space-y-4">
-                        <x-field label="Shared Secret"
-                                 :hint="$account->exists && filled($account->shared_secret) ? 'Stored. Leave blank to keep it.' : 'Optional. The Base64 shared_secret from a mobile authenticator export.'"
+                        <x-field label="Shared Secret (Optional)"
+                                 :hint="$account->exists && filled($account->shared_secret) ? 'Stored. Leave blank to keep it.' : 'Most people should leave this blank. See below.'"
                                  :error="$errors->first('shared_secret')">
                             {{-- No example value here. A placeholder shaped like a real
                                  shared secret reads as one, and this field is the one
@@ -40,10 +40,17 @@
                             <x-input type="password" name="shared_secret" autocomplete="new-password" />
                         </x-field>
                         <x-alert type="info">
-                            This is the <span class="font-mono text-xs">shared_secret</span> value, which is Base64 and about 28
-                            characters long. It is not the Base32 code an ordinary authenticator app shows you, and it is not the
-                            five character code itself. The panel generates a fresh code for every install; the secret never
-                            leaves this server.
+                            <div class="space-y-2">
+                                <p><strong>Leave this blank unless you already have the value.</strong> Steam does not show it
+                                   anywhere; it only exists inside a mobile authenticator export, and getting one puts a 15 day
+                                   trade hold on the account. It is not the five character code the app shows you.</p>
+                                <p>With it blank, authorize each node once by running
+                                   <span class="font-mono text-xs">steamcmd +login &lt;user&gt;</span> on that machine as the game
+                                   account and typing the code from your phone. Steam then trusts the machine and every install
+                                   after it runs unattended.</p>
+                                <p>With it filled in, nothing manual is ever needed: the panel generates a fresh code for each
+                                   install and the secret never leaves this server. Worth it for a fleet, not for one node.</p>
+                            </div>
                         </x-alert>
                         @if ($account->exists && filled($account->authorized_nodes))
                             <x-alert type="success">

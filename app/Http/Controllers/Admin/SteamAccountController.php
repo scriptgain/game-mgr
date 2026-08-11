@@ -98,7 +98,12 @@ class SteamAccountController extends Controller
             // that looks identical to a bad password.
             'shared_secret' => ['nullable', 'string', 'max:255', function ($attribute, $value, $fail) {
                 if (filled($value) && ! SteamGuard::valid($value)) {
-                    $fail('That does not look like a shared secret. It is the Base64 string from a mobile authenticator export, not the Base32 one an authenticator app shows.');
+                    // Says what to do, not just what is wrong. The first version
+                    // of this described the correct format and left the reader
+                    // stuck, when the right answer for almost everybody is to
+                    // leave the field empty and let the node's sentry file
+                    // handle the challenge instead.
+                    $fail('Leave this blank unless you have exported it from a mobile authenticator. It is the Base64 shared_secret from that export, roughly 28 characters ending in "=", and it is not the five character code the Steam app shows you.');
                 }
             }],
         ]);
