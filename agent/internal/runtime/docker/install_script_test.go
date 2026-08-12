@@ -69,3 +69,50 @@ func TestShortIDIsUsableAsAContainerName(t *testing.T) {
 		t.Fatalf("short input mangled: %q", s)
 	}
 }
+
+// CRLF is the normal case, not the edge case.
+//
+// 226 of the 249 install scripts in the vendored catalogue end their lines with
+// CRLF, because they were written on Windows. bash reads bytes, not intentions:
+// with \r on the end, "curl" becomes "curl\r", the shell reports a command not
+// found for a command that plainly exists, and the script exits 2 having done
+// nothing. SA-MP failed exactly this way and the output gave no hint why.
+func TestScriptsWithWindowsLineEndingsAreRunnable(t *testing.T) {
+	got := normaliseScript("#!/bin/bash\r\ncd /tmp || exit\r\ncurl -sSL -o s.tar.gz http://example/\r\n")
+
+	if strings.Contains(got, "\r") {
+		t.Fatalf("a carriage return survived:\n%q", got)
+	}
+	if !strings.Contains(got, "cd /tmp || exit\ncurl") {
+		t.Fatalf("the script was mangled:\n%q", got)
+	}
+}
+
+// A lone CR is rarer and worse: it leaves the entire script on one line rather
+// than failing a line at a time.
+func TestLoneCarriageReturnsBecomeNewlines(t *testing.T) {
+	got := normaliseScript("echo one\recho two\recho three")
+
+	if strings.Count(got, "\n") != 2 {
+		t.Fatalf("expected three lines, got %q", got)
+	}
+}
+
+// A byte order mark breaks the first line only, which is the shebang, which is
+// the hardest one to notice.
+func TestByteOrderMarkIsStripped(t *testing.T) {
+	got := normaliseScript("\ufeff#!/bin/bash\necho hi\n")
+
+	if !strings.HasPrefix(got, "#!/bin/bash") {
+		t.Fatalf("BOM survived: %q", got[:20])
+	}
+}
+
+// An empty script must stay empty so the caller skips the container entirely.
+func TestAnEmptyScriptStaysEmpty(t *testing.T) {
+	for _, in := range []string{"", "   ", "\r\n\r\n", "\ufeff"} {
+		if got := normaliseScript(in); got != "" {
+			t.Errorf("normaliseScript(%q) = %q, want empty", in, got)
+		}
+	}
+}
