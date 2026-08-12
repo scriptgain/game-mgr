@@ -8,6 +8,7 @@ use App\Jobs\MigrateServer;
 use App\Models\Allocation;
 use App\Models\AuditLog;
 use App\Models\Blueprint;
+use App\Models\Game;
 use App\Models\Location;
 use App\Models\Node;
 use App\Models\Server;
@@ -100,6 +101,8 @@ class ServerController extends Controller
             'blueprints' => $blueprints,
             'locations' => $locations,
             'steamAccounts' => SteamAccount::orderBy('label')->get(),
+            // With counts, for the game-first picker on step one.
+            'games' => Game::withCount('templates')->having('templates_count', '>', 0)->orderBy('name')->get(),
             // Everything the wizard needs client side, as one JSON island. The
             // view stays markup and the behaviour stays in public/js.
             'wizard' => $this->wizardPayload($users, $nodes, $templates, $blueprints, $locations, $server),
@@ -161,6 +164,15 @@ class ServerController extends Controller
             // and reloads once so the finished state renders through Blade
             // rather than being rebuilt here.
             'installing' => $server->status === 'installing',
+        ]);
+    }
+
+    /** One game's templates, for the create wizard's picker. */
+    public function gameTemplates(Game $game)
+    {
+        return view('admin.servers._game-templates', [
+            'game' => $game,
+            'templates' => $game->templates()->orderBy('name')->get(),
         ]);
     }
 

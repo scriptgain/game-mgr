@@ -29,7 +29,10 @@ class GameController extends Controller
             })
             ->when($request->string('category')->trim()->value(), fn ($query, string $c) => $query->where('category', $c))
             ->orderBy('name')
-            ->paginate(config('gamemgr.rows_per_page', 24))
+            // Twelve, not the panel-wide rows_per_page. This is a grid of art rather
+            // than a table of rows: twelve fills four columns evenly, keeps the page
+            // light, and a wall of two dozen covers is harder to scan, not easier.
+            ->paginate(12)
             ->withQueryString();
 
         return view('admin.games.index', [

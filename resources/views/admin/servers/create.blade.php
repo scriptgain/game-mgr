@@ -26,7 +26,11 @@
 
     // Templates arrive sorted by game, so grouping keeps that order.
     $byGame = $templates->groupBy(fn ($t) => $t->game?->name ?? 'Other');
-    $games = $templates->pluck('game')->filter()->unique('id')->values();
+    // $games comes from the controller now, with its template counts. Derived
+    // here it had no counts, and deriving it made the picker depend on every
+    // template being loaded, which is the thing the picker was changed to stop
+    // doing. A {{-- --}} comment inside @php is not a comment, it is a syntax
+    // error, which is how this was found.
 @endphp
 <x-layouts.app :title="$title">
     <x-page-header :title="$title" icon="controller"
@@ -149,52 +153,38 @@
                                      that name as the form field array name. The bare one
                                      therefore renamed every template setting to a JSON dump
                                      of this loop, so nothing typed on step five ever posted. --}}
-                                @foreach ($byGame as $gameName => $gameGroup)
-                                    @php $game = $gameGroup->first()->game; @endphp
-                                    <div x-show="gameHasMatch({{ Illuminate\Support\Js::from($gameGroup->pluck('id')->all()) }})" x-cloak>
-                                        <div class="flex items-center gap-2.5 pb-2.5">
-                                            <span class="gm-art gm-art-{{ $game?->id ?? 0 }} inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white ring-1 ring-inset ring-black/10">
-                                                <x-icon :name="$game?->icon ?: 'controller'" class="w-4 h-4" />
-                                            </span>
-                                            <h4 class="min-w-0 truncate text-sm font-semibold text-slate-900">{{ $gameName }}</h4>
-                                            <span class="shrink-0 text-xs tabular text-slate-400">
-                                                {{ $gameGroup->count() }} {{ \Illuminate\Support\Str::plural('Template', $gameGroup->count()) }}
-                                            </span>
-                                            <span class="h-px min-w-4 flex-1 bg-slate-200" aria-hidden="true"></span>
-                                        </div>
+                                {{-- Games first, templates on demand.
 
-                                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-                                             role="radiogroup" aria-label="{{ $gameName }} templates">
-                                            @foreach ($gameGroup as $template)
-                                                <label x-show="matchesTemplate({{ $template->id }})" x-cloak
-                                                       class="gm-pick group relative flex cursor-pointer gap-3 rounded-xl bg-white p-3 ring-1 ring-inset transition"
-                                                       :class="templateId === '{{ $template->id }}'
-                                                           ? 'ring-2 ring-brand-500 bg-brand-50/60 shadow-sm'
-                                                           : 'ring-slate-200 hover:ring-brand-300 hover:shadow-sm'">
-                                                    <input type="radio" name="template_id" value="{{ $template->id }}"
-                                                           x-model="templateId" class="peer sr-only">
-                                                    <span class="gm-art gm-art-{{ $game?->id ?? 0 }} inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ring-1 ring-inset ring-black/10">
-                                                        <x-icon :name="$game?->icon ?: 'controller'" class="w-5 h-5" />
-                                                    </span>
-                                                    <span class="min-w-0 flex-1">
-                                                        <span class="block truncate pe-5 text-sm font-semibold text-slate-900">{{ $template->name }}</span>
-                                                        <span class="mt-0.5 block truncate text-xs text-slate-500">{{ $gameName }}</span>
-                                                        <span class="mt-2 flex flex-wrap items-center gap-1.5">
-                                                            <x-runtime-badge :runtime="$template->runtime" />
-                                                            @if ($template->variables->isNotEmpty())
-                                                                <x-badge>{{ $template->variables->count() }} Settings</x-badge>
-                                                            @endif
-                                                        </span>
-                                                    </span>
-                                                    <span x-show="templateId === '{{ $template->id }}'" x-cloak
-                                                          class="absolute right-2.5 top-2.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white">
-                                                        <x-icon name="check" class="w-3 h-3" />
-                                                    </span>
-                                                </label>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endforeach
+                                     This used to render every game AND every one of
+                                     its templates as a card, all in the page, filtered
+                                     with x-show. At nine templates that was a nice
+                                     picker. At two hundred and fifty nine it is an
+                                     unusable wall and most of a megabyte, and the games
+                                     are what somebody is actually looking for. Picking
+                                     one fetches its templates. --}}
+                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                                    @foreach ($games as $game)
+                                        <button type="button"
+                                                x-show="gameMatches({{ Illuminate\Support\Js::from($game->name.' '.$game->slug) }})"
+                                                @click="pickGame('{{ $game->id }}')"
+                                                class="gm-pick flex items-center gap-2.5 rounded-lg bg-white p-2 text-left ring-1 ring-inset transition"
+                                                :class="pickedGame === '{{ $game->id }}'
+                                                    ? 'ring-2 ring-brand-500 bg-brand-50/60'
+                                                    : 'ring-slate-200 hover:ring-brand-300'">
+                                            <x-game-art :game="$game" class="h-9 w-9 rounded-md" icon-class="w-4 h-4" />
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-sm font-medium text-slate-900">{{ $game->name }}</span>
+                                                <span class="block text-xs text-slate-400">
+                                                    {{ $game->templates_count }} {{ \Illuminate\Support\Str::plural('template', $game->templates_count) }}
+                                                </span>
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                {{-- The chosen game's templates, fetched. --}}
+                                <div id="game-templates" class="mt-2"
+                                     data-game-templates-url="{{ route('admin.servers.game-templates', ['game' => '__ID__']) }}"></div>
 
                                 <div x-show="matchCount === 0" x-cloak>
                                     <x-empty-state icon="search" title="Nothing Matches That"

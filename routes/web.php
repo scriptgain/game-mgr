@@ -233,6 +233,8 @@ Route::middleware(['auth', 'security.policy'])->group(function () {
         Route::post('servers/{server}/transfer', [Admin\ServerController::class, 'transfer'])->name('servers.transfer');
         Route::post('servers/{server}/reinstall', [Admin\ServerController::class, 'reinstall'])->name('servers.reinstall');
         // Before the resource route, or /servers/{server} swallows it.
+        Route::get('servers/game-templates/{game}', [Admin\ServerController::class, 'gameTemplates'])
+            ->name('servers.game-templates');
         Route::get('servers/template-fields/{template}', [Admin\ServerController::class, 'templateFields'])
             ->name('servers.template-fields');
         Route::get('servers/{server}/install-progress', [Admin\ServerController::class, 'installProgress'])
