@@ -567,6 +567,12 @@ class Server extends Model
             // Minecraft server wants 25565 open on TCP for play and on UDP for
             // query, and "port 25565" alone cannot say that.
             'ports' => $this->daemonPorts(),
+            // How a community template fetches its game files. Without these
+            // the node pulls an image, finds an empty directory, and calls it
+            // installed.
+            'script_install' => (string) ($this->template?->script_install ?? ''),
+            'script_container' => (string) ($this->template?->script_container ?? ''),
+            'script_entry' => (string) ($this->template?->script_entry ?? ''),
             'steam_app_id' => (int) ($this->template?->steam_app_id ?? 0),
             'steam_anonymous' => (bool) ($this->template?->steam_anonymous ?? true),
             'lgsm_shortname' => (string) ($this->template?->lgsm_shortname ?? ''),

@@ -987,6 +987,7 @@ document.addEventListener('alpine:init', () => {
 
         // step one: what to run
         templateId: '',
+        pickedGame: '',
         blueprintId: '',
         query: '',
         showAdvanced: false,
@@ -1100,6 +1101,43 @@ document.addEventListener('alpine:init', () => {
 
         get template() {
             return this.data.templates.find((t) => String(t.id) === String(this.templateId)) || null;
+        },
+
+        /** Does this game match what has been typed into the search box? */
+        gameMatches(haystack) {
+            const q = (this.query || '').trim().toLowerCase();
+
+            return q === '' || String(haystack).toLowerCase().includes(q);
+        },
+
+        /**
+         * Show one game's templates, fetched.
+         *
+         * The picker used to hold every template on the panel and hide all but
+         * the matching ones. That is a fine trick for nine and an unusable wall
+         * for two hundred and fifty nine, so the games are the page and their
+         * templates arrive when one is chosen.
+         */
+        pickGame(id) {
+            this.pickedGame = String(id);
+            const host = document.getElementById('game-templates');
+            if (!host) return;
+
+            this.gameCache = this.gameCache || {};
+            const show = (html) => {
+                // Only if this game is still the chosen one: clicking through
+                // several quickly must not leave an earlier answer on screen.
+                if (this.pickedGame === String(id)) host.innerHTML = html;
+            };
+
+            if (this.gameCache[id] !== undefined) { show(this.gameCache[id]); return; }
+
+            host.innerHTML = '<p class="py-4 text-sm text-slate-500">Loading templates...</p>';
+            const url = host.getAttribute('data-game-templates-url').replace('__ID__', encodeURIComponent(id));
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then((r) => (r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))))
+                .then((html) => { this.gameCache[id] = html; show(html); })
+                .catch(() => show('<p class="py-4 text-sm text-rose-700">Could not load that game\'s templates.</p>'));
         },
 
         /** Can a node with these runtimes run the chosen template? */

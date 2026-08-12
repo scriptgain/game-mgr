@@ -104,6 +104,17 @@ type Server struct {
 	// still the whole truth.
 	Ports []AllocatedPort `json:"ports"`
 
+	// The install script a Pterodactyl-format template carries, and the
+	// throwaway container it runs in.
+	//
+	// This is how every community template actually gets its game files: the
+	// image is a bare runtime, and the script downloads the server into
+	// /mnt/server. Without running it the data directory stays empty and the
+	// startup command fails with "not found" on a binary nobody ever fetched.
+	ScriptInstall   string `json:"script_install"`
+	ScriptContainer string `json:"script_container"`
+	ScriptEntry     string `json:"script_entry"`
+
 	// SteamCMD.
 	SteamAppID     int    `json:"steam_app_id"`
 	SteamAnonymous bool   `json:"steam_anonymous"`

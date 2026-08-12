@@ -127,6 +127,14 @@ func (d *Driver) Install(ctx context.Context, s runtime.Server, w io.Writer) err
 		return err
 	}
 
+	// The template's own install script, which for a community template is the
+	// step that fetches the game. Pulling the image alone leaves the data
+	// directory empty, reports success, and produces a server that cannot start
+	// because the binary its startup command names was never downloaded.
+	if err := d.runInstallScript(ctx, s, path, w); err != nil {
+		return err
+	}
+
 	fmt.Fprintln(w, "[gamemgr] install complete")
 
 	return nil
