@@ -41,7 +41,11 @@
             @endif
         </x-slot:actions>
 
-        <div class="space-y-4" @if ($installing) data-install-watch="5" @endif>
+        <div class="space-y-4"
+             @if ($installing)
+                 data-install-watch="3"
+                 data-progress-url="{{ route('admin.servers.install-progress', $server) }}"
+             @endif>
             @if ($awaitingGuard)
                 <div class="rounded-lg bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">
                     <div class="flex gap-3">
@@ -82,10 +86,10 @@
             @endif
 
             <div class="flex items-baseline justify-between gap-3">
-                <span class="text-sm font-medium {{ $failed ? 'text-rose-700' : 'text-slate-700' }}">
+                <span data-install-phase class="text-sm font-medium {{ $failed ? 'text-rose-700' : 'text-slate-700' }}">
                     {{ $phase ?? 'Unknown' }}
                 </span>
-                <span class="tabular text-sm text-slate-500">
+                <span data-install-percent class="tabular text-sm text-slate-500">
                     @if ($pct !== null)
                         {{ $pct }}%
                     @elseif ($installing)
@@ -95,7 +99,11 @@
             </div>
 
             @if ($pct !== null)
-                <x-meter :value="$pct" :max="100" :tone="$failed ? 'rose' : null" />
+                <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div data-install-bar
+                         class="h-full rounded-full transition-all duration-500 {{ $failed ? 'bg-rose-500' : 'bg-brand-500' }}"
+                         style="width: {{ max(0, min(100, $pct)) }}%"></div>
+                </div>
             @else
                 {{-- No number to show, so show motion rather than a bar stuck
                      at zero, which reads as broken. --}}

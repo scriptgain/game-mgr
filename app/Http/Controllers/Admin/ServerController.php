@@ -133,6 +133,37 @@ class ServerController extends Controller
      * Returns the same partial the page used to inline, so there is one copy of
      * the markup, the MCJars picker and the locked-defaults section.
      */
+    /**
+     * Install progress, as JSON, for the card to poll.
+     *
+     * The card used to keep itself current by reloading the whole page every
+     * five seconds. It worked and it was horrible: the view jumped, the log
+     * pane lost its place, and anything half-typed was at the mercy of the
+     * timer. Small enough to poll often, and the caller patches the DOM
+     * instead of throwing it away.
+     */
+    public function installProgress(Server $server)
+    {
+        $log = (string) $server->install_log;
+
+        return response()->json([
+            'status' => $server->status,
+            'phase' => $server->install_phase,
+            'progress' => $server->install_progress,
+            // The tail only. The whole log during a SteamCMD install is
+            // megabytes of progress chatter and this is fetched every few
+            // seconds.
+            'log' => implode("\n", array_slice(explode("\n", $log), -120)),
+            'awaiting_guard' => (bool) ($server->status === 'installing'
+                && $server->guard_prompt_at
+                && $server->guard_prompt_at->gt(now()->subMinutes(10))),
+            // The card stops polling on anything that is not still installing,
+            // and reloads once so the finished state renders through Blade
+            // rather than being rebuilt here.
+            'installing' => $server->status === 'installing',
+        ]);
+    }
+
     public function templateFields(Template $template, McJars $mcjars)
     {
         $template->load('variables');
