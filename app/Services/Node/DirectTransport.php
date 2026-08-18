@@ -37,7 +37,7 @@ class DirectTransport extends Transport
     {
         try {
             $request = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
+                ->when(! $this->node->verifyTls(), fn ($c) => $c->withoutVerifying())
                 ->withOptions([
                     'connect_timeout' => 10,
                     // A large file over a slow link is minutes, not seconds, so
@@ -88,7 +88,7 @@ class DirectTransport extends Transport
     {
         try {
             $response = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
+                ->when(! $this->node->verifyTls(), fn ($c) => $c->withoutVerifying())
                 ->withOptions(['stream' => true, 'connect_timeout' => 10, 'read_timeout' => 3600])
                 ->get($this->node->daemonUrl($path));
 
@@ -107,8 +107,9 @@ class DirectTransport extends Transport
             ->acceptJson()
             // Self-signed certificates are the norm on a freshly installed
             // node, and the bearer token is what actually authenticates the
-            // call. Verification is enforced once a node has a real cert.
-            ->withoutVerifying();
+            // call. A node behind a proxy has a real cert, so verify there;
+            // Node::verifyTls() decides, and NODE_TLS_VERIFY can force it on.
+            ->when(! $this->node->verifyTls(), fn ($c) => $c->withoutVerifying());
     }
 
     private function queryString(array $query): string

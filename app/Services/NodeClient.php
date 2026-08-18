@@ -449,7 +449,7 @@ class NodeClient
     {
         try {
             $response = Http::withToken($this->daemonToken())
-                ->withoutVerifying()
+                ->when(! $this->node->verifyTls(), fn ($c) => $c->withoutVerifying())
                 ->withOptions([
                     'stream' => true,
                     // Connect timeout only. A read timeout here would kill the
