@@ -316,4 +316,26 @@ class Node extends Model
 
         return rtrim($this->scheme.'://'.$host.':'.$this->daemon_port, '/').'/'.ltrim($path, '/');
     }
+
+    /**
+     * Whether the panel should verify the daemon's TLS certificate when it dials
+     * this node.
+     *
+     * A daemon installed straight onto a box serves a self-signed certificate,
+     * so verification there would refuse every call and the bearer token is what
+     * authenticates instead. A node put behind a reverse proxy terminates TLS
+     * with a real certificate (the same reason `behind_proxy` exists), so there
+     * the certificate is worth checking and skipping it would leave the
+     * panel->node channel open to a man in the middle who could read or replay
+     * the daemon token. NODE_TLS_VERIFY=true forces verification on regardless,
+     * for an operator who has given even their direct nodes a trusted cert.
+     */
+    public function verifyTls(): bool
+    {
+        if ((bool) config('node.tls_verify', false)) {
+            return true;
+        }
+
+        return $this->scheme === 'https' && $this->behind_proxy;
+    }
 }

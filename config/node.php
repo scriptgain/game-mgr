@@ -27,6 +27,13 @@ return [
     // drivers are still being written. Turn this OFF in production.
     'fake' => filter_var(env('NODE_FAKE', false), FILTER_VALIDATE_BOOL),
 
+    // Force TLS certificate verification on for EVERY node the panel dials, even
+    // direct ones. Off by default because a daemon installed straight onto a box
+    // serves a self-signed cert and the bearer token authenticates the call; a
+    // node behind a proxy is verified regardless (see Node::verifyTls()). Set
+    // NODE_TLS_VERIFY=true once every node has a trusted certificate.
+    'tls_verify' => filter_var(env('NODE_TLS_VERIFY', false), FILTER_VALIDATE_BOOL),
+
     // A node is considered offline once its last heartbeat is older than this.
     'offline_after' => 120,
 
